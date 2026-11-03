@@ -15,7 +15,7 @@ The one page to read before the next session. Status first, then how to resume, 
 - **Verified:** 310 simulator checks (`app/tests/basic.txt`), sanitizer build clean, clang analyzer clean, 16
   golden renders (`tests/golden.txt`), device CPU: 8 VA voices 50–55 %, FM 81 %, idle 4 %. Three code reviews
   (37 findings) — 33 fixed, 4 deferred into the roadmap. Details: `docs/platform-decision.md` "Review pass".
-- **Not committed.** `git init` was done and the `base` submodule staged; every app file is still untracked.
+- **Committed 2026-11-02** (the whole tree in one commit, build outputs and the generated words JSON ignored).
   No `Co-Authored-By` trailers when committing (Kyle's rule).
 - **Kyle's verdict so far:** the FM voices after sound pass 1 are untested by ear beyond "the arp works now"; his
   overall read is that the instrument is *boring* — correct engine, placeholder sounds. That is the brief for
@@ -76,6 +76,19 @@ for intended sound changes, a simulator check per new parameter, manual row per 
 ---
 
 # DEEP FIELD — second firmware, built overnight 2026-10-31 → 11-01
+
+**Status, end of 2026-11-02 (read this first):** the FM-1 runs the build of that evening (image 300 KB, identity
+FM-1_1400), flashed after Kyle played it; he likes the sounds. On it: the three-rule interface (one button one
+page, SELECT between pages; a lit button is a mode; the screen mirrors the panel with the BEAMS view), the FDN hall
+on the second core a block behind the bus, the noise layer, eight models, sixteen factory scenes, the effects
+retuned by measurement, 21 review fixes including the watchdog reset's cause. Device CPU with eight bodies: 29–37 %
+by scene, no xruns; STRING ×8 not read since the hall moved. Budgets: `deepfield/docs/BUDGET.md`. Verified: 170
+simulator checks, 16 goldens, sanitizer clean. Everything committed on master. Next, Kyle's TODO at the end of this
+section: more voices (cheap now that bodies ride on core 2), more scenes and models; and the GAMELAN NOISE page
+read COLOUR/WIND/BAND at zero on the unit once, where the factory scene says 50/40/30 — not reproduced, possibly
+Kyle's own knob turns; worth a look if it recurs. Resume with the commands under "How to resume" above, with
+`deepfield` as the app.
+
 
 A separate app in `deepfield/` on the same fm1-base (not a change to Pocket Poly). Kyle's brief: an ambient drone
 machine for live jamming with a sci-fi space look, after researching the existing drone/ambient firmwares.
