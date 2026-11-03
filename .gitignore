@@ -1,0 +1,4 @@
+app/build/
+deepfield/build/
+*/web/words/*.json
+.DS_Store

@@ -1,0 +1,267 @@
+# Handoff — Pocket Poly, end of 2026-10-31
+
+The one page to read before the next session. Status first, then how to resume, then what's next.
+
+## Where it stands
+
+- **The FM-1 runs the review-fix build** (image 279,040 B, identity FM-1_1300, flashed 2026-10-31 evening). It
+  booted clean (no crash recorded), idles at 4 %, and sits on F1 INIT / HOME. Its settings were reset once by the
+  PPL4 settings format earlier that day; nothing has been saved on it since except what Kyle did at the keys.
+- **Everything built so far:** VA/digital-hybrid engine with wavetables and PD, six-operator FM with DX7 import,
+  Juno ensemble / tape delay / plate / limiter that rest when silent, a 12-mode arpeggiator with Euclid, Turing,
+  chance, ratchets, latch and MIDI clock both ways, seeded discovery (DICE / MUTATE / MORPH / history), full MIDI
+  (USB, TRS in, Bluetooth both roles, channel filter, CC map, sustain, LOCAL, clock out), settings/bank/FM-bank
+  storage with migration, 22 pages, screen reader, manual with screenshots. `docs/roadmap.md` §1 has the table.
+- **Verified:** 310 simulator checks (`app/tests/basic.txt`), sanitizer build clean, clang analyzer clean, 16
+  golden renders (`tests/golden.txt`), device CPU: 8 VA voices 50–55 %, FM 81 %, idle 4 %. Three code reviews
+  (37 findings) — 33 fixed, 4 deferred into the roadmap. Details: `docs/platform-decision.md` "Review pass".
+- **Not committed.** `git init` was done and the `base` submodule staged; every app file is still untracked.
+  No `Co-Authored-By` trailers when committing (Kyle's rule).
+- **Kyle's verdict so far:** the FM voices after sound pass 1 are untested by ear beyond "the arp works now"; his
+  overall read is that the instrument is *boring* — correct engine, placeholder sounds. That is the brief for
+  the next phase.
+
+## Standing rules (Kyle's)
+
+- Never flash without his explicit "Flash it"; he powers the unit on for tests only. Never inject keys/buttons
+  over USB while he is playing (`base/tools/fm1_remote.py screen` and `log` are fine any time).
+- MIDI (USB, TRS, Bluetooth both roles) stays in every build; never cut for resources.
+- Device instructions as numbered steps naming buttons and what the screen shows.
+- Terse replies, no emojis, no recaps; debugging needs an executable confirmation before a fix.
+
+## How to resume
+
+```
+colima start --vm-type vz --vz-rosetta      # once per boot of the Mac (device builds only)
+./build.sh --host && app/build/host/pocketpoly_host app/tests/basic.txt app/build/host
+python3 tools/render_all.py                 # must say "all 16 renders match golden"
+JIELI_TOOLCHAIN="$HOME/.jieli/toolchain" AC79_SDK="$HOME/fw-AC79_AIoT_SDK" ./build.sh    # device package
+python3 base/tools/fm1_install.py app/build/pocketpoly.fwsc --yes                        # only on "Flash it"
+```
+
+Sanitizer run: copy the tree (minus `app/build`) to a scratch folder and build there with
+`CC=<wrapper that execs clang -fsanitize=address,undefined -fsanitize-recover=all -g> ./build.sh --host`; the one
+expected UBSan report is `base/include/fastmath.h:58` (fm1-base, benign on the target).
+
+Level check of the renders: `tools/render_all.py` writes `app/build/renders/*.wav`; a peak/RMS-over-time script
+is the quickest way to compare patches (one lived in the scratchpad this session — rewrite it in `tools/` when
+the sound pass starts, it is ten lines of `wave` + `array`).
+
+## Next: v0.6, starting with what is heard first
+
+Agreed direction (2026-10-31 evening): skip to the playable work, plumbing later.
+
+1. **Factory sound pass** — 16 patches (bass ×3, pad ×3, keys ×3, lead ×3, pluck ×2, FM ×2) designed as sounds,
+   not demos; every render within ±3 dB of the loudest; Kyle's notes from sound pass 1 are the taste guide
+   (`memory: fm1-sound-taste`): no per-note pan jumps, bodies that sustain, fast brass/pad attacks, consonant
+   chords, leads that bite, levels matched to the VA patches.
+2. **Unison STACK** — two detuned voices per note in stereo, polyphony 4; the "full" sound without positional
+   panning. CPU guardrail: worst patch with STACK ≤ 85 % at 8 voices → likely 4-voice cap when on.
+3. **Chord memory and scale lock on the keys** — one key plays a stored voicing; scale lock snaps to a scale.
+4. Then: ladder filter, LFO tempo sync, velocity curve, the wavetable alias fix (sine fallback above the lowest
+   mip's range).
+5. v0.7 discovery (favourites, breed, category dice, section lock, LED feedback, arp→phrase) right after.
+
+Guardrails for every change: RAM ≥ 8 KB and pool ≥ 8 KB spare (today 14.0 KB and 11.5 KB), goldens rewritten only
+for intended sound changes, a simulator check per new parameter, manual row per new page or knob.
+
+## Open items to keep in view
+
+- Unreproduced incident (arp dead + no USB answer until power cycle, 2026-10-31): if it recurs, note whether the
+  footer CPU/voice blocks still move, read `log` before power-cycling.
+- BNK4 → BNK5 bank migration never exercised on a device that held real user saves.
+- Codec noise floor / headroom unmeasured; hub identity prefix is still the development one (FM-1_1300).
+- Licence: MPL-2.0 recommended for the app's files, Kyle has not confirmed.
+
+---
+
+# DEEP FIELD — second firmware, built overnight 2026-10-31 → 11-01
+
+A separate app in `deepfield/` on the same fm1-base (not a change to Pocket Poly). Kyle's brief: an ambient drone
+machine for live jamming with a sci-fi space look, after researching the existing drone/ambient firmwares.
+
+- **Research and point of view:** `deepfield/docs/research.md` (catalogue, pros and cons with sources, DSP costs,
+  the position: every key a latched body, four forces, scale-locked, ORBIT generative moves, scenes that morph,
+  freeze and shimmer built in, the screen as a view of the system).
+- **Built:** eight bodies in four models (SOLAR additive, VOID saws, GLASS FM, STRING bowed comb), LATCH (SEL),
+  ORBIT (PLAY), FREEZE (SEQ), SHIMMER, scenes with morph (SELECT), ALGO model, PRESET scale, FX hold-layer on
+  F3/G3/A3/B3, three phosphor views (ORBITS, NEBULA, SCOPE), MIDI in/out USB + TRS + Bluetooth both roles, CC map,
+  program change, screen reader words, manual with screenshots.
+- **Verified:** 85 simulator checks (`deepfield/tests/basic.txt`), 8 golden renders level-matched (RMS −13 to
+  −17 dB, `deepfield/tools/render_scenes.py --levels`), freeze holds (no runaway), shimmer at maximum bounded,
+  ASan/UBSan clean but for the known `fastmath.h:58` report, device package built: image 258 KB, RAM 75.9 of 96 KB,
+  pool 310 of 344 KB (`deepfield/build/deepfield.fwsc`, identity FM-1_1400).
+- **Not done / not verified:** never flashed (Kyle's rule), so device CPU is unmeasured — estimate from Pocket
+  Poly's figures is 40–60 % with the second core taking four bodies; no listening test; the web emulator build
+  (`--web`) not tried. Nothing committed (same as Pocket Poly).
+- **Next:** flash on "Flash it", read `plat_cpu_pct` through the footer on each factory scene with eight bodies,
+  listen (levels, the STRING model's bow, shimmer taste), then candidates in `research.md` §C (cross-FM pairs,
+  a Shepard model and view, an AGE knob, just intonation, clock-synced ORBIT).
+
+**UX pass (2026-11-01, after Kyle found it hard to use):** header 32 px with LATCH / ORBIT / FRZ pills, sky 80 px,
+footer 128 px with 24 px values in a 2 x 2 grid; a HUD shows every knob or button large over the sky; keys are
+momentary and SEL latches what is held (a latched key pressed again lets it go); velocity off by default
+(VELOCITY on the MIDI page); factory swells shortened; EDIT cycles BODY / ENVELOPE / MOTION and any page returns
+HOME after 8 s; SELECT scrolls and loads after 700 ms with a morph bar; in-scale keys glow; one turn per force;
+OCT- + OCT+ together lets every body go (HOME hold removed). 100 simulator checks, goldens rewritten (the swell
+and velocity change the renders).
+
+**Lag pass (2026-11-01):** Kyle felt lag "switching between voices". Measured in the simulator: a key sounds within
+10 ms of the press; the felt lag was the swell (exponential, 0.3 s to full in the factory scenes) and the model
+switch (a 20 dB dip for 250 ms while bodies restarted). Fixed: a straight swell that reaches full level at SWELL,
+factory SWELL 20-35 (80-200 ms; NEBULA keeps 95), a 7 ms quick swell after a restart (dip now ~30 ms). The screen:
+the footer is one 240 x 128 transfer (canvas 240 x 128), the phosphor is faded and composed in one pass, and the
+sky is skipped on any frame that sent the header or footer, so the main loop never waits on a transfer in a knob
+frame (host profile: sky 31 us, footer 25 us per draw on the Mac; the device's cost was the DMA waits, 15-20 ms).
+
+**Art pass (2026-11-01):** Kyle hated the vector-line look. The MOUTH view (the default) is now sprite-based pixel
+art drawn at 2x onto the canvas (120 x 46 game pixels; `spr()` in ui.c, sprites as rows of characters with a
+character palette `spal`): an RX bottle whose cap opens in three frames (then the hand idea was dropped), a front-view mouth in three
+frames (open, half, shut) for the chomp, two-tone pills that tumble by a quarter turn, chunky stars and a ringed
+planet. The other views keep the phosphor. The sky grew to 92 rows (footer cells 50, canvas 240 x 116). To change
+the art, edit the ASCII sprites in ui.c (BOTTLE, CAP_*, MOUTH_*, PILL, PLANET) and the palette in spal_build.
+Encoders now: PRESET scenes, ALGO model, SELECT scale.
+
+**Interface pass (2026-11-02, after Kyle's "still confusing"):** three personas' critique, then a rebuild on three
+rules. (1) A page button always lands on the same page (HOME, EDIT BODY, ENV, LFO MOTION, FX SPACE 1, ARP ORBIT,
+GLO GLOBAL) and SELECT steps between the nine pages (SPACE 2 and MIDI are a click away); no cycles, no 8 s
+auto-return, the page's button lights. (2) A lit button is a mode: SEL is LATCH (on by default: a key strikes a
+body that stays, the same key lets it go; off: momentary; held 1 s: every body let go; the OCT chord is gone), PLAY
+ORBIT, SEQ FREEZE; pills are named for their buttons (SEL LATCH, PLAY ORBIT, SEQ FRZ). (3) The screen mirrors the
+panel: header 34 (scene, status, pills, E D R S for the effects heard), a 240 x 84 view, a 240 x 36 keys strip (the
+27 keys as lit, in-scale lighter, latched framed yellow, FX held = the four switches named over their keys), footer
+86 (page band with `<` `>`, four knob cells in a row). The default view is BEAMS: each body a beam over the key
+that struck it (height = level, white cap = latched, dim = fading, ORBIT slides it and marks its home); MOUTH
+(pills over their keys), ORBITS, NEBULA, SCOPE stay as skins (VIEW on GLOBAL). Effect switches are now the
+scene's (`scene_t.fx_off`, bank magic SCN2) and LATCH a setting (DEF3): a device with old settings loads
+defaults. Performance: the view is 20 % fewer pixels than the old sky (40 KB a frame at 25 fps), the keys strip is
+drawn only when its signature changes (17 KB), the header once a second for CPU (16 KB); beams cost ≤ 6.4 k
+phosphor dots a frame. 137 simulator checks, goldens unchanged (no sound change), sanitizer clean. Device package built (image 281 KB, RAM 76.4 of 96 KB, pool 317 of 344 KB), not flashed; device CPU of the beam view unmeasured.
+
+**Octave and ORBIT passes (2026-11-02, after Kyle played it):** OCT− / OCT+ half-light one octave out and light two
+out. ORBIT made visible: the key light walks with a moved body (home key half-lit, on the LEDs and the keys strip),
+the PLAY ORBIT pill fills toward the next move in eighths (`dr_orbit_next`) and flashes on a move, PLAY held opens
+the ORBIT page, PLAY says ORBIT ON · EVERY 5S, and the page reads EVERY / CHANCE / STEPS UP TO / HOME PULL (same
+engine values). 140 checks (137 → the octave LEDs, 140 → PLAY held), goldens unchanged.
+
+**Effects pass (2026-11-02):** Kyle could not find the effects' parameters and found the FX-held labels tiny. The
+two SPACE pages became three pages named for the effects in the order of the FX keys (FX ENSEMBLE: mode, mix; FX
+DELAY: time, feedback, mix; FX REVERB: size, damp, shimmer, SPACE), empty knobs drawn as a dash; FX held shows the
+four switches large (name, ON/OFF, bar) in four columns over the view in place of the HUD. 142 checks.
+
+**Effects level pass (2026-11-02, Kyle: "the effects are hard to hear"):** measured in the simulator by rendering
+each scene with and without one effect bypassed (`deepfield/tools/fx_levels.py`; the method: the FX-held key
+toggles the bypass, both renders get the same key commands so they stay aligned, the difference is the wet). At
+factory F1 the delay was 20 dB under the rest, the reverb 22 dB, the shimmer 43 dB; even SPACE max left the reverb
+18 dB down because the dry fall-off also starved the sends. Fixed: ensemble wet 0.8·√mix (dry 1 − 0.4·mix), delay
+send √(DLY MIX)·(0.6 + 0.4·SPACE) (DLY MIX is the delay's level now, not a share of SPACE), delay feedback
+0.95·√fdbk, reverb out_g 4.0·(1 − decay) (was 0.695·), dry fall-off to −5 dB at SPACE max (was −8), a direct
+shimmer path (6·shimmer·octave-up) beside the loop, the loop held at the measured bound (shim line ×0.175, gain ≤
+0.45: a let-go chord dies away at every size; ×0.25 ran away at sizes 0 and 70), the bus 3 dB lower into the effects
+and the master 3 dB up (room before the limiter). Now at factory F1: delay −5 dB vs the rest, reverb −6, ensemble
+−7 at mix 40; at the knobs' max: delay +1, feedback +7, ensemble −1, shimmer −6. Factory trims: GLASS ORBIT and
+PULSAR delay/shimmer down (they pinned the limiter), STARLIGHT ensemble down, VOID TIDE and DEEP VOID MASS up.
+Goldens rewritten; scene RMS −12.6 (GLASS ORBIT) to −17 (VOID TIDE), the VOID scenes 4 dB under the loudest by
+RMS, dark on purpose. Not yet heard by Kyle.
+
+**The hall (2026-11-02, Kyle: the reverb "makes the whole sound more quiet rather than feel like it is reverbing";
+he chose the hall over the quick pass):** the Dattorro plate is replaced by an eight-line feedback delay network
+(`engine/fx.c`): lines 45 to 131 ms (int16, the same 33803-sample budget as the plate), Hadamard mix, stereo in
+(L to the even lines, R to the odd, alternating signs) and out (even lines left, odd right), a 30 ms pre-delay, two
+diffusing allpasses a side, a one-pole high-pass near 120 Hz on the way in (the sub stays dry), damping in each
+line, four lines wandering ±6 samples at 0.45 Hz. REV SIZE is the decay time 0.6 to 8 s (each line's gain set from
+it, so every length decays alike); REV DAMP the damping. Freeze: gain 0.9998, no damping, no input, output up to
+3.5× (a frozen F3 chord holds at −13 dB RMS, losing 0.2 dB every 2 s, measured). Shimmer as before (grain octave-up of the output, fed
+back at ≤ 0.3 and heard direct at 6×shimmer); bounded at every size with shimmer at max (a let-go chord dies away
+within 8 s). With it: the dry no longer falls away with SPACE (SPACE only adds the hall), the limiter's release is
+250 ms (was 80). Measured at F1: hall wet 6 dB under the rest at the factory SPACE, 3 under at SPACE max;
+shimmer 8 under at max. Goldens rewritten; scene RMS −12.6 to −18.6. Not yet heard by Kyle; the plate is in git
+history only once committed, so the old fx.c is gone from the tree.
+
+**The noise layer (2026-11-02, Kyle: "a noise generator that can play independently or along with any other
+voice", revised by the three personas):** one stereo noise in the engine (`noise_render` in drone.c), under the
+bodies or alone: two generators, a colour tilt (brown to white, COLOUR), a high-pass under 40 Hz, a trapezoidal
+SVF band that wanders with WIND (and DRIFT) or, as BAND passes a third, moves onto the newest body's note; MASS
+and pressure brighten it, TIDE breathes it on its own phase, it swells and fades at SWELL/FADE. LEVEL is its one
+state (0 = off, law level^1.5: 30 sits 15 dB under the bodies, full 3 dB over, measured with the scratch script
+`nzlevel.py`). Page NOISE after BODY (EDIT then SELECT); on the FX layer C4 toggles it (from zero to 35 %), the
+readout has five columns, the header letters are E D R S N; a soft wide beam on the keys strip where its band
+sits. CC 20. Scenes: four new bytes, bank SCN3 with a migration from SCN2 (user scenes kept; the old block is
+read back from the end); NEBULA and DEEP VOID carry a bed. COLOUR swung the level by 10 dB (14 weighted above
+400 Hz), Kyle heard it: a lift table by colour (20, 18, 10, 4, 0 dB at 0, 25, 50, 75, 100 %) now holds the
+plain RMS within 1.5 dB and the weighted level within 5.4 dB across COLOUR (brown a little quieter to the ear, on purpose), the base 6 dB lower, then another 3 dB on Kyle's ear (scratch scripts nzlevel.py and colour.py). The delay-at-half-send idea from the persona pass was
+dropped: the effects run on one bus, a separate noise path would double the sends. 151 checks, goldens rewritten
+(NEBULA, DEEP VOID, and STARLIGHT, which starts with DEEP VOID's bed fading). Not yet heard by Kyle.
+
+**Four more models and eight more scenes (2026-11-02, Kyle: "more diverse sound choices"; the first half of the
+TODO below):** CHOIR (a parabolic-saw buzz, AIR noise, through three trapezoidal SVF band-passes at vowel
+formants; SHAPE morphs A E I O U, MASS shifts the formants ×2^((m−½)·0.8) and lifts the upper two), BELL (four
+sine partials, ratios from harmonic to 1 / 2.76 / 5.40 / 8.93 with SHAPE, each breathing on its own hb phase,
+MASS a tilt, AIR a dark hiss), SHEPARD (six sine octaves from f/8 to 4f under a raised-cosine window that slides
+with `v->gp`; SHAPE below the middle falls, above rises, up to 0.35 octaves/s; MASS leans the window), FOLD (a sine
+of a sine: drive 0.15 + 2.2·SHAPE turns, DRIFT breathes the drive, AIR noise into it, a one-pole LP from MASS).
+Each has a spectrum for NEBULA. voice_t grew by fs[6] and gp. Factory scenes F9..F16: CATHEDRAL, LOW CHOIR,
+GAMELAN, ICE BELLS, ASCENT, DESCENT, FOLDED SUN, TIDE POOL; NFACTORY 16, program change 0..15 factory, 16..31
+user (the manual says so; the save test expects slot 18 = U3). Host timing of eight bodies in each model is in
+the same band as the old four. Level-matched by `render_scenes.py --levels` (CHOIR evened across vowels by (300 Hz / F1)^0.45 and lifted, CATHEDRAL weighted 84 and LOW CHOIR 115, SHEPARD ×1.5 after
+the first render); the dark noise beds were brought down (NEBULA 18, DEEP VOID 16, LOW CHOIR 16, DESCENT 14)
+because the colour lift had raised them. Goldens: 16 renders. Not yet heard by Kyle.
+
+**Review and hardening pass (2026-11-02, Kyle: "deep dive, fix bugs, make it more performant, evaluate the
+device's capabilities"):** three reviews (engine, UI and scenes, platform use), every finding reproduced before
+the fix. Fixed: the ORBIT message's stack overflow on sharp notes (a[8] → a[16]); OUT CH reaching 0 (corrupt MIDI
+and the settings record rejected at boot); a scene's saved effect switches not applied at power-on; a failed
+SAVE clearing the dirty state; an FX-layer key within 80 ms of FX lost; crumb_log one byte short; the load log
+line's buffer; the MOUTH pill-spacing loop that was the watchdog reset (bounded to eight retries, regression check
+in basic.txt); dr_overload now lets the oldest body go so the load falls at once; a stolen body's fade was dead
+code (it cut to silence in one sample); VOID and CHOIR started with a full-scale spike (the saw's DPW state now
+begins at x² of its phase); BELL and SHEPARD partials above 18 kHz now stand still instead of running their phase
+away; dr_panic drops the queue with one store; every-body-let-go goes through the event queue; dr_load lowers
+the flag while it copies; the delay counts as heard whenever DLY MIX is up. Performance (host, per 256-frame
+block): the hall's wander and the delay's wow once a block, one diffusing allpass a side, the "still ringing" test
+without fabs: effects 12.7 → about 8 µs, the hall 8.4 → 5.3; the second core takes five bodies (core 1 has the
+effects); the canvas is the footer's 86 rows (14 KB of pool back); `vc` and the arena on 32-byte lines; a load
+line in the log and the CPU in the spoken page. Goldens rewritten (the spike and the steal change renders).
+`deepfield/docs/BUDGET.md` has the device's budgets and the app's use; the audio CPU on the unit, read the
+same evening while Kyle played: SOLAR ×8 bodies 41 %, BELL ×8 42 %, STRING ×8 47 %, VOID ×4 39 %, 42 % with no
+body but the tails ringing, 3 % at rest. The active effects are about 40 % of core 1 by themselves; eight bodies
+add 2 to 7 points because five render on core 2. Worst case mid-40s, under the 70 % line in BUDGET.md; the hall
+is the lever if more is ever needed (run it on core 2 one block late). Review harnesses and repros sat in the scratchpad (not kept).
+
+**The hall on the second core (2026-11-02, after the readings showed the effects were core 1's load):**
+fx_process is split into fx_pre (ensemble, delay, in place), fx_hall (the hall's wet of a block, written to its own
+buffers) and fx_post (the limiter). dr_render builds the block's fx_params_t before the core-2 run (`g_fxp` in the
+pool); the second core's job runs fx_hall on the bus of the block before (hall_in, 2 × 256 floats) into hall_out,
+then its five bodies; core 1 renders three bodies, the noise, the bus, fx_pre, stores the bus as the next hall_in,
+adds hall_out, fx_post. With no second core (the host, or after a fallback) fx_hall runs on core 1 at the same
+point, so both paths render the same samples (goldens hold either way). The wet is one block (5.8 ms) later, so the
+hall's pre-delay dropped by 256 samples (RV_PRE 1080) and the total stays 30 ms: F1 renders at the old level to
+0.1 dB. A given-up core-2 block zeroes hall_out for that block rather than running the hall twice. Arena +4 KB
+(DR_ARENA_BYTES 214 K), the hall's lines −1 KB. Host: core 1's effect work fell from about 8 µs to about 3 per
+block. Goldens rewritten. Flashed: the figure did not move (34 % with three bodies, 40 % with eight, 41 before),
+because plat_cpu_pct is the half's wall time including the wait for core 2, which with the hall and five bodies had
+become the longer core. Rebalanced to two bodies beside the hall on core 2 and six on core 1: SOLAR ×8 now reads 29–31 % (was 41), CHOIR ×8 36, SHEPARD ×8 33,
+VOID ×4 (VOID TIDE, ensemble and wind) 37, no xruns; STRING ×8 not yet read since the move.
+
+**TODO (Kyle, 2026-11-02): more sounds, presets and voices for DEEP FIELD** — more factory scenes than eight,
+more models than four (candidates in `deepfield/docs/research.md` §C: cross-FM pairs, a Shepard model, just
+intonation), and the voice count above eight if the second core carries it. After the interface has been played.
+
+**Incident closed (2026-11-02 review):** the 2026-11-01 watchdog reset was the MOUTH view: `sky_mouth`'s
+pill-spacing loop restarted from j = 0 on every collision, and a pill between one neighbour above row 60 and one
+below bounced for ever; nothing in a frame feeds the 8 s watchdog. Reproduced in the simulator (six MIDI bodies in
+MOUTH hang the main loop with the render idle, the log's exact picture) and bounded to eight retries; the script
+is a regression check in basic.txt.
+
+**Open incident (2026-11-01, as it was seen):** Kyle saw the screen freeze after changing the model and scenes quickly; the unit
+then restarted to F1. The log: "reset by the watchdog: task main", "last watchdog reset in a frame" (the 8 s
+watchdog fired with the main loop inside app_frame). Checked and ruled out: render cost (host timing: every model
+with 8 bodies is 16-24 us a block, under Pocket Poly's INIT at 21 us = 21 % on the device, so the audio cannot
+starve the loop); an unbounded loop in ui.c or drone.c (none found by inspection; four low notes and eight pills do
+not hang the simulator); memory errors (ASan/UBSan clean on basic.txt and the pixel-art scripts); the LCD wait
+(bounded, 4M spins). Not reproduced. The build now carries breadcrumbs in .noinit (app.c `crumb`): the frame's step
+(1 frame, 2 input, 3 speak, 4 btdev, 5 scene, 6 header, 7 footer, 8 sky, 9-11 the MOUTH view, 12 HUD, 13 blit) and
+whether the render was in progress; the next boot after such a reset logs "deepfield last frame step N render
+busy/idle" (fm1_remote.py log). If it recurs: read the log before power-cycling; ask whether the sound kept playing
+while the screen was stuck (render idle + sound on = a main-loop loop; render busy = the audio interrupt).
+

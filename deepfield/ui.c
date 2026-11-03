@@ -1,0 +1,2064 @@
+/* SPDX-License-Identifier: MPL-2.0
+ * Copyright (C) 2026 Kyle McCann
+ * Copyright (C) 2026 Charles Vestal (the panel and Bluetooth handling from fm1-base's template) */
+/* DEEP FIELD's screen and controls. The screen mirrors the panel: the header names the scene and shows the three
+ * states as pills named for their buttons (SEL LATCH, PLAY ORBIT, SEQ FRZ); the stage below is a view of the bodies
+ * over a strip of the 27 keys, each body a beam rising from the key that struck it (or the MOUTH, ORBITS, NEBULA
+ * and SCOPE skins); the footer is the page band (the button that opened the page, its name, the SELECT arrows) and
+ * the four knobs in one row under the four real ones. Any knob or button shows its name and value large over the
+ * view for a moment.
+ * Three rules. A page button always lands on the same page: HOME the forces, EDIT BODY, ENV ENVELOPE, LFO MOTION,
+ * FX the effects (ENSEMBLE, DELAY, REVERB, one page each in the order of the FX keys), ARP ORBIT, GLO GLOBAL; SELECT
+ * moves to the page before or after (DELAY, REVERB and MIDI are a step away),
+ * and a page stays until a button or SELECT moves it. A lit button is a mode: SEL is LATCH (on: a key strikes a
+ * body that stays, and pressed again lets it go; off: a body sounds while its key is held; held a second: every
+ * body let go), PLAY runs ORBIT, SEQ freezes the reverb, the page's button lights. FX held: F3 G3 A3 B3 switch the
+ * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
+ * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_ENV, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_GLOBAL, PG_MIDI, PG_COUNT };
+enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_NONE,
+       PID_COUNT };
+enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_VIEW, K_MORPH, K_CHIN, K_CHOUT,
+       K_ONOFF, K_HZ, K_STEPS, K_NONE };
+typedef struct {
+    const char *title, *button;
+    uint8_t p[4];
+} page_t;
+static const page_t PAGES[PG_COUNT] = {
+    {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
+    {"BODY", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
+    {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
+    {"ENVELOPE", "ENV", {P_SWELL, P_FADE, P_PRESS, P_GLIDE}},
+    {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
+    {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
+    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, PID_NONE}},
+    {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
+    {"ORBIT", "ARP", {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE, P_GRAVITY}},
+    {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_VIEW, PID_MORPH}},
+    {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
+};
+typedef struct {
+    const char *label;
+    uint8_t kind;
+} pmeta_t;
+static const pmeta_t PM[PID_COUNT] = {
+    [P_MODEL] = {"MODEL", K_MODEL},     [P_MASS] = {"MASS", K_HZ},          [P_DRIFT] = {"DRIFT", K_PCT},
+    [P_SPACE] = {"SPACE", K_PCT},       [P_TIDE] = {"TIDE", K_PCT},         [P_SHAPE] = {"SHAPE", K_PCT},
+    [P_SUB] = {"SUB", K_PCT},           [P_AIR] = {"AIR", K_PCT},           [P_SWELL] = {"SWELL", K_TIME},
+    [P_FADE] = {"FADE", K_TIME},        [P_PRESS] = {"PRESS", K_PCT},       [P_GLIDE] = {"GLIDE", K_GLIDE},
+    [P_TIDE_RATE] = {"TIDE RATE", K_PCT}, [P_WOBBLE] = {"WOBBLE", K_PCT},   [P_WALK] = {"WALK", K_PCT},
+    [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"REV SIZE", K_PCT}, [P_REV_DAMP] = {"REV DAMP", K_PCT},
+    [P_SHIMMER] = {"SHIMMER", K_PCT},   [P_DLY_MIX] = {"DLY MIX", K_PCT},   [P_DLY_TIME] = {"DLY TIME", K_DLYTIME},
+    [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
+    [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
+    [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
+    [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},   [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
+    [PID_VIEW] = {"VIEW", K_VIEW},      [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
+    [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
+    [PID_NONE] = {"", K_NONE},
+};
+static const char *const ENS_NAME[ENS_COUNT] = {"OFF", "CHOR I", "CHOR II", "ENSEMBLE"};
+static const char *const NOTE_NAME[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+static const char *const BTN_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ",
+                                         "PLAY", "REC", "OCT-", "OCT+"};
+
+/* the screen: a header of 34 (the scene and the status, then the pills), the view of 84 over the keys strip of
+ * 36, the footer of 86 (the page band, the four knobs in a row) */
+#define HEAD_H 34
+#define SKY_W 240
+#define SKY_H 84
+#define SKY_Y 34
+#define KEYS_Y 118
+#define KEYS_H 36
+#define FOOT_Y 154
+#define FOOT_H 86
+#define HUD_MS 1300u
+#define HUE_STAR 0
+#define HUE_SUN 1
+#define HUE_CYAN 2
+#define HUE_MAGENTA 3
+#define HUE_VIOLET 4
+#define HUE_GREEN 5
+#define HUE_BLUE 6
+#define HUE_EMBER 7
+#define NSTARS 40u
+static uint8_t phos[SKY_W * SKY_H] PLAT_POOL;
+static uint16_t lut[256];
+static const uint8_t HUE_RGB[8][3] = {{236, 240, 255}, {255, 196, 96}, {80, 224, 255}, {255, 96, 208},
+                                      {168, 120, 255}, {96, 255, 176}, {96, 136, 255}, {255, 44, 56}};
+#define C_SKY RGB(0, 4, 16)
+#define C_TEXT RGB(120, 215, 255)
+#define C_LABEL RGB(150, 160, 175)
+#define C_RULE RGB(26, 44, 70)
+#define C_BRIGHT RGB(240, 248, 255)
+#define C_WARN RGB(255, 150, 70)
+#define C_OFF RGB(60, 80, 104)
+#define C_PILL RGB(40, 150, 200)
+#define C_BAND RGB(16, 28, 46)
+#define C_KW_OFF RGB(44, 50, 64)
+#define C_KW_IN RGB(104, 116, 140)
+#define C_KB_OFF RGB(18, 22, 32)
+#define C_KB_IN RGB(60, 68, 88)
+#define C_LATCH RGB(255, 220, 0)
+#define C_FX_ON RGB(40, 210, 160)
+static const uint8_t WHITE_K[16] = PLAT_WHITE_KEYS;
+static const uint8_t BLACK_K[11] = PLAT_BLACK_KEYS;
+static uint8_t key_x[NKEYS];             /* each key's centre on the strip */
+static uint8_t key_white[NKEYS];         /* its white index + 1; 0 a black key */
+
+static volatile uint32_t midi_last, midi_last_port, midi_count;   /* the last message in (shown), and how many */
+static volatile int32_t pc_pending = -1;     /* a program change from MIDI, loaded by the main loop */
+static volatile uint8_t overload_seen;
+
+static struct {
+    uint8_t page, dialog;                /* the page shown; the save dialog is up */
+    uint8_t save_to;                     /* the dialog's user slot 0..15 */
+    char hud[2][24];                     /* the name and value shown large over the sky */
+    uint32_t hud_until;
+    uint32_t keys, btn, dkeys;           /* held at the last input (dkeys: the plain matrix, the FX layer's) */
+    uint8_t vel[NKEYS], prs[NKEYS];
+    uint8_t keynote[NKEYS];              /* the note a key struck */
+    uint32_t keynotes;                   /* bit k: key k struck a note this press */
+    uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
+    uint32_t rec_t, fx_t, fx_up, sel_t, sel_down;
+    uint8_t fx_used, sel_used;
+    uint32_t keys_sig;                   /* what the keys strip showed last */
+    uint8_t redraw_keys;
+    uint8_t oct_lit, oct_mid;            /* the OCT buttons: lit at two octaves, half-lit at one (bit 0 OCT-, 1 OCT+) */
+    uint8_t nz_last;                     /* the noise LEVEL before C4 switched it off, to come back to */
+    uint32_t stat_t;                     /* the last load line in the log, and what it said */
+    uint8_t stat_cpu, stat_bodies;
+    uint32_t play_down, orbit_flash_t;   /* PLAY pressed (a tap runs ORBIT, a hold opens its page); the pill's flash */
+    uint8_t play_used, orbit_eighth;     /* the countdown shown in the pill, in eighths */
+    int32_t sel_slot;                    /* SELECT's candidate while it turns; -1 none */
+    uint32_t sky_t, foot_t, head_t;      /* when the sky, the footer and the header were last drawn */
+    uint8_t redraw_head, redraw_foot;
+    uint32_t frame, orbit_moves;
+    float ang[DR_NV];                    /* each body's place on its orbit, turns */
+    uint8_t eat[DR_NV], snack[DR_NV];    /* MOUTH: a pill going in (1), inside (2), coming back out (3); a snack
+                                          * comes back, a fading body's pill does not */
+    float eat_t[DR_NV];                  /* how far along */
+    float px[DR_NV], py[DR_NV];          /* each pill's place on the sky */
+    float spot_x[DR_NV], spot_y[DR_NV];  /* where it rests */
+    uint8_t pill_live[DR_NV];            /* it was on the sky last frame (else the hand throws it in) */
+    uint8_t hand_throw;                  /* the body the bottle is tipping out, + 1; 0 none */
+    float hand_t;                        /* the pop, 0..1 */
+    uint8_t cap;                         /* the cap: 0 shut, 1 half, 2 open */
+    uint32_t cap_t;                      /* when the last pill came out: the cap shuts a moment after */
+    float chomp;                         /* the mouth closing on a pill, 0 none, else 0..1 */
+    uint32_t crumbs;                     /* frames of crumbs after a chomp */
+    float sweep;                         /* the scope's radar */
+    uint32_t rng;
+    struct { uint16_t x, y; uint8_t z, hue; } star[NSTARS];
+} ui;
+
+static void text_cat(char *d, const char *s)
+{
+    while (*d)
+        d++;
+    while (*s)
+        *d++ = *s++;
+    *d = 0;
+}
+static void int_text(int32_t v, char *b)     /* signed, no padding */
+{
+    char t[12];
+    int n = 0;
+    uint32_t u = (uint32_t)(v < 0 ? -v : v);
+    do
+        t[n++] = (char)('0' + u % 10u);
+    while ((u /= 10u) && n < 11);
+    if (v < 0)
+        *b++ = '-';
+    while (n)
+        *b++ = t[--n];
+    *b = 0;
+}
+static void dec1_text(float f, const char *unit, char *b)   /* one decimal: 1.2S */
+{
+    int32_t d = (int32_t)(f * 10.0f + 0.5f);
+    char u[4];
+    int_text(d / 10, b);
+    text_cat(b, ".");
+    int_text(d % 10, u);
+    text_cat(b, u);
+    text_cat(b, unit);
+}
+static void note_text(int32_t note, char *b)
+{
+    char o[8];
+    b[0] = 0;
+    text_cat(b, NOTE_NAME[note % 12]);
+    int_text(note / 12 - 1, o);
+    text_cat(b, o);
+}
+static uint32_t hash32(uint32_t x)
+{
+    x ^= x >> 16;
+    x *= 0x7FEB352Du;
+    x ^= x >> 15;
+    x *= 0x846CA68Bu;
+    x ^= x >> 16;
+    return x;
+}
+
+/* ------------------------------------------------------------------ the HUD --- */
+static void ui_say(const char *a, const char *b)
+{
+    uint32_t i;
+    char t[48];
+    for (i = 0; i < 23u && a && a[i]; i++)
+        ui.hud[0][i] = a[i];
+    ui.hud[0][i] = 0;
+    for (i = 0; i < 23u && b && b[i]; i++)
+        ui.hud[1][i] = b[i];
+    ui.hud[1][i] = 0;
+    ui.hud_until = plat_ms() + HUD_MS;
+    ui.sky_t = 0;                        /* drawn at the next frame */
+    if (ann_on()) {
+        t[0] = 0;
+        text_cat(t, ui.hud[0]);
+        if (ui.hud[1][0]) {
+            text_cat(t, " ");
+            text_cat(t, ui.hud[1]);
+        }
+        ann_say(t, 0, ANN_NOW);
+    }
+}
+
+/* ------------------------------------------------------------------ values --- */
+static uint32_t page_param(uint32_t pg, uint32_t k) { return PAGES[pg].p[k]; }
+static uint32_t value_of(uint32_t id)
+{
+    switch (id) {
+    case PID_SCALE: return set.scale;
+    case PID_ROOT: return set.root;
+    case PID_VIEW: return set.view;
+    case PID_MORPH: return set.morph;
+    case PID_MIDI_IN: return set.midi_in;
+    case PID_MIDI_OUT: return set.midi_out;
+    case PID_LOCAL: return set.local;
+    case PID_VEL: return set.vel;
+    case PID_NONE: return 0;
+    default: return dr_scene.p[id];
+    }
+}
+static uint32_t value_max(uint32_t id)
+{
+    switch (PM[id].kind) {
+    case K_MODEL: return M_COUNT - 1u;
+    case K_ENS: return ENS_COUNT - 1u;
+    case K_SCALE: return SC_COUNT - 1u;
+    case K_ROOT: return 11u;
+    case K_VIEW: return VIEW_COUNT - 1u;
+    case K_MORPH: return 30u;
+    case K_CHIN: return 16u;
+    case K_CHOUT: return 16u;
+    case K_ONOFF: return 1u;
+    default: return 127u;
+    }
+}
+static void value_text(uint32_t id, char *b)
+{
+    uint32_t v = value_of(id);
+    b[0] = 0;
+    switch (PM[id].kind) {
+    case K_PCT:
+        int_text((int32_t)(v * 100u / 127u), b);
+        text_cat(b, "%");
+        break;
+    case K_HZ:
+        if (dr_scene.p[P_MODEL] == M_VOID) {
+            float hz = dr_hz(v);
+            if (hz >= 1000.0f)
+                dec1_text(hz / 1000.0f, "K", b);
+            else {
+                int_text((int32_t)hz, b);
+                text_cat(b, "HZ");
+            }
+        } else {
+            int_text((int32_t)(v * 100u / 127u), b);
+            text_cat(b, "%");
+        }
+        break;
+    case K_MODEL: text_cat(b, MODEL_NAME[v % M_COUNT]); break;
+    case K_TIME: dec1_text(dr_time_s(v), "S", b); break;
+    case K_GLIDE: dec1_text(0.02f * fm_exp2f((float)v * (8.6f / 127.0f)), "S", b); break;
+    case K_ORBIT:
+        int_text((int32_t)(dr_orbit_s(v) + 0.5f), b);
+        text_cat(b, "S");
+        break;
+    case K_ENS: text_cat(b, ENS_NAME[v % ENS_COUNT]); break;
+    case K_DLYTIME:
+        int_text((int32_t)(dr_dly_time_s(v) * 1000.0f), b);
+        text_cat(b, "MS");
+        break;
+    case K_SCALE: text_cat(b, SCALE_NAME[v % SC_COUNT]); break;
+    case K_ROOT: text_cat(b, NOTE_NAME[v % 12u]); break;
+    case K_VIEW: text_cat(b, VIEW_NAME[v % VIEW_COUNT]); break;
+    case K_MORPH:
+        if (!v)
+            text_cat(b, "NOW");
+        else {
+            int_text((int32_t)v, b);
+            text_cat(b, "S");
+        }
+        break;
+    case K_CHIN:
+        if (!v)
+            text_cat(b, "OMNI");
+        else
+            int_text((int32_t)v, b);
+        break;
+    case K_CHOUT: int_text((int32_t)v, b); break;
+    case K_ONOFF: text_cat(b, v ? "ON" : "OFF"); break;
+    case K_STEPS: int_text((int32_t)(1u + v * 4u / 128u), b); break;   /* the engine's 1 .. 4 scale steps */
+    default: break;
+    }
+}
+
+static void midi_settings_apply(void);
+static void value_set(uint32_t id, uint32_t v)
+{
+    uint32_t i;
+    switch (id) {
+    case PID_SCALE:
+        set.scale = (uint8_t)v;
+        scale_apply();
+        set_dirty = 1;
+        break;
+    case PID_ROOT:
+        set.root = (uint8_t)v;
+        scale_apply();
+        set_dirty = 1;
+        break;
+    case PID_VIEW:
+        set.view = (uint8_t)v;
+        set_dirty = 1;
+        for (i = 0; i < sizeof phos; i++)
+            phos[i] = 0;
+        break;
+    case PID_MORPH: set.morph = (uint8_t)v; set_dirty = 1; break;
+    case PID_MIDI_IN: set.midi_in = (uint8_t)v; set_dirty = 1; break;
+    case PID_MIDI_OUT:
+        set.midi_out = (uint8_t)v;
+        set_dirty = 1;
+        midi_settings_apply();
+        break;
+    case PID_LOCAL:
+        set.local = (uint8_t)v;
+        set_dirty = 1;
+        if (!set.local)
+            dr_all_off();
+        break;
+    case PID_VEL: set.vel = (uint8_t)v; set_dirty = 1; break;
+    case PID_NONE: break;
+    default:
+        dr_param(id, v);
+        scene_dirty = 1;
+        break;
+    }
+}
+
+static void knob(uint32_t id, int32_t e)
+{
+    int32_t v = (int32_t)value_of(id), mx = (int32_t)value_max(id), step = 1, lo = PM[id].kind == K_CHOUT ? 1 : 0;
+    char t[16];
+    if (id == PID_NONE)
+        return;
+    if (mx == 127) {                     /* a force in about one turn: 4 a detent, 8 when turned fast */
+        step = (e > 3 || e < -3) ? 8 : 4;
+#ifdef PLAT_HOST
+        if (plat_host_exact)
+            step = 1;
+#endif
+    }
+    v = clamp(v + e * step, lo, mx);
+    if (v == (int32_t)value_of(id))
+        return;
+    value_set(id, (uint32_t)v);
+    value_text(id, t);
+    ui_say(PM[id].label, t);
+    ui.redraw_foot = 1;
+}
+
+/* ------------------------------------------------------------------ scenes --- */
+static void slot_title(uint32_t slot, char *t)   /* "F3 GLASS ORBIT" */
+{
+    char n[4];
+    slot_name(slot, n);
+    t[0] = 0;
+    text_cat(t, n);
+    text_cat(t, " ");
+    text_cat(t, slot_scene(slot)->name);
+}
+static void latch_set(uint32_t on, int say);
+static void scene_go(uint32_t slot, int say)
+{
+    char t[24];
+    const scene_t *sc;
+    set.scene = (uint8_t)(slot % NSLOTS);
+    set_dirty = 1;
+    sc = slot_scene(set.scene);
+    dr_load(sc, (float)set.morph);
+    dr_fx_bypass(sc->fx_off);
+    if (sc->vel[0])                      /* its bodies come in latched: LATCH on, so the LED says what the keys do */
+        latch_set(1, 0);
+    scene_dirty = 0;
+    slot_title(set.scene, t);
+    if (say)
+        ui_say(set.morph ? "MORPH" : "SCENE", t);
+    ui.redraw_head = ui.redraw_foot = 1;
+}
+
+static void save_confirm(void)
+{
+    char s[24];
+    scene_t *dst = &bank.u[ui.save_to % NUSER];
+    const char *keep = (set.scene >= NFACTORY && set.scene - NFACTORY == ui.save_to) ? dst->name : dr_scene.name;
+    char name[SCENE_NAME];
+    uint32_t i;
+    for (i = 0; i < SCENE_NAME; i++)
+        name[i] = keep[i];
+    scene_capture(dst);
+    for (i = 0; i < SCENE_NAME; i++)
+        dst->name[i] = name[i];
+    dr_scene.name[0] = 0;
+    text_cat(dr_scene.name, name);
+    set.scene = (uint8_t)(NFACTORY + ui.save_to);
+    set_dirty = 1;
+    ui.dialog = 0;
+    slot_title(set.scene, s);
+    if (project_save() == 0) {
+        scene_dirty = 0;
+        ui_say("SAVED", s);
+    } else
+        ui_say("SAVE", "FAILED");        /* still dirty: SAVE stays lit */
+    ui.redraw_head = ui.redraw_foot = 1;
+}
+
+/* ------------------------------------------------------------------ the keys --- */
+static void midi_note_out(uint32_t note, uint32_t vel, int on)
+{
+    uint32_t ch = (uint32_t)set.midi_out - 1u;
+    if (on)
+        plat_midi_send(0x09u | (0x90u | ch) << 8 | (note & 127u) << 16 | (vel & 127u) << 24, TO_USB | TO_BLE);
+    else
+        plat_midi_send(0x08u | (0x80u | ch) << 8 | (note & 127u) << 16, TO_USB | TO_BLE);
+}
+static uint32_t key_note(uint32_t k)
+{
+    uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
+    return set.scale == SC_CHROMA ? note : dr_snap(note);
+}
+static void key_on(uint32_t k, uint32_t vel)
+{
+    uint32_t note = key_note(k);
+    if (!set.vel)
+        vel = 100;
+    ui.keynote[k] = (uint8_t)note;
+    ui.keynotes |= 1u << k;
+    ui.prs[k] = 0;
+    ui.vel[k] = (uint8_t)vel;
+    if (set.local) {                     /* a latched body pressed again is let go: its note off comes from the engine */
+        if (!dr_body_latched(note))
+            midi_note_out(note, vel, 1);
+        if (set.latch)
+            dr_note_latched(note, vel);
+        else
+            dr_note(note, vel, 1);
+    } else {
+        midi_note_out(note, vel, 1);
+    }
+}
+static void key_off(uint32_t k)
+{
+    uint32_t note = ui.keynote[k];
+    ui.keynotes &= ~(1u << k);
+    if (set.local) {
+        dr_note(note, 0, 0);             /* (the engine sends the note off, unless the body is latched) */
+    } else {
+        midi_note_out(note, 0, 0);
+    }
+}
+static void orbit_toggle(void)
+{
+    char t[16];
+    dr_orbit(!dr_orbit_on());
+    if (dr_orbit_on()) {
+        t[0] = 0;
+        text_cat(t, "EVERY ");
+        int_text((int32_t)(dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) + 0.5f), t + 6);
+        text_cat(t, "S");
+        ui_say("ORBIT ON", t);
+    } else
+        ui_say("ORBIT", "OFF");
+    ui.redraw_head = 1;
+}
+static void all_let_go(void)
+{
+    dr_all_off();
+    ui_say("EVERY BODY", "LET GO");
+}
+static void latch_set(uint32_t on, int say)   /* SEL: the LATCH mode; off, a latched body stays only while its key
+                                               * is held */
+{
+    uint32_t i, k;
+    dr_body_t b;
+    if (set.latch != on) {
+        set.latch = (uint8_t)on;
+        set_dirty = 1;
+        if (!on)
+            for (i = 0; i < DR_NV; i++)
+                if (dr_body(i, &b) && b.latched && !b.fading) {
+                    int held = 0;
+                    for (k = 0; k < NKEYS; k++)
+                        if ((ui.keynotes >> k & 1u) && ui.keynote[k] == b.home)
+                            held = 1;
+                    if (held)
+                        dr_unlatch(b.home);
+                    else
+                        dr_note(b.home, 0, 1);   /* struck again: let go */
+                }
+    }
+    if (say)
+        ui_say("LATCH", on ? "ON" : "OFF");
+    ui.redraw_head = 1;
+}
+
+/* ------------------------------------------------------------------ the FX layer --- */
+#define NFXK 5u
+static const uint8_t FXKEY[NFXK] = {0, 2, 4, 6, 7};   /* F3 G3 A3 B3 C4: ensemble, delay, reverb, shimmer, noise */
+static const char *const FXNAME[NFXK] = {"ENSEMBLE", "DELAY", "REVERB", "SHIMMER", "NOISE"};
+static const char *const FXSHORT[NFXK] = {"ENS", "DLY", "REV", "SHM", "NOISE"};
+static const char *const FXLETTER[NFXK] = {"E", "D", "R", "S", "N"};
+static uint32_t fx_keys_lit(void)
+{
+    uint32_t a = dr_fx_active(), m = 0, i;
+    for (i = 0; i < NFXK; i++)
+        if (a & (1u << i))
+            m |= 1u << FXKEY[i];
+    return m;
+}
+static void fx_key(uint32_t k)
+{
+    uint32_t i, b = dr_fx_bypass_get();
+    if (k == FXKEY[4]) {                 /* the noise layer: its LEVEL is its switch; from zero, a third */
+        uint32_t lv = dr_scene.p[P_NZ_LEVEL];
+        char t[16];
+        ui.fx_used = 1;
+        if (lv) {
+            ui.nz_last = (uint8_t)lv;
+            value_set(P_NZ_LEVEL, 0);
+            ui_say("NOISE", "OFF");
+        } else {
+            value_set(P_NZ_LEVEL, ui.nz_last ? ui.nz_last : 44u);
+            value_text(P_NZ_LEVEL, t);
+            ui_say("NOISE", t);
+        }
+        ui.redraw_foot = 1;
+        return;
+    }
+    for (i = 0; i < 4u; i++)
+        if (FXKEY[i] == k) {
+            b ^= 1u << i;
+            dr_fx_bypass(b);
+            dr_scene.fx_off = (uint8_t)b;
+            scene_dirty = 1;
+            ui.fx_used = 1;
+            ui_say(FXNAME[i], (b & (1u << i)) ? "OFF" : "ON");
+            return;
+        }
+}
+
+/* ------------------------------------------------------------------ Bluetooth --- */
+int df_ble_off(void) { return set.ble_off; }
+static void ble_toggle(void)
+{
+    set.ble_off = (uint8_t)!set.ble_off;
+    set_dirty = 1;
+    plat_ble_enable(!set.ble_off);
+    ui_say("BLUETOOTH", set.ble_off ? "OFF" : "ON");
+}
+static void ble_device_say(void)
+{
+    char name[21];
+    if (btdev_found(btdev_pick(), name, 0))
+        ui_say("DEVICE", name);
+    else
+        ui_say("BLE", "SCANNING");
+}
+static void ble_device_button(void)
+{
+    int ev;
+    if (!btdev_busy() && !ui.looking) {
+        ui.looking = 1;
+        ui_say("BLE", "SCANNING");
+        return;
+    }
+    ev = btdev_save();
+    ui.looking = 0;
+    ui_say(ev == BTDEV_CONNECTING ? btdev_word(ev) : "BLE", ev == BTDEV_CONNECTING ? btdev_name() : btdev_word(ev));
+}
+
+/* ------------------------------------------------------------------ buttons --- */
+static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_GLO, B_GLO};
+static void page_to(uint32_t pg)
+{
+    ui.page = (uint8_t)pg;
+    ui.redraw_foot = 1;
+}
+static void octave_step(int32_t d)
+{
+    int32_t o = clamp(set.octave + d, -2, 2);
+    char t[4];
+    if (o == set.octave)
+        return;
+    set.octave = (int8_t)o;
+    set_dirty = 1;
+    t[0] = o < 0 ? '-' : '+';
+    t[1] = (char)('0' + (o < 0 ? -o : o));
+    t[2] = 0;
+    ui_say("OCTAVE", t);
+    ui.redraw_head = 1;
+}
+static void button(uint32_t k, uint32_t now)
+{
+    if (ui.dialog) {                     /* the save dialog: SAVE saves, anything else backs out */
+        if (k == B_SAVE)
+            save_confirm();
+        else if (k == B_REC && FM1B_BLE)
+            ui.rec_t = now;
+        else {
+            ui.dialog = 0;
+            ui.redraw_foot = 1;
+            ui_say("SAVE", "CANCELLED");
+        }
+        return;
+    }
+    switch (k) {
+    case B_HOME: page_to(PG_HOME); break;
+    case B_EDIT: page_to(PG_BODY); break;
+    case B_ENV: page_to(PG_ENV); break;
+    case B_LFO: page_to(PG_MOTION); break;
+    case B_FX:
+        ui.fx_t = now;
+        ui.fx_used = 0;
+        break;
+    case B_ARP: page_to(PG_ORBIT); break;
+    case B_GLO: page_to(PG_GLOBAL); break;
+    case B_SEL:
+        ui.sel_down = now;
+        ui.sel_used = 0;
+        break;
+    case B_PLAY:
+        ui.play_down = now;
+        ui.play_used = 0;
+        break;
+    case B_SEQ:
+        dr_freeze(!dr_frozen());
+        ui_say("FREEZE", dr_frozen() ? "ON" : "OFF");
+        ui.redraw_head = 1;
+        break;
+    case B_SAVE:
+        ui.dialog = 1;
+        ui.save_to = (uint8_t)(set.scene >= NFACTORY ? set.scene - NFACTORY : 0u);
+        ui.redraw_foot = 1;
+        ui_say("SAVE TO", "PRESS SAVE AGAIN");
+        break;
+    case B_OCTDN: octave_step(-1); break;
+    case B_OCTUP: octave_step(1); break;
+    case B_REC:
+        if (FM1B_BLE)
+            ui.rec_t = now;
+        else
+            ui_say("BUTTON", BTN_NAME[k]);
+        break;
+    default:
+        break;
+    }
+}
+
+static void input(void)
+{
+    uint32_t keys, btn = plat_buttons(), k, fx_layer = btn >> B_FX & 1u, dkeys = plat_keys(), now = plat_ms();
+    uint32_t lit_keys = 0, dim_keys = 0, lit_btn, i;
+    int32_t e;
+    dr_body_t b;
+    touch_poll();
+    keys = touch_keys();
+    if (fx_layer && ui.fx_t) {           /* the layer: the plain matrix, not the sensed rows */
+        for (k = 0; k < NFXK; k++) {
+            uint32_t bit = 1u << FXKEY[k];
+            if ((dkeys & bit) && !(ui.dkeys & bit))
+                fx_key(FXKEY[k]);
+        }
+    }
+    ui.dkeys = dkeys;
+    for (k = 0; k < NKEYS; k++) {
+        uint32_t bit = 1u << k;
+        if ((keys & bit) && !(ui.keys & bit)) {
+            if (fx_layer || ui.fx_t || now - ui.fx_up < 120u)
+                continue;
+            key_on(k, touch_vel(k));
+        } else if (!(keys & bit) && (ui.keys & bit)) {
+            if (ui.keynotes & bit)
+                key_off(k);
+        } else if ((keys & bit) && (ui.keynotes & bit) && touch_pressure(k) != ui.prs[k]) {
+            ui.prs[k] = touch_pressure(k);
+            if (set.local)
+                dr_pressure(ui.keynote[k], ui.prs[k]);
+            plat_midi_send(0x0Au | (0xA0u | ((uint32_t)set.midi_out - 1u)) << 8 | (uint32_t)ui.keynote[k] << 16
+                           | (uint32_t)ui.prs[k] << 24, TO_USB | TO_BLE);
+        }
+    }
+    for (k = 0; k < NB; k++) {
+        uint32_t bit = 1u << k;
+        if ((btn & bit) && !(ui.btn & bit))
+            button(k, now);
+    }
+    if (ui.fx_t) {                       /* FX: a tap opens the effects pages; held, the keys switched effects */
+        if (btn >> B_FX & 1u) {
+            if (now - ui.fx_t > 600u && !ui.fx_used)
+                ui.fx_used = 1;          /* held long with nothing switched: the layer only, no page */
+        } else {
+            if (!ui.fx_used)
+                page_to(PG_FX_ENS);
+            ui.fx_t = 0;
+            ui.fx_up = now;
+        }
+    }
+    if (ui.play_down) {                  /* PLAY: a tap runs or stops ORBIT; held, its page */
+        if (btn >> B_PLAY & 1u) {
+            if (now - ui.play_down >= 600u && !ui.play_used) {
+                ui.play_used = 1;
+                page_to(PG_ORBIT);
+                ui_say("ARP", "ORBIT");
+            }
+        } else {
+            if (!ui.play_used)
+                orbit_toggle();
+            ui.play_down = 0;
+        }
+    }
+    if (ui.sel_down) {                   /* SEL: a tap switches LATCH; held a second, every body is let go */
+        if (btn >> B_SEL & 1u) {
+            if (now - ui.sel_down >= 1000u && !ui.sel_used) {
+                ui.sel_used = 1;
+                all_let_go();
+            }
+        } else {
+            if (!ui.sel_used)
+                latch_set(!set.latch, 1);
+            ui.sel_down = 0;
+        }
+    }
+    if (FM1B_BLE && ui.rec_t) {
+        if (btn >> B_REC & 1u) {
+            if (now - ui.rec_t >= 1000u) {
+                ui.rec_t = 0;
+                ble_toggle();
+            }
+        } else {
+            ui.rec_t = 0;
+            if (FM1B_BLE_CENTRAL && !set.ble_off)
+                ble_device_button();
+            else
+                ui_say("BUTTON", "REC");
+        }
+    }
+    for (k = 0; k < NE; k++) {
+        if ((e = plat_enc((int)k)) == 0)
+            continue;
+        if (ui.dialog) {
+            if (k == EN_PRESET || k == EN_SELECT || k == EN_K1) {   /* any of them picks the slot */
+                char t[24];
+                ui.save_to = (uint8_t)clamp((int32_t)ui.save_to + e, 0, (int32_t)NUSER - 1);
+                slot_title(NFACTORY + ui.save_to, t);
+                ui_say("SAVE TO", t);
+                ui.redraw_foot = 1;
+            }
+            continue;
+        }
+        if (k == EN_ALGO && FM1B_BLE_CENTRAL && ui.looking) {
+            btdev_choose(btdev_pick() + e);
+            ble_device_say();
+        } else if (k == EN_PRESET) {     /* scroll: the candidate shows; it loads once PRESET rests */
+            char t[24];
+            int32_t from = ui.sel_slot >= 0 ? ui.sel_slot : (int32_t)set.scene;
+            ui.sel_slot = clamp(from + e, 0, (int32_t)NSLOTS - 1);
+            ui.sel_t = now;
+            slot_title((uint32_t)ui.sel_slot, t);
+            ui_say("SCENE", t);
+        } else if (k == EN_ALGO) {
+            knob(P_MODEL, e);
+        } else if (k == EN_SELECT) {     /* the page before or after */
+            uint32_t pg = (uint32_t)clamp((int32_t)ui.page + e, 0, PG_COUNT - 1);
+            if (pg != ui.page) {
+                page_to(pg);
+                ui_say(PAGES[pg].button, PAGES[pg].title);
+            }
+        } else {
+            knob(page_param(ui.page, k - EN_K1), e);
+        }
+    }
+    if (ui.sel_slot >= 0 && now - ui.sel_t >= 700u) {
+        int32_t slot = ui.sel_slot;
+        ui.sel_slot = -1;
+        if (slot != (int32_t)set.scene)
+            scene_go((uint32_t)slot, 1);
+    }
+    ui.keys = keys;
+    ui.btn = btn;
+    /* the lights: a key lit while its body sounds, dim while it fades, a glow on the keys in the scale;
+     * SEL for LATCH, SEQ freeze, PLAY orbit (green), SAVE with something to save, the page's button, OCT- or OCT+
+     * half-lit one octave out and lit two out */
+    for (i = 0; i < DR_NV; i++)          /* a key lit at the note its body is at now; half-lit at the home key
+                                          * ORBIT moved it from */
+        if (dr_body(i, &b)) {
+            int32_t kk = (int32_t)(b.pitch + 0.5f) - 53 - 12 * set.octave, kh = (int32_t)b.home - 53 - 12 * set.octave;
+            if (kk >= 0 && kk < (int32_t)NKEYS) {
+                if (b.fading)
+                    dim_keys |= 1u << kk;
+                else
+                    lit_keys |= 1u << kk;
+            }
+            if (kh != kk && kh >= 0 && kh < (int32_t)NKEYS)
+                dim_keys |= 1u << kh;
+        }
+    if (set.scale != SC_CHROMA)
+        for (k = 0; k < NKEYS; k++) {
+            uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
+            if (dr_snap(note) == note)
+                dim_keys |= 1u << k;
+        }
+    if (fx_layer) {
+        lit_keys = fx_keys_lit();
+        dim_keys = 0;
+    }
+    ui.oct_lit = (uint8_t)(set.octave >= 2 ? 2u : set.octave <= -2 ? 1u : 0u);
+    ui.oct_mid = (uint8_t)(set.octave == 1 ? 2u : set.octave == -1 ? 1u : 0u);
+    lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u)
+            | ((set_dirty || scene_dirty) ? 1u << B_SAVE : 0u) | (dr_orbit_on() ? LED_PLAY_GREEN : 0u)
+            | (ui.dialog ? 1u << B_SAVE : 1u << PAGE_BTN[ui.page]) | (uint32_t)ui.oct_lit << B_OCTDN;
+    plat_lights(lit_btn, lit_keys, (1u << NB) - 1u, 0, 1);
+    plat_lights_mid((uint32_t)ui.oct_mid << B_OCTDN, dim_keys & ~lit_keys);
+}
+static void ui_input_only(void) { input(); }
+
+/* ------------------------------------------------------------------ the phosphor --- */
+static inline void ph_dot(int32_t x, int32_t y, uint32_t hue, uint32_t lvl)
+{
+    uint8_t *p;
+    if ((uint32_t)x >= (uint32_t)SKY_W || (uint32_t)y >= (uint32_t)SKY_H)
+        return;
+    p = &phos[y * SKY_W + x];
+    if ((*p & 31u) < lvl)
+        *p = (uint8_t)(hue << 5 | lvl);
+}
+static void ph_disc(int32_t cx, int32_t cy, int32_t r, uint32_t hue, uint32_t lvl)
+{
+    int32_t dx, dy, r2 = r * r + 1;
+    for (dy = -r; dy <= r; dy++)
+        for (dx = -r; dx <= r; dx++) {
+            int32_t d2 = dx * dx + dy * dy;
+            if (d2 <= r2) {
+                uint32_t l = (uint32_t)((int32_t)lvl * (r2 - d2 / 2) / r2);
+                if (l > 31u)
+                    l = 31u;
+                ph_dot(cx + dx, cy + dy, hue, l);
+            }
+        }
+}
+static void ph_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t hue, uint32_t lvl)
+{
+    int32_t dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
+    int32_t dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
+    int32_t err = dx + dy, guard = 600;
+    while (guard--) {
+        int32_t e2 = 2 * err;
+        ph_dot(x0, y0, hue, lvl);
+        if (x0 == x1 && y0 == y1)
+            break;
+        if (e2 >= dy) {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+static void ph_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint32_t hue, uint32_t lvl, uint32_t every)
+{
+    uint32_t i, n = (uint32_t)(rx + ry) * 2u;
+    if (n < 24u)
+        n = 24u;
+    for (i = 0; i < n; i += every) {
+        float t = (float)i / (float)n;
+        ph_dot(cx + (int32_t)((float)rx * fm_sin_turns(t + 0.25f)), cy + (int32_t)((float)ry * fm_sin_turns(t)), hue, lvl);
+    }
+}
+static void ph_compose(uint32_t shift, uint32_t dim)   /* the phosphor onto the canvas, each pixel faded a step for
+                                                        * the next frame (dim: the HUD's words go over it) */
+{
+    uint32_t i, mask = dim ? 0xE7u : 0xFFu;
+    for (i = 0; i < (uint32_t)(SKY_W * SKY_H); i++) {
+        uint32_t v = phos[i], l = v & 31u, d = (l >> shift) + 1u;
+        cv_px[i] = lut[v & mask];
+        if (l)
+            phos[i] = (uint8_t)((v & 0xE0u) | (l > d ? l - d : 0u));
+    }
+}
+static void lut_build(void)
+{
+    uint32_t h, l;
+    for (h = 0; h < 8u; h++)
+        for (l = 0; l < 32u; l++) {
+            float t = (float)l / 31.0f, k = t * t * fm_sqrtf(t), w = t > 0.82f ? (t - 0.82f) * 3.0f : 0.0f;
+            float r = (float)HUE_RGB[h][0] * k, g = (float)HUE_RGB[h][1] * k, b = (float)HUE_RGB[h][2] * k;
+            r += (255.0f - r) * w;
+            g += (255.0f - g) * w;
+            b += (255.0f - b) * w;
+            if (!l) {
+                r = 0.0f;
+                g = 4.0f;
+                b = 16.0f;
+            }
+            lut[h << 5 | l] = swap16(RGB((uint32_t)r, (uint32_t)g, (uint32_t)b));
+        }
+}
+static void stars_init(void)
+{
+    uint32_t i;
+    ui.rng = 0xC0FFEE11u;
+    for (i = 0; i < NSTARS; i++) {
+        ui.rng = hash32(ui.rng + i);
+        ui.star[i].x = (uint16_t)(ui.rng % (SKY_W * 256u));
+        ui.star[i].y = (uint16_t)((ui.rng >> 12) % (SKY_H * 256u));
+        ui.star[i].z = (uint8_t)(1u + (ui.rng >> 24) % 3u);
+        ui.star[i].hue = (uint8_t)((ui.rng >> 27) % 5u == 0u ? HUE_BLUE : (ui.rng >> 27) % 7u == 0u ? HUE_CYAN : HUE_STAR);
+    }
+}
+static void stars_draw(float drift)
+{
+    uint32_t i;
+    for (i = 0; i < NSTARS; i++) {
+        uint32_t z = ui.star[i].z, tw = hash32(ui.frame * 7u + i * 131u) & 7u, lvl;
+        int32_t v = (int32_t)(z * 9u) * (int32_t)(40.0f + 220.0f * drift) / 64;
+        int32_t x = (int32_t)ui.star[i].x - v;
+        if (x < 0)
+            x += SKY_W * 256;
+        ui.star[i].x = (uint16_t)x;
+        lvl = 4u + z * 5u + tw;
+        if (lvl > 26u)
+            lvl = 26u;
+        ph_dot(x >> 8, ui.star[i].y >> 8, ui.star[i].hue, z == 3u && tw > 5u ? 29u : lvl);
+    }
+}
+static uint32_t body_hue(uint32_t note) { return 2u + (note % 12u) * 5u % 6u; }
+#define CX 120
+#define CY (SKY_H / 2)
+
+/* ---------------------------------------------------------------- pixel art --- */
+/* The MOUTH view is drawn as sprites at 2x (120 x 40 game pixels on the 240 x 80 strip), authored as rows of
+ * characters: ' ' clear, k outline, d dark, g grey, w white, s/S/t skin, r/R/q red, p pink, m the mouth's dark,
+ * y/Y the sleeve, b/c/o/v/G/M colours; A, B and H are a pill's two halves and highlight, given per pill. */
+typedef struct {
+    uint8_t w, h;
+    const char *const *rows;
+} sprite_t;
+static uint16_t spal[128];
+static void spal_build(void)
+{
+    static const struct { char c; uint8_t r, g, b; } P[] = {
+        {'k', 10, 8, 14}, {'d', 58, 56, 70}, {'g', 128, 126, 140}, {'w', 250, 250, 255},
+        {'s', 235, 172, 122}, {'S', 255, 214, 176}, {'t', 178, 108, 70}, {'r', 222, 30, 42}, {'R', 255, 96, 108},
+        {'q', 128, 10, 22}, {'p', 255, 124, 164}, {'m', 36, 0, 12}, {'y', 240, 196, 50}, {'Y', 170, 120, 20},
+        {'b', 80, 120, 255}, {'c', 90, 222, 255}, {'o', 255, 150, 60}, {'v', 170, 110, 255}, {'G', 90, 240, 150},
+        {'M', 255, 90, 210}, {'n', 20, 28, 60},
+    };
+    uint32_t i;
+    for (i = 0; i < 128u; i++)
+        spal[i] = 0;
+    for (i = 0; i < sizeof P / sizeof P[0]; i++)
+        spal[(uint8_t)P[i].c] = swap16(RGB(P[i].r, P[i].g, P[i].b));
+}
+static inline void px2(int32_t x, int32_t y, uint16_t c)   /* a game pixel: 2 x 2 on the canvas, clipped */
+{
+    int32_t dx, dy;
+    for (dy = 0; dy < 2; dy++)
+        for (dx = 0; dx < 2; dx++) {
+            int32_t px = x + dx, py = y + dy;
+            if ((uint32_t)px < cv_w && (uint32_t)py < cv_h)
+                cv_px[(uint32_t)py * cv_w + (uint32_t)px] = c;
+        }
+}
+/* a sprite at canvas x, y; rot 1 turns it a quarter turn; a, b, h: the colours for A, B and H */
+static void spr(int32_t x, int32_t y, const sprite_t *s, int rot, uint16_t a, uint16_t b, uint16_t h)
+{
+    uint32_t r, c, W = rot ? s->h : s->w, H = rot ? s->w : s->h;
+    for (r = 0; r < H; r++)
+        for (c = 0; c < W; c++) {
+            /* a quarter turn: output (r, c) comes from source row c, column w-1-r */
+            const char *row = s->rows[rot ? c : r];
+            uint32_t sc = rot ? (uint32_t)(s->w - 1u - r) : c, len = 0;
+            char ch;
+            uint16_t col;
+            while (row[len])
+                len++;
+            ch = sc < len ? row[sc] : ' ';
+            if (ch == ' ')
+                continue;
+            col = ch == 'A' ? a : ch == 'B' ? b : ch == 'H' ? h : spal[(uint8_t)ch & 127u];
+            if (!col)
+                continue;
+            px2(x + (int32_t)c * 2, y + (int32_t)r * 2, col);
+        }
+}
+static const char *const BOTTLE[] = {
+    "  kkkkkkkkkkkk  ",
+    " kooooooooooook ",
+    " koOOOOOOOOOOok ",
+    " kooooooooooook ",
+    " kookkkkkkkkkook",
+    " kokwwwwwwwwwkok",
+    " kokwkkkwwkwkkok",
+    " kokwkwkwwwkwkok",
+    " kokwkkkwwkwkkok",
+    " kokwkwkwwwwwkok",
+    " kokwkwwkwwwwkok",
+    " kokwwwwwwwwwkok",
+    " kookkkkkkkkkook",
+    " kooooooooooook ",
+    " koOOOOOOOOOOok ",
+    " kooooooooooook ",
+    " kooooooooooook ",
+    "  kkkkkkkkkkkk  ",
+};
+static const sprite_t SPR_BOTTLE = {16, 18, BOTTLE};
+static const char *const CAP_SHUT[] = {
+    " kkkkkkkkkkkkkk ",
+    "kwwwwwwwwwwwwwwk",
+    "kwggwwggwwggwwgk",
+    "kwwwwwwwwwwwwwwk",
+    " kkkkkkkkkkkkkk ",
+};
+static const char *const CAP_HALF[] = {
+    "  kk            ",
+    " kwwk           ",
+    "kwggwk          ",
+    "kwwwwwk         ",
+    " kwwggwk        ",
+    "  kwwwwwk       ",
+    "   kwwggwk      ",
+    "    kwwwwwk     ",
+    "     kkkkkkk    ",
+};
+static const char *const CAP_OPEN[] = {
+    " kkkkk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kwggwk          ",
+    "kwwwwk          ",
+    "kkkkkk          ",
+};
+static const sprite_t SPR_CAP[3] = {{16, 5, CAP_SHUT}, {16, 9, CAP_HALF}, {16, 15, CAP_OPEN}};
+static const char *const MOUTH_OPEN[] = {
+    "           kkkkkkkkkkk      ",
+    "        kkkRRRRRRRRRRRkkk   ",
+    "      kkRRrrrrrrrrrrrrrRRkk ",
+    "    kkRrrrrrrrrrrrrrrrrrrrRk",
+    "   kRrrrrkkkkkkkkkkkkkkrrrrk",
+    "  kRrrrkwwwwkwwwwkwwwwkkrrrk",
+    "  krrrkwwwwwkwwwwwkwwwwwkrrk",
+    "  krrkwwwwwwkwwwwwwkwwwwwkrk",
+    "  krkkkkkkkkkkkkkkkkkkkkkkrk",
+    "  krkmmmmmmmmmmmmmmmmmmmmkrk",
+    "  krkmmmmmmmmmmmmmmmmmmmmkrk",
+    "  krkmmmmmmmmmmmmmmmmmmmmkrk",
+    "  krkmmmmmmmmmmmmmmmmmmmmkrk",
+    "  krkmmmmmmkkppppppkkmmmmkrk",
+    "  krkmmmmmkppppppppppkmmmkrk",
+    "  krkkkkkkkkkkkkkkkkkkkkkkrk",
+    "  krrkwwwwwkwwwwwkwwwwwkrrrk",
+    "  kqrrkwwwwkwwwwkwwwwkrrrqk ",
+    "   kqrrkkkkkkkkkkkkkkrrrqk  ",
+    "    kqqrrrrrrrrrrrrrrrrqk   ",
+    "     kkqqrrrrrrrrrrrqqkk    ",
+    "       kkkqqqqqqqqqkkk      ",
+    "          kkkkkkkkk         ",
+};
+static const char *const MOUTH_HALF[] = {
+    "                            ",
+    "                            ",
+    "                            ",
+    "           kkkkkkkkkkk      ",
+    "        kkkRRRRRRRRRRRkkk   ",
+    "      kkRRrrrrrrrrrrrrrRRkk ",
+    "    kkRrrrrkkkkkkkkkkkrrrrRk",
+    "   kRrrrkwwwwkwwwwkwwwwkrrrk",
+    "  kRrrrkwwwwwkwwwwwkwwwwkrrk",
+    "  krrkkkkkkkkkkkkkkkkkkkkkrk",
+    "  krkmmmmmmmmmmmmmmmmmmmmkrk",
+    "  krkmmmmmmmkkppppppkkmmmkrk",
+    "  krkkkkkkkkkkkkkkkkkkkkkkrk",
+    "  krrkwwwwwkwwwwwkwwwwwkrrrk",
+    "  kqrrkwwwwkwwwwkwwwwkrrrqk ",
+    "   kqrrkkkkkkkkkkkkkkrrrqk  ",
+    "    kqqrrrrrrrrrrrrrrrrqk   ",
+    "     kkqqrrrrrrrrrrrqqkk    ",
+    "       kkkqqqqqqqqqkkk      ",
+    "          kkkkkkkkk         ",
+};
+static const char *const MOUTH_SHUT[] = {
+    "                            ",
+    "                            ",
+    "                            ",
+    "                            ",
+    "                            ",
+    "                            ",
+    "           kkkkkkkkkkk      ",
+    "        kkkRRRRRRRRRRRkkk   ",
+    "      kkRRrrrrrrrrrrrrrRRkk ",
+    "    kkRrrrrrrrrrrrrrrrrrrrRk",
+    "   kRrrrrrrrrrrrrrrrrrrrrrrk",
+    "  kkkkkkkkkkkkkkkkkkkkkkkkkk",
+    "  kqrrrrrrrrrrrrrrrrrrrrrrqk",
+    "   kqqrrrrrrrrrrrrrrrrrrqqk ",
+    "    kkqqrrrrrrrrrrrrrrqqkk  ",
+    "      kkkqqqqqqqqqqqqkkk    ",
+    "         kkkkkkkkkkk        ",
+};
+static const sprite_t SPR_MOUTH[3] = {{28, 23, MOUTH_OPEN}, {28, 20, MOUTH_HALF}, {28, 17, MOUTH_SHUT}};
+static const char *const PILL[] = {
+    "  kkkkkkkkkkkk  ",
+    " kAHHHHHkBBBBBk ",
+    "kAAHHHHHkBBBBBBk",
+    "kAAAAAAAkBBBBBBk",
+    "kAAAAAAAkBBBBBBk",
+    " kAAAAAAkBBBBBk ",
+    "  kkkkkkkkkkkk  ",
+};
+static const sprite_t SPR_PILL = {16, 7, PILL};
+static const char *const PLANET[] = {
+    "      kkkk      ",
+    "    kkbbbbkk    ",
+    "   kbbccbbbbk   ",
+    "  kbbbbbbcbbbk  ",
+    "kkkkkkkkkkkkkkkk",
+    "kggggggggggggggk",
+    " kkkkkkkkkkkkkk ",
+    "  kbbbbbbbbbbk  ",
+    "   kbbbbbbbbk   ",
+    "    kkbbbbkk    ",
+    "      kkkk      ",
+};
+static const sprite_t SPR_PLANET = {16, 11, PLANET};
+
+#define BOTTLE_X 10
+#define BOTTLE_Y (SKY_H - 42)       /* the bottle stands at the bottom left; its cap sits on its neck */
+#define MOUTHS_X 180
+#define MOUTHS_Y (CY - 23)
+static uint16_t body_px(uint32_t note, int light)   /* a pill's colour by pitch class, as a canvas pixel */
+{
+    static const uint8_t C[6][3] = {{0, 230, 255}, {255, 40, 200}, {150, 70, 255}, {50, 255, 110}, {40, 110, 255}, {255, 140, 0}};
+    uint32_t h = (note % 12u) * 5u % 6u, r = C[h][0], g = C[h][1], b = C[h][2];
+    if (light) {
+        r += (255u - r) / 2u;
+        g += (255u - g) / 2u;
+        b += (255u - b) / 2u;
+    }
+    return swap16(RGB(r, g, b));
+}
+static void sky_mouth(void)
+{
+    uint32_t i, frame_mouth, now = plat_ms();
+    float out = dr_out_level(), tip_x = BOTTLE_X + 16, tip_y = BOTTLE_Y - 6;
+    dr_body_t b;
+    int eating = 0, released = 0;
+    uint16_t cw = swap16(C_BRIGHT), cb = swap16(RGB(120, 150, 255));
+    for (i = 0; i < NSTARS; i++) {       /* chunky stars, a few of them blue, twinkling */
+        uint32_t tw = hash32(ui.frame / 6u + i * 131u) & 7u;
+        int32_t x = (int32_t)(ui.star[i].x >> 8) & ~1, y = (int32_t)(ui.star[i].y >> 8) & ~1;
+        if (tw < 6u)
+            px2(x, y, ui.star[i].hue == HUE_BLUE ? cb : cw);
+        else if (tw == 6u)
+            cv_pset(x, y, C_BRIGHT);
+    }
+    spr(118, SKY_H - 24, &SPR_PLANET, 0, 0, 0, 0);
+    /* the bottle: a new body pops its cap (shut, half, open), a pill tumbles out of the neck; the cap shuts
+     * again a moment after the last one */
+    if (!ui.hand_throw)
+        for (i = 0; i < DR_NV; i++)
+            if (ui.eat[i] == 4u && ui.pill_live[i]) {
+                ui.hand_throw = (uint8_t)(i + 1u);
+                ui.hand_t = ui.cap == 2u ? 0.3f : 0.0f;
+                break;
+            }
+    if (ui.hand_throw) {
+        float t = ui.hand_t, was = t;
+        t += 0.07f;
+        ui.hand_t = t;
+        ui.cap = t < 0.12f ? 0u : t < 0.25f ? 1u : 2u;
+        if (was < 0.4f && t >= 0.4f)
+            released = 1;
+        if (t >= 0.7f) {
+            ui.hand_throw = 0;
+            ui.cap_t = now;
+        }
+    } else if (ui.cap && now - ui.cap_t > 900u) {
+        ui.cap = (uint8_t)(ui.cap == 2u && now - ui.cap_t < 1050u ? 1u : 0u);
+    }
+    spr(BOTTLE_X, BOTTLE_Y, &SPR_BOTTLE, 0, 0, 0, 0);
+    spr(BOTTLE_X, BOTTLE_Y - (int32_t)SPR_CAP[ui.cap].h * 2 + (ui.cap ? 2 : 0), &SPR_CAP[ui.cap], 0, 0, 0, 0);
+    if (released) {                      /* the pill comes out of the neck */
+        i = (uint32_t)ui.hand_throw - 1u;
+        ui.eat[i] = 5;
+        ui.eat_t[i] = 0.0f;
+        ui.px[i] = tip_x;
+        ui.py[i] = tip_y;
+    }
+    for (i = 0; i < DR_NV; i++)
+        if (ui.eat[i] == 1u || ui.eat[i] == 2u)
+            eating = 1;
+    if (ui.chomp > 0.0f) {               /* closing on a pill, then open again */
+        ui.chomp += 0.1f;
+        if (ui.chomp >= 1.0f)
+            ui.chomp = 0.0f;
+    }
+    frame_mouth = out > 0.12f ? 0u : 1u;
+    if (ui.chomp > 0.0f)
+        frame_mouth = ui.chomp < 0.2f ? 1u : ui.chomp < 0.6f ? 2u : ui.chomp < 0.8f ? 1u : 0u;
+    spr(MOUTHS_X, MOUTHS_Y + (int32_t)(2u * (SPR_MOUTH[0].h - SPR_MOUTH[frame_mouth].h)) / 2, &SPR_MOUTH[frame_mouth], 0, 0, 0, 0);
+    if (ui.crumbs) {                     /* crumbs fly for a moment after a chomp */
+        uint32_t k;
+        ui.crumbs--;
+        for (k = 0; k < 4u; k++) {
+            uint32_t h = hash32(ui.frame * 31u + k * 977u);
+            px2((MOUTHS_X - 12 + (int32_t)(h % 30u)) & ~1, (CY - 14 + (int32_t)((h >> 8) % 28u)) & ~1, cw);
+        }
+    }
+    if (!eating && (hash32(ui.frame * 2654435761u) % 220u) == 0u) {   /* now and then, a snack: a pill that comes back */
+        uint32_t cand[DR_NV], n = 0;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && !b.fading && !ui.eat[i])
+                cand[n++] = i;
+        if (n) {
+            i = cand[hash32(ui.frame * 7919u) % n];
+            ui.eat[i] = 1;
+            ui.snack[i] = 1;
+            ui.eat_t[i] = 0.0f;
+        }
+    }
+    {                                    /* each pill's place in the air: over its key, high notes high; one that
+                                          * would sit on another goes a row up or down, a few tries at most (an
+                                          * unbounded retry here was the 2026-11-01 watchdog reset) */
+        uint32_t j, tries;
+        for (i = 0; i < DR_NV; i++) {
+            if (!dr_body(i, &b)) {
+                ui.spot_y[i] = -100.0f;
+                continue;
+            }
+            {                            /* over the key that struck it; a MIDI note past the keys, in a column */
+                int32_t kk = (int32_t)b.home - 53 - 12 * set.octave;
+                ui.spot_x[i] = kk >= 0 && kk < (int32_t)NKEYS ? (float)key_x[kk] : 58.0f + 36.0f * (float)(i % 4u);
+            }
+            ui.spot_y[i] = (float)(SKY_H - 14) - fm_clampf((b.pitch - 36.0f) * (1.0f / 60.0f), 0.0f, 1.0f) * (float)(SKY_H - 30);
+            tries = 0;
+            for (j = 0; j < i; j++)
+                if (ui.spot_y[j] > -50.0f && fm_fabsf(ui.spot_x[i] - ui.spot_x[j]) < 34.0f
+                    && fm_fabsf(ui.spot_y[i] - ui.spot_y[j]) < 16.0f) {
+                    ui.spot_y[i] = ui.spot_y[j] + (ui.spot_y[j] > (float)(SKY_H - 24) ? -16.0f : 16.0f);
+                    if (++tries < 8u)
+                        j = 0;           /* and check again from the start, up to eight times */
+                }
+        }
+    }
+    for (i = 0; i < DR_NV; i++) {
+        float sx, sy, tx, ty, k = 0.12f, d;
+        int rot = 0;
+        uint16_t ca, cb2, ch;
+        if (!dr_body(i, &b)) {
+            ui.eat[i] = 0;
+            ui.pill_live[i] = 0;
+            continue;
+        }
+        sx = ui.spot_x[i];
+        sy = ui.spot_y[i] + 2.0f * fm_sin_turns((float)ui.frame * 0.006f + 0.13f * (float)i);
+        if (!ui.pill_live[i]) {          /* new: it waits in the hand for its throw */
+            ui.pill_live[i] = 1;
+            ui.eat[i] = 4;
+            ui.eat_t[i] = 0.0f;
+        }
+        if (b.fading && ui.eat[i] != 1u && ui.eat[i] != 2u && ui.eat[i] != 4u) {   /* let go: the mouth takes it */
+            ui.eat[i] = 1;
+            ui.snack[i] = 0;
+            ui.eat_t[i] = 0.0f;
+        }
+        tx = sx;
+        ty = sy;
+        switch (ui.eat[i]) {
+        case 1:                          /* flying to the mouth */
+            tx = (float)MOUTHS_X + 28.0f;
+            ty = (float)CY + 2.0f;
+            k = 0.16f;
+            ui.eat_t[i] += 0.05f;
+            rot = ((uint32_t)(ui.eat_t[i] * 8.0f) & 1u) != 0u;
+            d = fm_fabsf(ui.px[i] - tx) + fm_fabsf(ui.py[i] - ty);
+            if (d < 6.0f) {
+                ui.eat[i] = 2;
+                ui.eat_t[i] = 0.0f;
+                ui.chomp = 0.05f;
+                ui.crumbs = 12;
+            }
+            break;
+        case 2:                          /* inside; a snack comes back out */
+            ui.eat_t[i] += 0.05f;
+            if (ui.eat_t[i] >= 1.0f) {
+                if (ui.snack[i]) {
+                    ui.eat[i] = 3;
+                    ui.eat_t[i] = 0.0f;
+                } else {
+                    ui.eat_t[i] = 1.0f;
+                }
+            }
+            continue;
+        case 3:                          /* spat back out to its place */
+            ui.eat_t[i] += 0.04f;
+            rot = ((uint32_t)(ui.eat_t[i] * 6.0f) & 1u) != 0u;
+            if (ui.eat_t[i] >= 1.0f)
+                ui.eat[i] = 0;
+            break;
+        case 4:                          /* in the hand, not yet thrown */
+            continue;
+        case 5: {                        /* out of the bottle: up, then an arc to its place, tumbling */
+            float e;
+            ui.eat_t[i] += 0.05f;
+            e = ui.eat_t[i] > 1.0f ? 1.0f : ui.eat_t[i];
+            rot = ((uint32_t)(e * 6.0f) & 1u) != 0u;
+            ui.px[i] += (tx - ui.px[i]) * (0.04f + 0.3f * e * e);
+            ui.py[i] += (ty - 22.0f * fm_sin_turns(e * 0.5f) - ui.py[i]) * (0.12f + 0.3f * e);
+            if (ui.eat_t[i] >= 1.0f)
+                ui.eat[i] = 0;
+            k = 0.0f;
+            break;
+        }
+        default:
+            break;
+        }
+        ui.px[i] += (tx - ui.px[i]) * k;
+        ui.py[i] += (ty - ui.py[i]) * k;
+        ca = body_px(b.home, 0);
+        cb2 = swap16(RGB(255, 255, 255));   /* the other half, white */
+        ch = body_px(b.home, 1);
+        if (b.fading) {
+            ca = swap16(RGB(110, 110, 120));
+            cb2 = swap16(RGB(160, 160, 170));
+            ch = swap16(RGB(190, 190, 200));
+        }
+        spal['k'] = b.latched ? swap16(RGB(255, 220, 0)) : swap16(RGB(10, 8, 14));   /* latched: a yellow outline */
+        spr(((int32_t)ui.px[i] - (rot ? 7 : 16)) & ~1, ((int32_t)ui.py[i] - (rot ? 16 : 7)) & ~1, &SPR_PILL, rot, ca, cb2, ch);
+        spal['k'] = swap16(RGB(10, 8, 14));
+    }
+    if (dr_frozen()) {                   /* ice: a dotted frame of blue blocks */
+        int32_t x, y;
+        for (x = 0; x < SKY_W; x += 8)
+            px2(x, 0, cb), px2(x + 2, SKY_H - 2, cb);
+        for (y = 0; y < SKY_H; y += 8)
+            px2(0, y, cb), px2(SKY_W - 2, y + 2, cb);
+    }
+}
+
+static void sky_orbits(void)
+{
+    uint32_t i, lvl;
+    float out = dr_out_level();
+    dr_body_t b;
+    int32_t r;
+    stars_draw((float)dr_scene.p[P_DRIFT] * (1.0f / 127.0f));
+    r = 4 + (int32_t)(out * 4.0f);
+    ph_disc(CX, CY, r, HUE_SUN, 31);
+    ph_ellipse(CX, CY, r + 2, r + 2, HUE_SUN, 11u, 1);
+    ph_ellipse(CX, CY, r + 4 + (int32_t)(ui.frame % 3u), r + 4 + (int32_t)(ui.frame % 3u), HUE_SUN, 5u, 3);
+    for (i = 0; i < DR_NV; i++) {
+        float rr, px, py, spd;
+        int32_t rx, ry, pr;
+        if (!dr_body(i, &b))
+            continue;
+        rr = 13.0f + (b.pitch - 36.0f) * (25.0f / 60.0f);
+        rr = fm_clampf(rr, 9.0f, 38.0f);
+        spd = (0.0022f + 0.06f / rr) * (0.55f + 0.9f * b.spark);
+        ui.ang[i] += spd;
+        if (ui.ang[i] >= 1.0f)
+            ui.ang[i] -= 1.0f;
+        rx = (int32_t)(rr * 1.7f);
+        ry = (int32_t)(rr * 0.75f);
+        ph_ellipse(CX, CY, rx, ry, body_hue(b.home), b.fading ? 4u : 7u, 2u);
+        px = (float)CX + rr * 1.7f * fm_sin_turns(ui.ang[i] + 0.25f);
+        py = (float)CY + rr * 0.75f * fm_sin_turns(ui.ang[i]);
+        lvl = (uint32_t)(12.0f + 19.0f * b.level);
+        if (b.fading && lvl > 18u)
+            lvl = 18u;
+        pr = 1 + (int32_t)(3.0f * b.level);
+        ph_disc((int32_t)px, (int32_t)py, pr + 2, body_hue(b.home), lvl / 3u);   /* a halo */
+        ph_disc((int32_t)px, (int32_t)py, pr, body_hue(b.home), lvl);
+        if (b.latched)
+            ph_ellipse((int32_t)px, (int32_t)py, pr + 3, pr + 3, HUE_STAR, 14u, 2u);   /* a ring: it stays */
+    }
+    if (dr_frozen())
+        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+}
+
+static void sky_nebula(void)
+{
+    static float col[SKY_W];
+    static uint8_t chue[SKY_W];
+    uint32_t i, h, x;
+    dr_body_t b;
+    float amp[8], t = (float)ui.frame * 0.0025f;
+    stars_draw((float)dr_scene.p[P_DRIFT] * (1.0f / 127.0f) * 0.5f);
+    for (x = 0; x < (uint32_t)SKY_W; x++)
+        col[x] *= 0.8f;
+    for (i = 0; i < DR_NV; i++) {
+        float f0;
+        if (!dr_body(i, &b) || !dr_harmonics(i, amp))
+            continue;
+        f0 = 440.0f * fm_exp2f((b.pitch - 69.0f) * (1.0f / 12.0f));
+        for (h = 0; h < 8u; h++) {
+            float f = f0 * (float)(h + 1u), v = amp[h] * b.level * 2.4f, fx;
+            int32_t xc, d;
+            if (v < 0.02f || f > 15000.0f)
+                continue;
+            if (v > 1.0f)
+                v = 1.0f;
+            fx = fm_log2f(f * (1.0f / 30.0f)) * (240.0f / 9.0f);
+            xc = (int32_t)fx;
+            for (d = -9; d <= 9; d++) {
+                int32_t xx = xc + d;
+                float w = v * (1.0f - (float)(d * d) * (1.0f / 100.0f));
+                if ((uint32_t)xx < (uint32_t)SKY_W && w > col[xx]) {
+                    col[xx] = w;
+                    chue[xx] = (uint8_t)body_hue(b.home);
+                }
+            }
+        }
+    }
+    for (x = 0; x < (uint32_t)SKY_W; x++) {
+        float I = col[x], yc, hh;
+        int32_t y, y0, y1;
+        if (I < 0.03f)
+            continue;
+        yc = (float)CY + 9.0f * fm_sin_turns((float)x * 0.0028f + t) + 4.0f * fm_sin_turns((float)x * 0.011f - t * 1.3f);
+        hh = 4.0f + 32.0f * I;
+        y0 = (int32_t)(yc - hh);
+        y1 = (int32_t)(yc + hh);
+        for (y = y0; y <= y1; y++) {
+            float k = 1.0f - fm_fabsf((float)y - yc) / hh;
+            uint32_t lvl = (uint32_t)(31.0f * I * k * k);
+            if (lvl > 1u)
+                ph_dot((int32_t)x, y, chue[x], lvl);
+        }
+    }
+    for (i = 0; i < DR_NV; i++)          /* each body's fundamental: a mark under the band */
+        if (dr_body(i, &b)) {
+            float f0 = 440.0f * fm_exp2f((b.pitch - 69.0f) * (1.0f / 12.0f));
+            int32_t xc = (int32_t)(fm_log2f(f0 * (1.0f / 30.0f)) * (240.0f / 9.0f));
+            ph_line(xc, SKY_H - 7, xc, SKY_H - 2, body_hue(b.home), b.fading ? 10u : 22u);
+        }
+    if (dr_frozen())
+        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+}
+
+static void sky_scope(void)
+{
+    const int16_t *l, *r;
+    uint32_t n, i;
+    int32_t px = 0, py = 0;
+    dr_body_t b;
+    float sx, sy;
+    dr_scope(&l, &r, &n);
+    ph_ellipse(CX, CY, 38, 38, HUE_CYAN, 9u, 2u);
+    ph_ellipse(CX, CY, 25, 25, HUE_CYAN, 6u, 3u);
+    ph_ellipse(CX, CY, 12, 12, HUE_CYAN, 6u, 3u);
+    ph_line(CX - 38, CY, CX + 38, CY, HUE_CYAN, 5u);
+    ph_line(CX, 2, CX, SKY_H - 2, HUE_CYAN, 5u);
+    ui.sweep += 0.012f;
+    if (ui.sweep >= 1.0f)
+        ui.sweep -= 1.0f;
+    sx = fm_sin_turns(ui.sweep + 0.25f);
+    sy = fm_sin_turns(ui.sweep);
+    ph_line(CX, CY, CX + (int32_t)(38.0f * sx), CY + (int32_t)(38.0f * sy), HUE_CYAN, 22u);
+    for (i = 0; i < DR_NV; i++) {        /* each body a blip: its pitch class round the dial, its octave the radius */
+        float a, rr, d;
+        uint32_t lvl;
+        if (!dr_body(i, &b))
+            continue;
+        a = (float)(b.home % 12u) * (1.0f / 12.0f);
+        rr = 7.0f + fm_clampf((b.pitch - 24.0f) * (1.0f / 12.0f), 0.0f, 7.0f) * 4.5f;
+        d = fm_fabsf(a - ui.sweep);
+        if (d > 0.5f)
+            d = 1.0f - d;
+        lvl = 8u + (uint32_t)(14.0f * b.level) + (d < 0.06f ? 9u : 0u);
+        ph_disc(CX + (int32_t)(rr * fm_sin_turns(a + 0.25f)), CY + (int32_t)(rr * fm_sin_turns(a)),
+                1 + (int32_t)(1.5f * b.level), body_hue(b.home), lvl > 31u ? 31u : lvl);
+    }
+    for (i = 0; i < n; i += 2u) {        /* the output, left against right: the phosphor keeps the figure */
+        int32_t x = CX + ((int32_t)l[i] * 36) / 32768, y = CY - ((int32_t)r[i] * 36) / 32768;
+        if (i)
+            ph_line(px, py, x, y, HUE_GREEN, 28u);
+        px = x;
+        py = y;
+    }
+    if (dr_frozen())
+        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+}
+
+/* ------------------------------------------------------------------ the beams --- */
+static void keys_geom(void)
+{
+    uint32_t w, b;
+    for (w = 0; w < 16u; w++) {
+        key_x[WHITE_K[w]] = (uint8_t)(15u * w + 7u);
+        key_white[WHITE_K[w]] = (uint8_t)(w + 1u);
+    }
+    for (b = 0; b < 11u; b++) {          /* a black key sits on the boundary after the white key below it */
+        uint32_t k = BLACK_K[b];
+        for (w = 0; w < 16u; w++)
+            if (WHITE_K[w] == k - 1u)
+                key_x[k] = (uint8_t)(15u * (w + 1u));
+        key_white[k] = 0;
+    }
+}
+static float beam_x(float pitch, int *off)   /* where a pitch stands over the strip; off: past its ends */
+{
+    float kk = pitch - 53.0f - 12.0f * (float)set.octave, f;
+    int32_t k0;
+    *off = 0;
+    if (kk < -0.5f) {
+        *off = 1;
+        return 3.0f;
+    }
+    if (kk > 26.5f) {
+        *off = 1;
+        return 236.0f;
+    }
+    if (kk < 0.0f)
+        return (float)key_x[0];
+    if (kk >= 26.0f)
+        return (float)key_x[26];
+    k0 = (int32_t)kk;
+    f = kk - (float)k0;
+    return (float)key_x[k0] + f * ((float)key_x[k0 + 1] - (float)key_x[k0]);
+}
+static void sky_beams(void)                  /* each body a beam over its key: its level the height, latched a
+                                              * cap, fading dim, an ORBIT move slides it and marks where it was */
+{
+    uint32_t i;
+    dr_body_t b;
+    float nlv, nnote, ncol, nband;
+    stars_draw((float)dr_scene.p[P_DRIFT] * (1.0f / 127.0f) * 0.4f);
+    dr_noise(&nlv, &nnote, &ncol, &nband);
+    if (nlv > 0.004f) {                  /* the noise: a soft wide beam where its band sits, brown to white */
+        int off, hw = 8 + (int32_t)((1.0f - nband) * 40.0f), dx, y;
+        int32_t x = (int32_t)(beam_x(nnote, &off) + 0.5f), h = (int32_t)(fm_sqrtf(nlv) * (float)(SKY_H - 12));
+        uint32_t hue = ncol < 0.33f ? HUE_EMBER : ncol < 0.66f ? HUE_SUN : HUE_STAR;
+        for (dx = -hw; dx <= hw; dx++) {
+            float k = 1.0f - fm_fabsf((float)dx) / (float)(hw + 1);
+            uint32_t l = 3u + (uint32_t)(15.0f * k * k);
+            for (y = SKY_H - 1 - h; y < SKY_H; y++)
+                ph_dot(x + dx, y, hue, l);
+        }
+    }
+    for (i = 0; i < DR_NV; i++) {
+        int off, w;
+        int32_t x, h, top, y, dx;
+        uint32_t hue, lvl;
+        if (!dr_body(i, &b))
+            continue;
+        x = (int32_t)(beam_x(b.pitch, &off) + 0.5f);
+        hue = body_hue(b.home);
+        h = (int32_t)(b.level * (float)(SKY_H - 10));
+        if (h < 1)
+            h = 1;
+        lvl = b.fading ? 14u : 31u;
+        w = off ? 1 : 4;
+        top = SKY_H - 1 - h;
+        for (dx = -w - 2; dx <= w + 2; dx++) {
+            uint32_t l = (dx < -w || dx > w) ? lvl / 3u : (dx == -w || dx == w) ? lvl * 2u / 3u : lvl;
+            for (y = top; y < SKY_H; y++)
+                ph_dot(x + dx, y, hue, l);
+        }
+        if (b.latched && !b.fading)
+            for (dx = -w; dx <= w; dx++) {
+                ph_dot(x + dx, top, HUE_STAR, 31u);
+                ph_dot(x + dx, top - 1, HUE_STAR, 22u);
+            }
+        if (fm_fabsf(b.pitch - (float)b.home) > 0.05f) {
+            int32_t hx = (int32_t)(beam_x((float)b.home, &off) + 0.5f);
+            for (y = SKY_H - 4; y < SKY_H; y++)
+                ph_dot(hx, y, hue, 24u);
+        }
+    }
+    if (dr_frozen()) {                   /* ice: a dotted frame round the view */
+        int32_t x, y;
+        for (x = 0; x < SKY_W; x += 4) {
+            ph_dot(x, 0, HUE_CYAN, 28u);
+            ph_dot(x, 1, HUE_CYAN, 20u);
+            ph_dot(x + 2, SKY_H - 1, HUE_CYAN, 28u);
+            ph_dot(x + 2, SKY_H - 2, HUE_CYAN, 20u);
+        }
+        for (y = 0; y < SKY_H; y += 4) {
+            ph_dot(0, y, HUE_CYAN, 28u);
+            ph_dot(1, y, HUE_CYAN, 20u);
+            ph_dot(SKY_W - 1, y + 2, HUE_CYAN, 28u);
+            ph_dot(SKY_W - 2, y + 2, HUE_CYAN, 20u);
+        }
+    }
+}
+
+static void sky_draw(void)
+{
+    uint32_t now = plat_ms(), hud = now < ui.hud_until, i, fx_layer = ui.btn >> B_FX & 1u;
+    ui.frame++;
+    if (set.view == VIEW_MOUTH) {        /* pixel art, drawn straight onto the canvas */
+        CRUMB(9);
+        cv_begin(SKY_W, SKY_H, C_SKY);
+        for (i = 0; i < NSTARS; i++) {   /* the stars drift */
+            int32_t x = (int32_t)ui.star[i].x - (int32_t)(ui.star[i].z * 6u);
+            if (x < 0)
+                x += SKY_W * 256;
+            ui.star[i].x = (uint16_t)x;
+        }
+        CRUMB(10);
+        sky_mouth();
+        CRUMB(11);
+    } else {
+        switch (set.view) {
+        case VIEW_ORBITS: sky_orbits(); break;
+        case VIEW_NEBULA: sky_nebula(); break;
+        case VIEW_SCOPE: sky_scope(); break;
+        default: sky_beams(); break;
+        }
+        cv_begin(SKY_W, SKY_H, C_SKY);
+        ph_compose(set.view == VIEW_SCOPE ? 2u : set.view == VIEW_NEBULA || set.view == VIEW_BEAMS ? 3u : 5u, hud);
+    }
+    if (fx_layer) {                      /* FX held: the four switches large, in the order of their keys */
+        uint32_t act = dr_fx_active();
+        const char *t = "FX HELD   F3 G3 A3 B3 C4 SWITCH";
+        cv_rect(0, 0, SKY_W, SKY_H, C_BLACK);
+        cv_text((SKY_W - text_w(&FONT_T, t)) / 2, 2, &FONT_T, t, C_LABEL);
+        for (i = 0; i < NFXK; i++) {
+            int on = act >> i & 1u, x = 2 + 48 * (int32_t)i;
+            char v[16];
+            if (i == 4u && on)
+                value_text(P_NZ_LEVEL, v);
+            else {
+                v[0] = 0;
+                text_cat(v, on ? "ON" : "OFF");
+            }
+            cv_text(x, 20, &FONT_S, FXSHORT[i], on ? C_FX_ON : C_OFF);
+            cv_text(x, 40, &FONT_M, v, on ? C_BRIGHT : C_OFF);
+            cv_rect(x, 68, 44, 3, on ? C_FX_ON : C_RULE);
+        }
+        hud = 0;
+    }
+    CRUMB(12);
+    if (hud) {                           /* the HUD: the name small, the value as large as fits */
+        const felucca_font_t *f = text_w(&FONT_L, ui.hud[1]) <= 232 ? &FONT_L : &FONT_M;
+        int32_t w = text_w(&FONT_XS, ui.hud[0]);
+        if (set.view == VIEW_MOUTH)
+            cv_rect(0, 0, SKY_W, SKY_H, C_BLACK);
+        if (ui.hud[1][0]) {
+            cv_text((SKY_W - w) / 2, 6, &FONT_XS, ui.hud[0], C_TEXT);
+            cv_text((SKY_W - text_w(f, ui.hud[1])) / 2, f == &FONT_L ? 26 : 30, f, ui.hud[1], C_BRIGHT);
+        } else {
+            cv_text((SKY_W - text_w(&FONT_L, ui.hud[0])) / 2, 26, &FONT_L, ui.hud[0], C_BRIGHT);
+        }
+    }
+    CRUMB(13);
+    cv_blit(0, SKY_Y);
+}
+
+/* ------------------------------------------------------------------ the keys strip --- */
+static uint16_t body_rgb(uint32_t note, int fading)
+{
+    const uint8_t *c = HUE_RGB[body_hue(note)];
+    return fading ? RGB(c[0] / 2u, c[1] / 2u, c[2] / 2u) : RGB(c[0], c[1], c[2]);
+}
+static uint32_t keys_sig(void)           /* what the strip would show: drawn again only when it changes */
+{
+    uint32_t h = 0x811C9DC5u, i;
+    dr_body_t b;
+    for (i = 0; i < DR_NV; i++)
+        h = hash32(h ^ (dr_body(i, &b) ? (uint32_t)b.home | (uint32_t)b.fading << 8 | (uint32_t)b.latched << 9
+                                           | (uint32_t)(b.pitch + 0.5f) << 10 : 0xFFFFu));
+    return hash32(h ^ (uint32_t)(set.octave + 2) ^ (uint32_t)set.scale << 4 ^ (uint32_t)set.root << 8
+                  ^ (ui.btn >> B_FX & 1u) << 12 ^ dr_fx_active() << 13);
+}
+static void key_frame(int32_t x, int32_t y, int32_t w, int32_t h)   /* a 2 px frame inside a key: latched */
+{
+    cv_rect(x, y, w, 2, C_LATCH);
+    cv_rect(x, y + h - 2, w, 2, C_LATCH);
+    cv_rect(x, y, 2, h, C_LATCH);
+    cv_rect(x + w - 2, y, 2, h, C_LATCH);
+}
+static void keys_draw(void)
+{
+    uint32_t k, i, fx_layer = ui.btn >> B_FX & 1u, act = dr_fx_active();
+    uint16_t fill[NKEYS];
+    uint8_t latched[NKEYS];
+    dr_body_t b;
+    cv_begin(240, KEYS_H, C_BLACK);
+    for (k = 0; k < NKEYS; k++) {
+        uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
+        int in = set.scale == SC_CHROMA || dr_snap(note) == note;
+        fill[k] = key_white[k] ? (in ? C_KW_IN : C_KW_OFF) : (in ? C_KB_IN : C_KB_OFF);
+        latched[k] = 0;
+    }
+    for (i = 0; i < DR_NV; i++) {        /* the key its body is at now in its colour; its home key, if ORBIT
+                                          * moved it, in the dim colour */
+        int32_t kk, kh;
+        if (!dr_body(i, &b))
+            continue;
+        kk = (int32_t)(b.pitch + 0.5f) - 53 - 12 * set.octave;
+        kh = (int32_t)b.home - 53 - 12 * set.octave;
+        if (kh != kk && kh >= 0 && kh < (int32_t)NKEYS)
+            fill[kh] = body_rgb(b.home, 1);
+        if (kk >= 0 && kk < (int32_t)NKEYS) {
+            fill[kk] = body_rgb(b.home, b.fading);
+            latched[kk] = (uint8_t)(b.latched && !b.fading);
+        }
+    }
+    if (fx_layer)
+        for (i = 0; i < NFXK; i++) {
+            fill[FXKEY[i]] = (act >> i & 1u) ? C_FX_ON : C_KW_OFF;
+            latched[FXKEY[i]] = 0;
+        }
+    for (i = 0; i < 16u; i++) {
+        int32_t x = 15 * (int32_t)i + 1;
+        k = WHITE_K[i];
+        cv_rect(x, 1, 13, 34, fill[k]);
+        if (latched[k])
+            key_frame(x, 1, 13, 34);
+    }
+    for (i = 0; i < 11u; i++) {
+        int32_t x = (int32_t)key_x[BLACK_K[i]] - 4;
+        k = BLACK_K[i];
+        cv_rect(x, 1, 9, 20, fill[k]);
+        if (latched[k])
+            key_frame(x, 1, 9, 20);
+    }
+    cv_blit(0, KEYS_Y);
+}
+
+/* ------------------------------------------------------------------ header and footer --- */
+static int32_t pill_w(const char *s) { return text_w(&FONT_T, s) + 10; }
+/* a state named for its button, filled when on; frac > 0: filled that far (ORBIT's countdown); flash: bright */
+static int32_t pill(int32_t x, const char *s, int on, float frac, int flash)
+{
+    int32_t w = pill_w(s);
+    if (on) {
+        cv_rect(x, 17, w, 15, flash ? C_BRIGHT : frac > 0.0f ? RGB(20, 70, 95) : C_PILL);
+        if (frac > 0.0f && !flash)
+            cv_rect(x, 17, (int32_t)((float)w * frac + 0.5f), 15, C_PILL);
+        cv_text(x + 5, 18, &FONT_T, s, C_BLACK);
+    } else {
+        cv_rect(x, 17, w, 1, C_RULE);
+        cv_rect(x, 31, w, 1, C_RULE);
+        cv_rect(x, 17, 1, 15, C_RULE);
+        cv_rect(x + w - 1, 17, 1, 15, C_RULE);
+        cv_text(x + 5, 18, &FONT_T, s, C_OFF);
+    }
+    return x + w + 4;
+}
+static void draw_header(void)
+{
+    char n[4], t[32], c[8];
+    int32_t x;
+    uint32_t i, act = dr_fx_active();
+    cv_begin(240, HEAD_H, C_BLACK);
+    slot_name(set.scene, n);
+    x = cv_text(3, 1, &FONT_B, n, C_LABEL);
+    cv_text(x + 5, 1, &FONT_B, dr_scene.name, scene_dirty ? C_WARN : C_BRIGHT);
+    t[0] = 0;                            /* the status, at the right: octave, Bluetooth, bodies and CPU */
+    if (set.octave) {
+        c[0] = set.octave < 0 ? '-' : '+';
+        c[1] = (char)('0' + (set.octave < 0 ? -set.octave : set.octave));
+        c[2] = 0;
+        text_cat(t, "OCT");
+        text_cat(t, c);
+        text_cat(t, "  ");
+    }
+    if (FM1B_BLE && plat_ble_connected())
+        text_cat(t, "BLE ");
+    if (FM1B_BLE_CENTRAL && plat_ble_device() == BLE_DEV_READY)
+        text_cat(t, "DEV ");
+    int_text((int32_t)dr_bodies(), c);
+    text_cat(t, c);
+    text_cat(t, "/8 ");
+    int_text((int32_t)plat_cpu_pct(), c);
+    text_cat(t, c);
+    text_cat(t, "%");
+    if (overload_seen)
+        text_cat(t, " LOAD");
+    x = 237 - text_w(&FONT_T, t);
+    cv_rect(x - 5, 0, 240 - x + 5, 17, C_BLACK);   /* a long name ends under it */
+    cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
+    x = pill(3, "SEL LATCH", set.latch, 0.0f, 0);
+    x = pill(x, "PLAY ORBIT", dr_orbit_on(), (float)ui.orbit_eighth * 0.125f, plat_ms() - ui.orbit_flash_t < 300u);
+    pill(x, "SEQ FRZ", dr_frozen(), 0.0f, 0);
+    for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */
+        cv_text(196 + (int32_t)i * 9, 18, &FONT_T, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
+    if (dr_morphing())                   /* the morph's progress, a bar along the bottom of the header */
+        cv_rect(0, HEAD_H - 2, (int32_t)(240.0f * dr_morph_pos()), 2, C_TEXT);
+    else
+        cv_rect(0, HEAD_H - 1, 240, 1, C_RULE);
+    cv_blit(0, 0);
+}
+static void knob_cell(int32_t x, uint32_t id)
+{
+    char t[16];
+    uint32_t v, mx;
+    int32_t w;
+    const felucca_font_t *f;
+    if (id == PID_NONE) {                /* nothing on this knob here */
+        cv_rect(x, 44, 12, 2, C_RULE);
+        return;
+    }
+    v = value_of(id);
+    mx = value_max(id);
+    cv_text(x, 18, &FONT_T, PM[id].label, C_LABEL);
+    value_text(id, t);
+    f = text_w(&FONT_M, t) <= 56 ? &FONT_M : text_w(&FONT_S, t) <= 56 ? &FONT_S : &FONT_XS;   /* as large as fits */
+    cv_text(x, f == &FONT_M ? 31 : f == &FONT_S ? 37 : 39, f, t, C_BRIGHT);
+    w = mx ? (int32_t)((v * 56u + mx / 2u) / mx) : 0;
+    cv_rect(x, 62, 56, 5, C_RULE);
+    cv_rect(x, 62, w, 5, C_TEXT);
+}
+static void draw_footer(void)
+{
+    char t[32];
+    uint32_t k;
+    cv_begin(240, FOOT_H, C_BLACK);      /* one transfer: the page band and the four knobs */
+    if (ui.dialog) {
+        char n[24];
+        slot_title(NFACTORY + ui.save_to, n);
+        cv_text(4, 0, &FONT_S, "SAVE SCENE TO", C_LABEL);
+        cv_text(4, 20, &FONT_M, n, C_BRIGHT);
+        cv_text(4, 50, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
+        cv_text(4, 69, &FONT_S, "PRESET PICKS THE SLOT", C_LABEL);
+        cv_blit(0, FOOT_Y);
+        return;
+    }
+    cv_rect(0, 0, 240, 14, C_BAND);      /* the page band: the button, the page, the SELECT arrows */
+    t[0] = 0;
+    if (ui.page > 0u)
+        text_cat(t, "< ");
+    text_cat(t, PAGES[ui.page].button);
+    if (ui.page != PG_HOME) {
+        text_cat(t, "  ");
+        text_cat(t, PAGES[ui.page].title);
+    }
+    if (ui.page < PG_COUNT - 1u)
+        text_cat(t, " >");
+    cv_text(4, 1, &FONT_T, t, C_TEXT);
+    t[0] = 0;
+    text_cat(t, MODEL_NAME[dr_scene.p[P_MODEL] % M_COUNT]);
+    text_cat(t, "  ");
+    text_cat(t, NOTE_NAME[set.root]);
+    text_cat(t, " ");
+    text_cat(t, SCALE_NAME[set.scale]);
+    cv_text(236 - text_w(&FONT_T, t), 1, &FONT_T, t, C_LABEL);
+    for (k = 0; k < 4u; k++)
+        knob_cell(3 + 60 * (int32_t)k, page_param(ui.page, k));
+    cv_blit(0, FOOT_Y);
+}
+
+/* a screen reader that has just started listening (or asks) hears the page */
+static void speak(void)
+{
+    char t[120], v[16];
+    uint32_t i;
+    if (ann_on() && ann_where()) {
+        t[0] = 0;
+        text_cat(t, APP_NAME ". ");
+        text_cat(t, dr_scene.name);
+        text_cat(t, ". ");
+        text_cat(t, PAGES[ui.page].title);
+        for (i = 0; i < 4u; i++) {
+            uint32_t id = page_param(ui.page, i);
+            if (id == PID_NONE)
+                continue;
+            text_cat(t, ". ");
+            text_cat(t, PM[id].label);
+            text_cat(t, " ");
+            value_text(id, v);
+            text_cat(t, v);
+        }
+        text_cat(t, ". BODIES ");          /* the status too: what the header shows */
+        int_text((int32_t)dr_bodies(), v);
+        text_cat(t, v);
+        text_cat(t, ". CPU ");
+        int_text((int32_t)plat_cpu_pct(), v);
+        text_cat(t, v);
+        text_cat(t, "%");
+        ann_say(t, 0, ANN_NOW);
+    }
+    ann_tick(plat_ms());
+}
+
+static void ui_overload(void) { overload_seen = 1; }
+
+static void ui_init(void)
+{
+    uint32_t i;
+    touch_on(1);
+    lcd_fill(0, 0, 240, 240, C_BLACK);
+    lut_build();
+    spal_build();
+    stars_init();
+    keys_geom();
+    ui.keys_sig = 0xFFFFFFFFu;
+    for (i = 0; i < sizeof phos; i++)
+        phos[i] = 0;
+    for (i = 0; i < DR_NV; i++)
+        ui.ang[i] = 0.125f * (float)i;
+    ui.page = PG_HOME;
+    ui.sel_slot = -1;
+    ui.redraw_head = ui.redraw_foot = 1;
+    ui.sky_t = 0;
+}
+
+static void ui_frame(void)
+{
+    static uint32_t last_ble, last_bodies, last_states, last_dirty, last_cpu;
+    uint32_t now = plat_ms(), nb = dr_bodies(), dirty = (uint32_t)(set_dirty | scene_dirty << 1), from, to, moves;
+    uint32_t states, sent, sig, cpu = plat_cpu_pct();
+    char a[16], b[8];                    /* "C#-1 > D#-1" at most */
+    CRUMB(2);
+    input();
+    CRUMB(3);
+    speak();
+    CRUMB(4);
+    if (FM1B_BLE_CENTRAL) {
+        static int found;
+        int n = ui.looking ? btdev_count() : 0, ev;
+        btdev_page(ui.looking && !set.ble_off);
+        if (n > found && btdev_pick() < n)
+            ble_device_say();
+        found = n;
+        while ((ev = btdev_event()) != BTDEV_NONE)
+            if (ev == BTDEV_CONNECTED || ev == BTDEV_NO_ANSWER || ev == BTDEV_LOST)
+                ui_say("DEVICE", btdev_word(ev));
+    }
+    CRUMB(5);
+    if (pc_pending >= 0) {
+        int32_t pc = pc_pending;
+        pc_pending = -1;
+        scene_go((uint32_t)pc % NSLOTS, 1);
+    }
+    if (midi_edited) {
+        midi_edited = 0;
+        ui.redraw_foot = 1;
+    }
+    moves = dr_orbit_moved(&from, &to);
+    if (moves != ui.orbit_moves) {       /* ORBIT moved a body: say where, flash the pill */
+        ui.orbit_moves = moves;
+        ui.orbit_flash_t = now;
+        ui.redraw_head = 1;
+        note_text((int32_t)from, a);
+        note_text((int32_t)to, b);
+        text_cat(a, " > ");
+        text_cat(a, b);
+        ui_say("ORBIT", a);
+    }
+    {                                    /* the countdown to the next ORBIT move, in eighths; the flash ending */
+        uint8_t e = (uint8_t)(dr_orbit_next() * 8.0f);
+        if (e != ui.orbit_eighth) {
+            ui.orbit_eighth = e;
+            ui.redraw_head = 1;
+        }
+    }
+    states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2
+           | (uint32_t)dr_morphing() << 3 | (uint32_t)overload_seen << 4 | dr_fx_active() << 5
+           | (uint32_t)(now - ui.orbit_flash_t < 300u) << 9;
+    if (states != last_states || dirty != last_dirty || (dr_morphing() && now - ui.head_t > 100u)) {
+        last_states = states;
+        last_dirty = dirty;
+        ui.redraw_head = 1;
+    }
+    if ((uint32_t)(plat_ble_connected() | plat_ble_device() << 1) != last_ble) {
+        last_ble = (uint32_t)(plat_ble_connected() | plat_ble_device() << 1);
+        ui.redraw_head = 1;
+    }
+    if (now - ui.stat_t >= 10000u && (cpu > ui.stat_cpu + 4u || cpu + 4u < ui.stat_cpu || nb != ui.stat_bodies)) {
+        char t[80], v[12];               /* the load, to the log (fm1_remote.py log): a capability probe */
+        ui.stat_t = now;
+        ui.stat_cpu = (uint8_t)cpu;
+        ui.stat_bodies = (uint8_t)nb;
+        t[0] = 0;                        /* short: the log keeps about 40 characters of a line */
+        text_cat(t, "cpu ");
+        int_text((int32_t)cpu, v);
+        text_cat(t, v);
+        text_cat(t, "% b");
+        int_text((int32_t)nb, v);
+        text_cat(t, v);
+        text_cat(t, " ");
+        text_cat(t, MODEL_NAME[dr_scene.p[P_MODEL] % M_COUNT]);
+        text_cat(t, " s");
+        int_text((int32_t)set.scene, v);
+        text_cat(t, v);
+        text_cat(t, " x");
+        int_text((int32_t)(plat_xruns() & 0xFFFFu), v);
+        text_cat(t, v);
+        plat_log(t);
+    }
+    if (nb != last_bodies || (cpu != last_cpu && now - ui.head_t > 1000u)) {   /* the status: bodies, CPU */
+        last_bodies = nb;
+        last_cpu = cpu;
+        ui.redraw_head = 1;
+    }
+    sig = keys_sig();
+    if (sig != ui.keys_sig) {
+        ui.keys_sig = sig;
+        ui.redraw_keys = 1;
+    }
+    sent = 0;
+    if (ui.redraw_head) {
+        ui.redraw_head = 0;
+        ui.head_t = now;
+        CRUMB(6);
+        draw_header();
+        sent = 1;
+    }
+    if (ui.redraw_foot) {
+        ui.redraw_foot = 0;
+        ui.foot_t = now;
+        CRUMB(7);
+        draw_footer();
+        sent = 1;
+    }
+    if (ui.redraw_keys) {
+        ui.redraw_keys = 0;
+        CRUMB(14);
+        keys_draw();
+        sent = 1;
+    }
+    if (now - ui.sky_t >= 40u && !sent) {   /* the sky, 25 times a second; never behind a wait for the footer's
+                                             * transfer (the keys are read between frames) */
+        ui.sky_t = now;
+        CRUMB(8);
+        sky_draw();
+    }
+}

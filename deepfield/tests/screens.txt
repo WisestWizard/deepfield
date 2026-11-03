@@ -1,0 +1,63 @@
+# The manual's screenshots (deepfield/docs/img): ./build.sh deepfield --host, then
+#   deepfield/build/host/deepfield_host deepfield/tests/screens.txt deepfield/docs/img
+wait 300
+midi C0 05
+wait 9000
+shot screen-home.png
+tap GLO
+spin K3 1
+tap HOME
+wait 2500
+shot screen-mouth.png
+tap GLO
+spin K3 1
+tap HOME
+wait 2500
+shot screen-orbits.png
+tap GLO
+spin K3 1
+tap HOME
+wait 2500
+shot screen-nebula.png
+tap GLO
+spin K3 1
+tap HOME
+wait 2500
+shot screen-scope.png
+tap GLO
+spin K3 -4
+tap HOME
+tap PLAY
+tap SEQ
+wait 1500
+shot screen-frozen.png
+tap SEQ
+tap PLAY
+tap EDIT
+wait 1500
+shot screen-body.png
+spin SELECT 1
+wait 1500
+shot screen-noise.png
+tap ENV
+wait 1500
+shot screen-envelope.png
+tap FX
+wait 1500
+shot screen-fx-ensemble.png
+spin SELECT 2
+wait 1500
+shot screen-fx-reverb.png
+press FX
+wait 1500
+shot screen-fxlayer.png
+release FX
+tap ARP
+wait 1500
+shot screen-orbit.png
+tap GLO
+wait 1500
+shot screen-global.png
+tap SAVE
+wait 1500
+shot screen-save.png

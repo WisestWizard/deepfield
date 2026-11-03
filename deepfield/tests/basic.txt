@@ -1,0 +1,551 @@
+# DEEP FIELD in the host simulator: ./build.sh deepfield --host, then
+#   deepfield/build/host/deepfield_host deepfield/tests/basic.txt deepfield/build/host
+# parameter numbers (expect pN): 0 MODEL, 1 MASS, 2 DRIFT, 3 SPACE, 4 TIDE, 5 SHAPE, 8 SWELL, 9 FADE, 18 SHIMMER
+wait 700
+expect scene 0
+expect bodies 3
+expect latch 3
+expect latchmode 1
+expect page 0
+expect view 0
+expect dirty 0
+shot boot.png
+# SEL held a second: every body let go; LATCH stays on
+press SEL
+wait 1100
+release SEL
+wait 50
+expect latchmode 1
+out
+wait 7000
+expect bodies 0
+expect latch 0
+# LATCH on (the default): a key strikes a body that stays; the note out on the way down, no note off on the way up
+key 7 down
+wait 100
+expect sounding60 1
+expect note 60
+expect bodies 1
+expect_out USB 90 3C 64
+out
+shot key.png
+key 7 up
+wait 200
+expect sounding60 1
+expect latch 1
+expect_no_out USB 80 3C 00
+out
+key 9 down
+wait 40
+key 9 up
+wait 200
+expect latch 2
+expect sounding62 1
+shot latched.png
+# the key again lets its body go: the note off from the engine, no new note on
+key 7 down
+wait 40
+key 7 up
+wait 200
+expect sounding60 0
+expect sounding62 1
+expect_out USB 80 3C 00
+expect_no_out USB 90 3C 64
+out
+press SEL
+wait 1100
+release SEL
+wait 100
+expect latch 0
+expect sounding62 0
+expect_out USB 80 3E 00
+wait 7000
+expect bodies 0
+# a tap of SEL: LATCH off, a body sounds while its key is held
+tap SEL
+wait 50
+expect latchmode 0
+key 7 down
+wait 100
+expect sounding60 1
+expect latch 0
+key 7 up
+wait 200
+expect sounding60 0
+expect_out USB 80 3C 00
+out
+wait 7000
+expect bodies 0
+# LATCH off with bodies latched: a held key's body goes on sounding while held, the others are let go
+tap SEL
+wait 50
+expect latchmode 1
+key 7 down
+wait 40
+key 7 up
+wait 100
+key 9 down
+wait 100
+expect latch 2
+tap SEL
+wait 100
+expect latchmode 0
+expect latch 0
+expect sounding60 0
+expect sounding62 1
+key 9 up
+wait 200
+expect sounding62 0
+tap SEL
+wait 50
+expect latchmode 1
+wait 7000
+expect bodies 0
+# the velocity setting (GLO, then SELECT to MIDI): off, every body lands at 100; on, as the key landed
+tap SEL
+key 7 down 60
+wait 100
+expect_out USB 90 3C 64
+out
+key 7 up
+wait 7000
+tap GLO
+wait 30
+expect page 9
+spin SELECT 1
+wait 30
+expect page 10
+spin K4 1
+wait 30
+expect velon 1
+key 7 down 60
+wait 100
+expect_out USB 90 3C 3C
+out
+key 7 up
+spin K4 -1
+spin K2 -1
+wait 30
+expect ch_out 1
+spin K2 1
+wait 30
+expect ch_out 2
+spin K2 -5
+wait 30
+expect ch_out 1
+tap HOME
+wait 30
+expect page 0
+wait 7000
+expect bodies 0
+# the scale (GLOBAL, KNOB 1): C sharp snaps to C in C MAJOR; CHROMA plays it as it is
+key 8 down
+wait 100
+expect note 60
+key 8 up
+wait 7000
+tap GLO
+spin K1 -1
+wait 30
+expect scale 0
+key 8 down
+wait 100
+expect note 61
+key 8 up
+spin K1 1
+wait 30
+expect scale 1
+tap HOME
+wait 7000
+expect bodies 0
+# octave: OCT+ half-lit one octave up, lit two up; OCT- the same down
+expect octlit 0
+tap OCT+
+wait 800
+expect octave 1
+expect octlit 8
+key 7 down
+wait 100
+expect note 72
+key 7 up
+tap OCT+
+wait 800
+expect octave 2
+expect octlit 2
+tap OCT-
+tap OCT-
+tap OCT-
+wait 800
+expect octave -1
+expect octlit 4
+tap OCT-
+wait 800
+expect octlit 1
+tap OCT+
+tap OCT+
+wait 800
+expect octave 0
+expect octlit 0
+wait 7000
+expect bodies 0
+tap SEL
+wait 50
+expect latchmode 1
+# MIDI notes hold while they are on: nine held, eight bodies (the oldest stolen); all notes off lets go
+midi 90 30 64
+midi 90 32 64
+midi 90 34 64
+midi 90 35 64
+midi 90 37 64
+midi 90 39 64
+midi 90 3B 64
+midi 90 3C 64
+midi 90 3E 64
+wait 100
+expect bodies 8
+expect sounding62 1
+wav chord.wav
+wait 2000
+wavstop
+expect peak_db_min -18
+midi B0 7B 00
+wait 200
+expect sounding62 0
+wait 7000
+expect bodies 0
+# the pages: a button always lands on the same page, SELECT steps between them, a page stays put
+tap EDIT
+wait 30
+expect page 1
+tap EDIT
+wait 30
+expect page 1
+spin SELECT 1
+wait 30
+expect page 2
+tap ENV
+wait 30
+expect page 3
+tap LFO
+wait 30
+expect page 4
+tap FX
+wait 30
+expect page 5
+tap FX
+wait 30
+expect page 5
+spin SELECT 1
+wait 30
+expect page 6
+spin SELECT 1
+wait 30
+expect page 7
+spin K4 -3
+wait 30
+expect p3 55
+tap ARP
+wait 30
+expect page 8
+tap GLO
+wait 30
+expect page 9
+spin SELECT 1
+wait 30
+expect page 10
+spin SELECT 1
+wait 30
+expect page 10
+spin SELECT -3
+wait 30
+expect page 7
+tap EDIT
+wait 8500
+expect page 1
+tap HOME
+wait 30
+expect page 0
+spin SELECT -1
+wait 30
+expect page 0
+# the views (GLOBAL, KNOB 3)
+tap GLO
+spin K3 1
+wait 30
+expect view 1
+tap HOME
+wait 300
+shot mouth.png
+tap GLO
+spin K3 1
+wait 30
+expect view 2
+tap HOME
+wait 300
+shot orbits.png
+tap GLO
+spin K3 1
+wait 30
+expect view 3
+tap HOME
+wait 300
+shot nebula.png
+tap GLO
+spin K3 1
+wait 30
+expect view 4
+tap HOME
+wait 300
+shot scope.png
+tap GLO
+spin K3 -4
+wait 30
+expect view 0
+tap HOME
+wait 30
+# the knobs: HOME's four forces, ALGO the model
+expect p1 48
+spin K1 5
+wait 50
+expect p1 53
+expect dirty 1
+shot hud.png
+spin ALGO 1
+wait 50
+expect model 1
+spin ALGO -1
+wait 50
+expect model 0
+# PRESET scrolls; the scene it rests on loads, as a morph; nothing loads while it keeps turning
+spin PRESET 1
+wait 300
+expect scene 0
+spin PRESET 1
+wait 300
+expect scene 0
+spin PRESET -1
+wait 800
+expect scene 1
+expect morphing 1
+expect model 1
+wait 5000
+expect morphing 0
+expect bodies 4
+expect latch 4
+expect latchmode 1
+expect dirty 1
+# FX held: the lowest white keys switch the effects, start no bodies, and the switches are the scene's
+press FX
+wait 100
+key 0 down
+wait 30
+key 0 up
+wait 30
+expect fxbypass 1
+key 2 down
+wait 30
+key 2 up
+wait 30
+expect fxbypass 3
+shot fxlayer.png
+key 2 down
+wait 40
+key 2 up
+wait 30
+expect fxbypass 1
+release FX
+wait 200
+expect page 0
+expect bodies 4
+# the save dialog: PRESET picks a user slot, SAVE saves the settings and the scenes, HOME cancels
+tap SAVE
+wait 30
+expect dialog 1
+spin PRESET 2
+wait 30
+tap HOME
+wait 30
+expect dialog 0
+expect scene 1
+tap SAVE
+wait 30
+spin PRESET 2
+wait 30
+shot save.png
+tap SAVE
+wait 50
+expect dialog 0
+expect scene 18
+expect dirty 0
+expect store_writes 2
+reboot
+wait 700
+expect scene 18
+expect bodies 4
+expect model 1
+expect fxbypass 1
+midi C0 00
+wait 300
+expect fxbypass 0
+reboot
+wait 700
+expect scene 18
+expect fxbypass 1
+midi C0 00
+wait 300
+midi C0 12
+wait 300
+expect fxbypass 1
+press FX
+wait 100
+key 0 down
+wait 40
+key 0 up
+wait 30
+expect fxbypass 0
+expect dirty 1
+release FX
+wait 200
+# a save that fails leaves SAVE lit
+spin K1 1
+wait 50
+expect dirty 1
+flash_fail 1
+tap SAVE
+wait 30
+tap SAVE
+wait 50
+expect dialog 0
+expect dirty 1
+flash_fail 0
+tap SAVE
+wait 30
+tap SAVE
+wait 50
+expect dirty 0
+# ORBIT and FREEZE
+tap PLAY
+wait 30
+expect orbit 1
+tap SEQ
+wait 30
+expect freeze 1
+wait 300
+shot frozen.png
+tap SEQ
+tap PLAY
+wait 30
+expect orbit 0
+expect freeze 0
+# PLAY held opens the ORBIT page without running ORBIT
+press PLAY
+wait 700
+release PLAY
+wait 30
+expect page 8
+expect orbit 0
+tap HOME
+wait 30
+expect page 0
+# MIDI: a controller moves a force, a program change loads a scene
+midi B0 10 40
+wait 50
+expect p1 64
+midi C0 03
+wait 100
+expect scene 3
+expect model 3
+wait 5000
+expect bodies 4
+# the noise layer: alone, with no bodies; C4 under FX switches it off and back to its level
+press SEL
+wait 1100
+release SEL
+wait 7000
+expect bodies 0
+expect noise 0
+midi B0 14 50
+wait 1500
+expect p28 80
+expect noise 1
+press FX
+wait 100
+key 7 down
+wait 40
+key 7 up
+wait 40
+release FX
+wait 200
+expect p28 0
+expect bodies 0
+wait 6000
+expect noise 0
+press FX
+wait 100
+key 7 down
+wait 40
+key 7 up
+wait 40
+release FX
+wait 1500
+expect p28 80
+shot noise.png
+midi B0 14 00
+wait 6000
+# the MOUTH view with six bodies whose pills collide: the spacing settles (an unbounded retry here hung the main
+# loop until the watchdog, 2026-11-01)
+tap GLO
+wait 30
+spin K3 1
+wait 30
+expect view 1
+tap HOME
+wait 30
+midi 90 29 64
+wait 100
+midi 90 28 64
+wait 100
+midi 90 40 64
+wait 100
+midi 90 2A 64
+wait 100
+midi 90 2B 64
+wait 300
+expect bodies 5
+midi 90 2D 64
+wait 500
+expect bodies 6
+midi B0 7B 00
+tap GLO
+wait 30
+spin K3 -1
+wait 30
+expect view 0
+tap HOME
+wait 7000
+expect bodies 0
+# the later models: ALGO reaches all eight, each sounds
+spin ALGO 7
+wait 50
+expect model 7
+midi 90 3C 64
+wait 400
+expect sounding60 1
+spin ALGO -3
+wait 400
+expect model 4
+expect sounding60 1
+spin ALGO -4
+wait 50
+expect model 0
+midi 80 3C 00
+wait 7000
+# the screen reader hears the page
+listen
+wait 100
+said DEEP FIELD
+tap EDIT
+wait 30
+where
+wait 100
+said BODY
