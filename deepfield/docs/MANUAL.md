@@ -162,10 +162,11 @@ and value large over the view.
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II, ENSEMBLE) | ENS MIX | – | – |
 | FX, then SELECT | DELAY | DLY TIME | DLY FDBK | DLY MIX (the delay's level) | – |
 | FX, then SELECT twice | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
-| ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM) | by MODE: CHANCE, BODIES (SCATTER), or GATE (ARP) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), or ORDER (ARP) |
+| ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP, CYCLE) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM; EXT while MIDI clock comes) | by MODE: CHANCE, BODIES (SCATTER), or GATE (ARP) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), ORDER (ARP), or CHORDS (CYCLE) |
 | ARP, then SELECT | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
 | GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (0 to 30 s; NOW) |
 | GLO, then SELECT | MIDI | IN CH (OMNI, 1..16) | OUT CH (1..16) | LOCAL | VELOCITY |
+| GLO, then SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (0 to -18 dB, the recording's level) | CLOCK OUT | – |
 
 **The models** (ALGO, or KNOB 1 on BODY): SOLAR is eight harmonics that breathe, each on its own slow cycle; SHAPE
 moves from odd harmonics (hollow) through all of them to even ones (organ-like). VOID is three detuned saws and a
@@ -220,6 +221,10 @@ PLAY CHORD, PLAY SCATTER, PLAY ARP).
 - **CHORD**: every latched body moves together by the same number of scale steps, up to DISTANCE, so the whole
   chord shifts along the scale to a related one; with HOME PULL the chord is drawn back to where it was struck.
 - **SCATTER**: BODIES of them move at once, each its own way, the timing looser (give or take a half).
+- **CYCLE**: the chord walks a progression. Every EVERY, with CHANCE, every latched body moves to the next degree
+  of the CHORDS progression from where it was struck (I IV V I, I VI IV V, I V VI IV, I VI III VII, I IV I V,
+  I II V, I III VI IV, I VII IV: degrees of the scale, so in a minor key I IV V reads as i iv v), and the
+  destination lines show the whole chord going. PLAY again starts it from the first chord.
 - **ARP**: a runner. The latched bodies keep droning and a lead (section 4) steps through their notes, low to
   high, at RATE (40 to 240 BPM, a step an eighth), held for GATE of the step (at the top, legato), in ORDER (UP,
   DOWN, UP DOWN, RANDOM, PLAYED: the order the keys were struck), over OCTAVES (ORBIT 2). The runner remembers
@@ -228,6 +233,12 @@ PLAY CHORD, PLAY SCATTER, PLAY ARP).
 
 HOME PULL (ORBIT 2) is the chance that a body (in CHORD, the chord) is pulled back to the key it was struck at.
 Bodies held over MIDI and leads are left alone. Each move goes out over MIDI as a note off and a note on.
+
+**MIDI clock.** While clocks come in (USB, TRS or Bluetooth), the runner steps every twelve of them (an eighth) and
+RATE reads EXT with the tempo heard; EVERY counts in whole beats at that tempo, so ORBIT's moves land on the bar.
+Start resets the runner to its first note. Two seconds without a clock and the knobs' own time returns. CLOCK OUT
+(USB page) sends 24 clocks a beat, with start and stop, while the runner runs from RATE, so a drum machine can
+follow the FM-1.
 
 **Where it is going.** A move is chosen when the countdown starts, not when it ends: from then on the body's beam
 grows a line from its top toward the destination key as the pill fills, a ghost of the beam stands at the
@@ -300,6 +311,12 @@ delay).
 
 ---
 
+**The crossfade by hand.** Hold GLO and lean on any key: how hard you press is how far the sound blends toward the
+next scene (the slot after this one), the header's bar showing how far and the screen naming the scene and the
+percentage. Let the key go and the blend stays where it is, between two scenes; let GLO go and it stays there
+until the next scene loads. The keys play nothing while GLO is held, and the bodies are left alone: only the
+values blend, never the model.
+
 ## 10. The views
 
 VIEW on the GLOBAL page picks the view. BEAMS is the one to play by; the others are skins over the same keys.
@@ -326,7 +343,7 @@ Everything in the view but MOUTH is drawn on a phosphor that fades, so motion le
 
 ## 11. MIDI and Bluetooth
 
-MIDI comes in over USB, Bluetooth and the TRS jack, on IN CH (OMNI by default). A MIDI note holds a body while it
+MIDI comes in over USB, Bluetooth and the TRS jack, on IN CH (OMNI by default), with clock (section 7). A MIDI note holds a body while it
 is on and lets it go at its note off (the sustain pedal, CC 64, keeps them). Poly and channel pressure brighten.
 The keys go out over USB and Bluetooth on OUT CH: a key down is a note on, and the note off goes when its body is
 let go (at the key's release, or later if it was latched). ORBIT's moves go out too. LOCAL off keeps the keys from the engine: they only send MIDI.
@@ -334,6 +351,16 @@ let go (at the key's release, or later if it was latched). ORBIT's moves go out 
 Controllers: 1 wobble (wheel), 7 volume, 64 sustain, 16 MASS, 17 DRIFT, 18 SPACE, 19 TIDE, 20 NOISE LEVEL, 74 MASS, 71 SHAPE,
 72 FADE, 73 SWELL, 91 SPACE, 93 ENS MIX, 94 DLY MIX, 120 silence now, 121 controllers to rest, 123 every body let
 go. A program change loads a scene (0 = F1, 16 = U1).
+
+**Recording over USB.** The FM-1 is a USB audio input (DEEP FIELD FM-1, two channels at 44.1 kHz) to any
+computer on the cable. SPEAKER on the USB page (GLO, then SELECT twice) says what the speaker and headphones do
+meanwhile. **AUTO** (the factory setting): the moment a program on the computer takes the input (an armed track
+in Live, a recorder), the speaker and headphones go silent and the header says USB MUTE; the recording gets the
+sound at full level whatever MASTER says, so MASTER is the computer's business; when the program lets the input
+go, the speaker comes back at MASTER. **ON**: the speaker and the recording both at MASTER, as the FM-1 shipped.
+**OFF**: the speaker silent, the recording at full level. The header says USB while a computer records. **USB LEVEL** trims the recording while a computer takes it
+(-6 dB from the factory, so a full chord peaks about 6 dB under full scale in the recorder); it never touches the
+speaker.
 
 **Bluetooth:** Bluetooth MIDI starts with the FM-1. A computer, phone or tablet connects to it as DEEP FIELD FM-1.
 To connect the FM-1 to a Bluetooth MIDI keyboard or controller:

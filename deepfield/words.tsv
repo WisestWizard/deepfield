@@ -117,3 +117,17 @@ CRACKLE	crackle
 PLAY CHORD	play chord
 PLAY SCATTER	play scatter
 PLAY ARP	play arp
+USB	usb
+SPEAKER	speaker
+AUTO	auto
+USB MUTE	usb, speaker muted
+USB LEVEL	usb level
+DB	decibels
+CLOCK OUT	clock out
+EXT	external clock
+CYCLE	cycle
+CHORDS	chords
+PLAY CYCLE	play cycle
+CROSSFADE	crossfade
+LEAN ON A KEY	lean on a key
+HELD	held

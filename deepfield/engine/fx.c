@@ -40,7 +40,16 @@ static int16_t *shim;                    /* the plate's output, read back an oct
 static uint32_t shim_pos;
 static float shim_ph, shim_lp, shim_last, frz_g = 1.0f;   /* frozen, the cloud comes up to the level the dry had */
 
-static float lim_gain = 1.0f;
+static float lim_gain = 1.0f, lim_min = 1.0f;
+#define LIM_LA 64u                       /* the limiter's lookahead, 1.5 ms: a power of two */
+static float lim_dl[LIM_LA], lim_dr[LIM_LA], lim_tgt = 1.0f;
+static uint32_t lim_pos;
+float fx_lim_min(void)
+{
+    float m = lim_min;
+    lim_min = 1.0f;
+    return m;
+}
 static uint32_t ens_tail, dly_tail, rev_tail;   /* blocks a stage still runs once nothing passes through it: with its
                                                  * input and output silent that long, it holds only zeros and rests */
 static uint32_t dly_live, rv_live;       /* the stage's lines had something in them last block */
@@ -148,7 +157,10 @@ void fx_init(void *arena)
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
     dly_read = 4410.0f;
     dly_lp = dly_dc_x = dly_dc_y = rv_hp_l = rv_hp_r = 0.0f;
-    lim_gain = 1.0f;
+    lim_gain = lim_tgt = 1.0f;
+    for (i = 0; i < LIM_LA; i++)
+        lim_dl[i] = lim_dr[i] = 0.0f;
+    lim_pos = 0;
 }
 
 void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensemble and the delay, in place */
@@ -439,20 +451,30 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
     }
 }
 
-void fx_post(float *l, float *r, uint32_t n)   /* the limiter: instant attack, 250 ms release, so nothing the
-                                                * effects add can clip */
+void fx_post(float *l, float *r, uint32_t n)   /* the limiter: 1.5 ms of lookahead, so the gain ramps down ahead of
+                                                * a peak instead of cutting into it (a cut is a click: measured, eight
+                                                * GLASS bodies held it 4 dB down with an instant attack), 250 ms
+                                                * release, so nothing the effects add can clip */
 {
     uint32_t i;
-    {
-        float rel = 1.0f / (0.25f * FS), thr = 0.95f;   /* a slow release: the hall adds on top instead of pumping the dry */
-        for (i = 0; i < n; i++) {
-            float pk = fm_fabsf(l[i]) > fm_fabsf(r[i]) ? fm_fabsf(l[i]) : fm_fabsf(r[i]);
-            if (pk * lim_gain > thr)
-                lim_gain = thr / pk;
-            else
-                lim_gain += (1.0f - lim_gain) * rel;
-            l[i] *= lim_gain;
-            r[i] *= lim_gain;
-        }
+    float rel = 1.0f / (0.25f * FS), thr = 0.95f, ka = 4.0f / (float)LIM_LA;   /* at the peak the gain is 98 % there */
+    for (i = 0; i < n; i++) {
+        float pk = fm_fabsf(l[i]) > fm_fabsf(r[i]) ? fm_fabsf(l[i]) : fm_fabsf(r[i]);
+        float need = pk > thr ? thr / pk : 1.0f, ol = lim_dl[lim_pos], or_ = lim_dr[lim_pos];
+        if (need < lim_tgt)
+            lim_tgt = need;
+        else
+            lim_tgt += (1.0f - lim_tgt) * rel;
+        if (lim_gain > lim_tgt)
+            lim_gain += (lim_tgt - lim_gain) * ka;
+        else
+            lim_gain = lim_tgt;
+        if (lim_gain < lim_min)
+            lim_min = lim_gain;
+        lim_dl[lim_pos] = l[i];
+        lim_dr[lim_pos] = r[i];
+        lim_pos = (lim_pos + 1u) & (LIM_LA - 1u);
+        l[i] = ol * lim_gain;
+        r[i] = or_ * lim_gain;
     }
 }

@@ -42,3 +42,4 @@ void fx_hall(const float *l, const float *r, float *outl, float *outr, uint32_t 
 void fx_post(float *l, float *r, uint32_t n);   /* the limiter */
 void fx_peaks(float *ens, float *dly, float *rev);   /* each stage's output peak in the last block it ran */
 uint32_t fx_running(void);               /* the stages not at rest: 1 ensemble, 2 delay, 4 reverb */
+float fx_lim_min(void);                 /* the limiter's deepest gain since the last call, 0..1 (1: idle) */

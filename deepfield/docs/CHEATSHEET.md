@@ -21,9 +21,9 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | LFO | MOTION page | |
 | FX | The effects pages: ENSEMBLE, then SELECT for DELAY and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off, C4 = the noise layer, shown large (saved with the scene) |
 | ARP | ORBIT page (SELECT for ORBIT 2) | |
-| GLO | GLOBAL page (SELECT for MIDI) | |
+| GLO | GLOBAL page (SELECT for MIDI, again for USB) | Lean on a key: its pressure crossfades toward the next scene; let go and the blend stays |
 | SEL | LATCH on / off (lit while on) | 1 s: every body let go |
-| PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD and SCATTER (several move together), red ARP (a runner of leads over the bed, on after the bed is let go); the pill fills toward the next move, a line reaches from a beam toward where it is going | ORBIT page |
+| PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD, SCATTER and CYCLE (the chord moves: along the scale, scattered, or through a progression), red ARP (a runner of leads over the bed, on after the bed is let go); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | ORBIT page |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
@@ -36,7 +36,7 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 ## Encoders
 | Encoder | Does |
 | --- | --- |
-| SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, FX ENSEMBLE, FX DELAY, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI) |
+| SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, FX ENSEMBLE, FX DELAY, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI, USB) |
 | PRESET | Scroll the scenes (the presets); the one you stop on morphs in over MORPH seconds |
 | ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs |
@@ -55,10 +55,11 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
 | FX DELAY | DLY TIME | DLY FDBK | DLY MIX | – |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
-| ORBIT | MODE | WANDER, CHORD, SCATTER: EVERY; ARP: RATE (BPM) | CHANCE; SCATTER: BODIES; ARP: GATE | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER |
+| ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE: EVERY; ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS (the progression) |
 | ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |
 | GLOBAL | SCALE | ROOT | VIEW | MORPH |
 | MIDI | IN CH | OUT CH | LOCAL | VELOCITY |
+| USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while the runner runs from RATE) | – |
 
 ## Models
 | Model | What | MASS | SHAPE |

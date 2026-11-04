@@ -15,6 +15,9 @@
 #define APP_BTDEV                        /* Bluetooth MIDI devices (lib/btdev.h) */
 #define APP_BLE_AT_BOOT (!df_ble_off())  /* Bluetooth at power-on: as the player left it (REC held) */
 #define APP_OVERLOAD                     /* the render over 90 % of its time: the engine sheds a body */
+#define APP_GAIN(m) df_gain(m)           /* the speaker's gain from MASTER: none while a computer records over USB and
+                                          * SPEAKER is AUTO (the USB audio input then gets the render at full level) */
+uint32_t df_gain(uint32_t m);
 int df_ble_off(void);
 void app_overload(void);
 

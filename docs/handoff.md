@@ -308,11 +308,41 @@ variation, maybe a real arp"; a three-persona review first, then four steps):**
    octave, scale, MIDI) and stays lit all session, so it carries little; the bed at mid under LATCH off is a
    choice; whether the destination light is worth an LED at all.
 
-Scenes grew by 15 bytes (bank SCN4; SCN3 and SCN2 banks migrate through one generic unpack-from-the-end). 223
+6. *Recording over USB* (Kyle, recording into Live: "make the FM-1 know when it is hooked up so it doesn't make
+   noise in the speaker"): a SPEAKER setting on a USB page under GLO (ON / AUTO / OFF, settings DEF4 with DEF3
+   read and brought up). AUTO: the app's `APP_GAIN` returns 0 for the speaker while a computer records, with
+   `plat_usb_audio_full` on so the USB input gets the render at full level; the header says USB MUTE. The stream
+   state is usb.c's `uac.feed` (alt 1 and the host reading), read from the app because it is compiled in the same
+   unity unit; plat.h has no word for it: a `plat_usb_audio_in_use()` belongs upstream. The host simulator takes
+   `expect usbrec1` / `usbrec0` to pretend.
+
+7. *The limiter and the recording's level* (Kyle, recording: "clipping type noises", redlining in Live, heard
+   on the unit too): measured in the simulator (`expect limiter`, the limiter's deepest gain per half second):
+   eight GLASS bodies on F3 held the old limiter 1.5-4 dB into reduction with an instant attack, a hard clipper on
+   every peak, the same in the 11-02 build (the renders were identical); over USB at full level it reads
+   -0.13 dBFS. Now the limiter has 1.5 ms of lookahead (64 samples, the gain 98 % of the way down when the peak
+   comes out) and the same 250 ms release; goldens rewritten (every scene, by a hair). And USB LEVEL on the USB
+   page, -6 dB from the factory, trims the render only while a computer records with SPEAKER not ON, so the
+   recording keeps headroom and the speaker loses nothing. The USB ring's underruns are in the log line (`uN`)
+   for the day the deep ring is needed; none were seen.
+
+8. *From the firmware hub comparison* (Kyle: "ok to all"): **MIDI clock** in (F8/FA/FB/FC through app.c to
+   `dr_clock*`): the runner steps every 12 clocks, ORBIT's EVERY counts whole beats at the followed tempo, RATE
+   reads EXT, two seconds without a clock restores the knobs; **CLOCK OUT** (USB page, setting) sends 24 a beat
+   with start/stop while the runner runs from RATE. **CYCLE**, a fifth ORBIT mode: the chord walks one of eight
+   progressions as scale degrees from where it was struck (CHORDS knob, `PROG[]`), the destination lines showing
+   the whole move. **The crossfade by hand**: GLO held, a key's pressure blends the heard values toward the next
+   scene (`dr_morph_hold`: pstart from what is heard, ptarget the scene, morph_step 0), the blend staying where it
+   is left; the keys play nothing while GLO is held. **The browser emulator** builds (`./build.sh deepfield
+   --web`, Emscripten from Homebrew, 6.0.13) into deepfield/build/emu; there is no git remote, so nothing is
+   published: `base/tools/publish_site.sh` is the path once the app has a GitHub repository.
+
+Scenes grew by 15 bytes (bank SCN4; SCN3 and SCN2 banks migrate through one generic unpack-from-the-end). 276
 simulator checks (basic.txt: the lead layer, the three modes and the runner with pending counts and MIDI out,
 gust counts, FREEZE holding the weather), goldens rewritten (the beds changed: hpk, DUCK 30 by default, the
 factory beds), scene RMS -12.7 to -17.0, sanitizer clean but for `fastmath.h:58`. Device package built: image
-311,404 B, RAM 78,628 of 98,304 (19.2 KB spare), pool 324,488 of 344,064 (19.1 KB spare); flashed, boots clean. Device CPU
+314,552 B, RAM 79,188 of 98,304 (18.7 KB spare), pool 324,520 of 344,064 (19.1 KB spare) after items 6-8; the
+build with items 1-7 is flashed and boots clean; item 8's build (clock, CYCLE, the crossfade) waits for "Flash it". Device CPU
 of the leads, the chord bands and the runner unmeasured (host: the four bands about 1 µs a block; a lead costs
 a body).
 

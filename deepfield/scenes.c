@@ -4,7 +4,10 @@
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
  * Slots 0..7 are F1..F8, 8..23 are U1..U16. A scene is the whole instrument: every parameter and the bodies that
  * were latched when it was saved. */
-#define SET_MAGIC 0x33464544u            /* "DEF3": the settings record; another magic loads defaults */
+#define SET_MAGIC 0x34464544u            /* "DEF4": the settings record (SPEAKER); DEF3 is read and brought up to date,
+                                          * another magic loads defaults */
+#define SET_MAGIC_V3 0x33464544u
+enum { SPK_ON, SPK_AUTO, SPK_OFF };      /* SPEAKER: with the USB audio input; AUTO: silent while a computer records */
 typedef struct {
     uint32_t magic;
     int8_t octave;                       /* -2 .. +2 */
@@ -19,7 +22,12 @@ typedef struct {
     uint8_t midi_out;                    /* 1..16 */
     uint8_t local;                       /* 1: the keys play the engine; 0: MIDI out only */
     uint8_t latch;                       /* LATCH (SEL): 1, the keys toggle bodies that stay; 0, momentary */
+    uint8_t speaker;                     /* SPK_*: the speaker and headphones while recording over USB */
+    uint8_t usb_level;                   /* the recording's level while a computer records: 0 .. 6 = 0 .. -18 dB by 3 */
+    uint8_t clock_out;                   /* MIDI clock out while the runner runs from RATE */
+    uint8_t rsv;
 } settings_t;
+#define SET_SIZE_V3 16u
 static settings_t set;
 static uint8_t set_dirty, scene_dirty;   /* changed since the last save: SAVE is lit */
 
@@ -100,6 +108,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_ORB_MODE] = OM_WANDER, [P_ORB_DIST] = 40, [P_ORB_BODIES] = 60,
         [P_ARP_RATE] = 51, [P_ARP_GATE] = 60, [P_ARP_ORDER] = AO_UP, [P_ARP_OCT] = 1,
         [P_NZ_TEXTURE] = 0, [P_NZ_GUST] = 0, [P_NZ_DUCK] = 30, [P_NZ_WIDTH] = 70,
+        [P_ORB_PROG] = 0,
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
@@ -246,6 +255,10 @@ static void settings_defaults(void)
     set.midi_out = 1;
     set.local = 1;
     set.latch = 1;
+    set.speaker = SPK_AUTO;
+    set.usb_level = 2;
+    set.clock_out = 0;
+    set.rsv = 0;
 }
 
 static void bank_defaults(void)
@@ -290,11 +303,22 @@ static void project_load(void)
 {
     uint32_t i;
     factory_build();
-    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set || set.magic != SET_MAGIC
-        || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
-        || set.vel > 1u || set.view >= VIEW_COUNT || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
-        || set.midi_out > 16u || set.latch > 1u)
-        settings_defaults();
+    {
+        int got = plat_store_load(OBJ_SETTINGS, &set, sizeof set);
+        if (got == (int)SET_SIZE_V3 && set.magic == SET_MAGIC_V3) {   /* DEF3: the same, without SPEAKER */
+            set.magic = SET_MAGIC;
+            set.speaker = SPK_AUTO;
+            set.usb_level = 2;
+            set.clock_out = 0;
+            set.rsv = 0;
+            got = (int)sizeof set;
+        }
+        if (got != (int)sizeof set || set.magic != SET_MAGIC
+            || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
+            || set.vel > 1u || set.view >= VIEW_COUNT || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
+            || set.midi_out > 16u || set.latch > 1u || set.speaker > SPK_OFF || set.usb_level > 6u || set.clock_out > 1u)
+            settings_defaults();
+    }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
         uint32_t oldp = bank.magic == BANK_MAGIC_V3 ? P_COUNT_V3 : bank.magic == BANK_MAGIC_V2 ? P_COUNT_V2 : 0u;
@@ -344,6 +368,8 @@ static void project_load(void)
             bank.u[i].p[P_ARP_ORDER] = 0;
         if (bank.u[i].p[P_ARP_OCT] >= 3u)
             bank.u[i].p[P_ARP_OCT] = 0;
+        if (bank.u[i].p[P_ORB_PROG] >= DR_PROGS)
+            bank.u[i].p[P_ORB_PROG] = 0;
         for (k = 0; k < DR_NV; k++) {
             bank.u[i].note[k] &= 127u;
             bank.u[i].vel[k] &= 127u;

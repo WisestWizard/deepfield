@@ -67,7 +67,15 @@ static uint32_t scale_mask = 0xFFFu, scale_root;
 static uint32_t orbit_on, frozen, fx_bypass;
 static uint32_t orbit_left, orbit_per, orbit_rng = 0x2545F491u;
 static uint8_t pend_to[NV];              /* ORBIT: a body's destination note, 0 none */
-static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count;
+/* CYCLE: progressions as scale degrees from where the chord was struck (0 = home); the chord shifts along the
+ * scale to each in turn, so in a major key the first is I IV V I, in a minor key i iv v i */
+static const uint8_t PROG[DR_PROGS][4] = {{0, 3, 4, 0}, {0, 5, 3, 4}, {0, 4, 5, 3}, {0, 5, 2, 6},
+                                          {0, 3, 0, 4}, {0, 1, 4, 0}, {0, 2, 5, 3}, {0, 6, 3, 0}};
+static uint32_t cyc_pos;                 /* the step the chord stands on */
+static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count, arp_due;
+static uint32_t clk_now, clk_last, clk_period, clk_count, clk_ext, clk_out, orbit_clk_left, orbit_clk_per;
+static float clk_acc;
+static void (*rt_out)(uint32_t);
 static int32_t arp_held = -1;            /* the step's lead sounding, its note */
 static uint32_t arp_gate_left;
 static void (*note_out)(uint32_t, uint32_t, int);
@@ -458,16 +466,26 @@ void dr_scale(uint32_t mask12, uint32_t root)
 static void orbit_reset(void);
 void dr_orbit(int on)
 {
+    uint32_t was = orbit_on;
     orbit_on = on != 0;
     orbit_left = orbit_per = 0;
     orbit_reset();
+    if (clk_out && !clk_ext && rt_out && dr_orbit_mode() == OM_ARP && was != orbit_on) {   /* the runner's start and stop */
+        rt_out(orbit_on ? 0xFAu : 0xFCu);
+        clk_acc = 0.0f;
+    }
 }
 float dr_orbit_next(void)
 {
     if (!orbit_on)
         return 0.0f;
-    if (dr_orbit_mode() == OM_ARP)       /* through the bar: eight steps */
+    if (dr_orbit_mode() == OM_ARP) {     /* through the bar: eight steps */
+        if (clk_ext)
+            return (float)(clk_count % 96u) * (1.0f / 96.0f);
         return arp_step ? ((float)(arp_count % 8u) + 1.0f - (float)arp_left / (float)arp_step) * 0.125f : 0.0f;
+    }
+    if (clk_ext)
+        return orbit_clk_per ? 1.0f - (float)orbit_clk_left / (float)orbit_clk_per : 0.0f;
     return orbit_per ? 1.0f - (float)orbit_left / (float)orbit_per : 0.0f;
 }
 int dr_orbit_on(void) { return (int)orbit_on; }
@@ -570,6 +588,23 @@ static void load_bodies(void)            /* render: the scene's bodies swell in;
         }
 }
 int dr_morphing(void) { return morph_pos < 1.0f; }
+static uint8_t hold_on;
+void dr_morph_hold(const scene_t *to, float pos)
+{
+    uint32_t i;
+    if (!hold_on) {                      /* from what is heard now */
+        for (i = 0; i < P_COUNT; i++)
+            pstart[i] = pcur[i];
+        hold_on = 1;
+    }
+    for (i = 0; i < P_COUNT; i++)
+        ptarget[i] = (float)(to->p[i] & 127u) * (1.0f / 127.0f);
+    pstart[P_MODEL] = ptarget[P_MODEL] = pcur[P_MODEL];   /* the model does not blend */
+    morph_step = 0.0f;
+    morph_pos = fm_clampf(pos, 0.0f, 0.999f);
+}
+void dr_morph_hold_end(void) { hold_on = 0; }
+float dr_heard(uint32_t id) { return id < P_COUNT ? pcur[id] * 127.0f : 0.0f; }
 float dr_morph_pos(void) { return morph_pos; }
 
 /* ------------------------------------------------------------------ a tick --- */
@@ -1226,6 +1261,7 @@ static void half_job(uint32_t arg)       /* the second core: the hall on the las
  * after the bed is let go, until PLAY stops it. */
 
 uint32_t dr_orbit_mode(void) { return dr_scene.p[P_ORB_MODE] < OM_COUNT ? dr_scene.p[P_ORB_MODE] : 0u; }
+uint32_t dr_orbit_cycle_pos(void) { return cyc_pos; }
 float dr_arp_bpm(uint32_t p) { return 40.0f + (float)(p & 127u) * (200.0f / 127.0f); }   /* 40 .. 240 */
 int dr_orbit_pending(uint32_t i, uint32_t *to)
 {
@@ -1274,6 +1310,21 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
+    if (mode == OM_CYCLE) {              /* the chord to the progression's next degree, from where it was struck */
+        uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, nxt_pos = (cyc_pos + 1u) % 4u;
+        int32_t d = (int32_t)PROG[prog][nxt_pos];
+        for (i = 0; i < cnt; i++) {
+            int32_t nxt = scale_step((int32_t)dr_snap(cand[i]->home), d);
+            if (nxt > 108)
+                nxt -= 12;
+            if (nxt < 12)
+                nxt += 12;
+            if (nxt != (int32_t)(cand[i]->target + 0.5f))
+                pend_to[cand[i] - vc] = (uint8_t)nxt;
+        }
+        cyc_pos = nxt_pos;
+        return;
+    }
     if (mode == OM_CHORD) {              /* the chord along the scale, or home */
         int32_t d, away = 0;
         uint32_t dist = 1u + dr_scene.p[P_ORB_DIST] * 3u / 128u;   /* 1 .. 3 degrees */
@@ -1389,12 +1440,19 @@ static void arp_tick(uint32_t n)
             arp_release();
         }
     }
-    if (arp_left > n) {
-        arp_left -= n;
-        return;
+    if (clk_ext) {                       /* following: the clock says when (dr_clock), the step is twelve clocks */
+        if (!arp_due)
+            return;
+        arp_due = 0;
+        arp_step = clk_period * 12u;
+    } else {
+        if (arp_left > n) {
+            arp_left -= n;
+            return;
+        }
+        arp_step = (uint32_t)(30.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS);   /* an eighth at RATE */
+        arp_left = arp_step;
     }
-    arp_step = (uint32_t)(30.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS);   /* an eighth at RATE */
-    arp_left = arp_step;
     arp_count++;
     arp_release();
     arp_gather();
@@ -1469,20 +1527,77 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
     uint32_t i;
     for (i = 0; i < NV; i++)
         pend_to[i] = 0;
-    arp_n = arp_pos = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = 0;
+    arp_n = arp_pos = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = 0;
+    cyc_pos = 0;
+    orbit_clk_left = orbit_clk_per = 0;
     if (arp_held >= 0)
         arp_release();
 }
+static uint32_t orbit_beats(void)        /* EVERY as whole beats at the clock's tempo */
+{
+    float bpm = dr_clock_bpm(), b = dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) * (bpm > 0.0f ? bpm : 120.0f) / 60.0f + 0.5f;
+    return b < 1.0f ? 1u : (uint32_t)b;
+}
+void dr_clock(void)
+{
+    uint32_t mode = dr_orbit_mode();
+    if (clk_ext && clk_now > clk_last)
+        clk_period = clk_period ? (clk_period * 3u + (clk_now - clk_last)) / 4u : clk_now - clk_last;
+    clk_last = clk_now;
+    clk_ext = 1;
+    if (orbit_on && mode == OM_ARP) {
+        if (clk_count % 12u == 0u)
+            arp_due = 1;
+    } else if (orbit_on) {
+        if (orbit_clk_left)
+            orbit_clk_left--;
+        if (!orbit_clk_left) {
+            orbit_apply();
+            orbit_clk_left = orbit_clk_per = orbit_beats() * 24u;
+            orbit_plan();
+        }
+    }
+    clk_count++;
+}
+void dr_clock_start(void)
+{
+    clk_count = 0;
+    arp_pos = 0;
+    orbit_clk_left = 0;
+    clk_ext = 1;
+    clk_last = clk_now;
+}
+void dr_clock_stop(void) { arp_release(); }
+int dr_clock_ext(void) { return (int)clk_ext; }
+float dr_clock_bpm(void) { return clk_ext && clk_period ? 60.0f * FS / ((float)clk_period * 24.0f) : 0.0f; }
+void dr_clock_out(int on) { clk_out = on != 0; }
+void dr_realtime_out(void (*fn)(uint32_t)) { rt_out = fn; }
 static void orbit_tick(uint32_t n)
 {
     uint32_t mode;
+    clk_now += n;
+    if (clk_ext && clk_now - clk_last > (uint32_t)(2.0f * FS)) {   /* the clock stopped coming: our own time */
+        clk_ext = 0;
+        arp_due = 0;
+        orbit_clk_left = orbit_clk_per = 0;
+    }
     if (!orbit_on)
         return;
     mode = dr_orbit_mode();
     if (mode == OM_ARP) {
+        if (clk_out && !clk_ext && rt_out) {   /* 24 clocks a beat from RATE */
+            float per = 60.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS * (1.0f / 24.0f);
+            clk_acc += (float)n;
+            while (clk_acc >= per) {
+                clk_acc -= per;
+                rt_out(0xF8u);
+            }
+        }
         arp_tick(n);
         return;
     }
+    if (clk_ext)                         /* the clock counts the period (dr_clock) */
+        return;
     if (orbit_left > n) {
         orbit_left -= n;
         return;

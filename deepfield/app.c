@@ -4,6 +4,7 @@
  * fm1-base's contract (app.h) and the parts: what is saved (scenes.c), the screen and controls (ui.c) and the
  * engine (engine/drone.c, its own -O2 unit). */
 #include "drone.h"
+#include "fx.h"                            /* fx_lim_min, for the simulator's limiter check */
 static volatile uint8_t midi_edited;     /* a CC changed a scene parameter: the footer redraws */
 #define CRUMB(n) (crumb.frame = (n))
 static struct { uint32_t magic, frame, render, frames; } crumb __attribute__((section(".noinit")));
@@ -79,8 +80,15 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
     while (plat_midi_in(&pkt, &port)) {
         uint32_t st = (pkt >> 8) & 0xF0u, d1 = (pkt >> 16) & 0x7Fu, d2 = pkt >> 24 & 0x7Fu;
         uint32_t full = (pkt >> 8) & 0xFFu;
-        if (full >= 0xF8u)
+        if (full >= 0xF8u) {             /* real time: the clock for the runner and ORBIT */
+            if (full == 0xF8u)
+                dr_clock();
+            else if (full == 0xFAu || full == 0xFBu)
+                dr_clock_start();
+            else if (full == 0xFCu)
+                dr_clock_stop();
             continue;
+        }
         midi_last = pkt;
         midi_last_port = (uint32_t)port;
         midi_count++;
@@ -111,8 +119,30 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
 
 static void midi_settings_apply(void) {}
 
+/* the USB audio input: whether a computer records now. usb.c keeps the stream's state in this unity unit (alt 1
+ * and the host reading); plat.h has no word for it yet, so it is read here. The host simulator: a script flag. */
+#ifdef PLAT_HOST
+static int host_usb_rec;
+static int usb_recording(void) { return host_usb_rec; }
+static uint32_t usb_underruns(void) { return 0; }
+#elif FELUCCA_UAC
+static int usb_recording(void) { return uac.feed != 0; }
+static uint32_t usb_underruns(void) { return uac.underruns; }   /* the ring ran dry: a frame repeated, a crackle in
+                                                                 * the recording (not on the speaker) */
+#else
+static int usb_recording(void) { return 0; }
+static uint32_t usb_underruns(void) { return 0; }
+#endif
+uint32_t df_gain(uint32_t m)             /* the speaker and headphones (audio interrupt): MASTER squared, or nothing */
+{
+    if (set.speaker == SPK_OFF || (set.speaker == SPK_AUTO && usb_recording()))
+        return 0;
+    return m * m >> 12;
+}
+
 /* the keys' note offs and ORBIT's moves, out over MIDI (render context) */
 static void orbit_note_out(uint32_t note, uint32_t vel, int on) { midi_note_out(note, vel, on); }
+static void realtime_out(uint32_t st) { plat_midi_send(0x0Fu | st << 8, TO_USB | TO_BLE); }
 
 void app_overload(void)
 {
@@ -131,15 +161,22 @@ void app_init(void)
     plat_cpu2_set(1);                        /* the second core renders half the bodies; one core if it fails */
 #endif
     scale_apply();
+    plat_usb_audio_full(set.speaker != SPK_ON);
     dr_note_out(orbit_note_out);
+    dr_realtime_out(realtime_out);
+    dr_clock_out(set.clock_out);
     dr_load(slot_scene(set.scene), 0.0f);    /* the scene's bodies swell in from power-on */
     dr_fx_bypass(slot_scene(set.scene)->fx_off);   /* and its effect switches */
     scene_dirty = 0;
 }
+static const uint16_t USB_TRIM_Q12[7] = {4096, 2896, 2048, 1448, 1024, 724, 512};   /* 0 .. -18 dB by 3 */
 void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 {
     crumb.render = 1;
     midi_in();
+    if (set.speaker != SPK_ON && usb_recording())   /* the recording at USB LEVEL (the speaker is silent or at MASTER
+                                                     * after it, so it costs the room nothing) */
+        master_q12 = USB_TRIM_Q12[set.usb_level < 7u ? set.usb_level : 2u];
     dr_render(lr, n, master_q12);
     crumb.render = 0;
 }
@@ -246,6 +283,36 @@ int app_expect(const char *what, int *got)
         *got = set.midi_out;
     else if (!strcmp(what, "local"))
         *got = set.local;
+    else if (!strcmp(what, "speaker"))
+        *got = set.speaker;
+    else if (!strcmp(what, "usblevel"))
+        *got = set.usb_level;
+    else if (what[0] == 'h' && what[1] >= '0' && what[1] <= '9')   /* "h3": parameter 3 as heard, 0..127 */
+        *got = (int)(dr_heard((uint32_t)atoi(what + 1)) + 0.5f);
+    else if (!strcmp(what, "pressure")) {   /* the pressure of the keys held, the most */
+        uint32_t k;
+        *got = 0;
+        for (k = 0; k < NKEYS; k++)
+            if ((plat_keys() >> k & 1u) && touch_pressure(k) > (uint32_t)*got)
+                *got = touch_pressure(k);
+    }
+    else if (!strcmp(what, "cyclepos"))
+        *got = (int)dr_orbit_cycle_pos();
+    else if (!strcmp(what, "arpsteps"))
+        *got = (int)dr_arp_steps();
+    else if (!strcmp(what, "clockext"))
+        *got = dr_clock_ext();
+    else if (!strcmp(what, "clockbpm"))
+        *got = (int)(dr_clock_bpm() + 0.5f);
+    else if (!strcmp(what, "clockout"))
+        *got = set.clock_out;
+    else if (!strncmp(what, "usbrec", 6)) {   /* "usbrec1" / "usbrec0": the script says a computer records (or not) */
+        host_usb_rec = what[6] == '1';
+        *got = host_usb_rec;
+    } else if (!strcmp(what, "limiter"))    /* the limiter's deepest gain since the last read, in 1/1000 */
+        *got = (int)(fx_lim_min() * 1000.0f);
+    else if (!strcmp(what, "gain"))         /* the speaker's gain at MASTER full, 0..4096 */
+        *got = (int)df_gain(4096u);
     else if (!strcmp(what, "vel")) {
         uint32_t k;
         *got = 0;

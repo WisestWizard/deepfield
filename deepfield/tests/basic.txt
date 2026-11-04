@@ -300,10 +300,13 @@ wait 30
 expect page 13
 spin SELECT 1
 wait 30
-expect page 13
+expect page 14
+spin SELECT 1
+wait 30
+expect page 14
 spin SELECT -3
 wait 30
-expect page 10
+expect page 11
 tap EDIT
 wait 8500
 expect page 1
@@ -696,3 +699,152 @@ expect freeze 0
 midi B0 14 00
 wait 7000
 expect noise 0
+# SPEAKER (GLO, SELECT twice): AUTO (the default) silences the speaker while a computer records over USB, the
+# render going to USB at full level; ON keeps both at MASTER; OFF is silent
+tap GLO
+wait 30
+spin SELECT 2
+wait 30
+expect page 14
+expect speaker 1
+expect gain 4096
+expect usbrec1 1
+expect gain 0
+expect usbrec0 0
+expect gain 4096
+spin K1 -1
+wait 30
+expect speaker 0
+expect usbrec1 1
+expect gain 4096
+expect usbrec0 0
+spin K1 2
+wait 30
+expect speaker 2
+expect gain 0
+spin K1 -1
+wait 30
+expect speaker 1
+expect usblevel 2
+spin K2 2
+wait 30
+expect usblevel 4
+spin K2 -2
+wait 30
+expect usblevel 2
+tap HOME
+# MIDI clock: the runner steps every twelve clocks while they come (120 BPM: 21 ms apart) and says EXT; two
+# seconds without one, RATE's own tempo returns; CLOCK OUT (USB page) sends 24 a beat while the runner runs
+midi C0 02
+wait 5000
+tap ARP
+wait 30
+spin K1 3
+wait 30
+expect orbitmode 3
+tap PLAY
+wait 100
+expect orbit 1
+clock 48 21
+wait 10
+expect clockext 1
+expect clockbpm 119
+expect arpsteps 5
+clock 24 21
+expect arpsteps 7
+wait 2500
+expect clockext 0
+tap GLO
+wait 30
+spin SELECT 2
+wait 30
+spin K3 1
+wait 30
+expect clockout 1
+out
+wait 1100
+expect_out USB F8 00 00
+out
+tap PLAY
+wait 30
+expect_out USB FC 00 00
+spin K3 -1
+wait 30
+expect clockout 0
+tap ARP
+wait 30
+spin K1 -3
+wait 30
+expect orbitmode 0
+press SEL
+wait 1100
+release SEL
+tap HOME
+wait 7000
+# CYCLE: the chord walks a progression from where it was struck (F3's D3 G3 D4 A4 in C MAJOR, I IV V I: every
+# body up three degrees: D3 to G3, then four: A3, then home), one step a second with CHANCE full
+midi C0 02
+wait 5000
+tap ARP
+wait 30
+spin K1 4
+wait 30
+expect orbitmode 4
+spin K2 -40
+spin K3 40
+wait 30
+expect p24 0
+expect cyclepos 0
+tap PLAY
+wait 100
+expect pending 4
+expect cyclepos 1
+out
+wait 1600
+expect_out USB 80 32 00
+expect_out USB 90 37 6A
+expect_out USB 80 45 00
+expect_out USB 90 4A 6A
+out
+wait 3000
+expect_out USB 90 39 6A
+expect_out USB 90 32 6A
+tap PLAY
+wait 30
+spin K1 -4
+wait 30
+expect orbitmode 0
+press SEL
+wait 1100
+release SEL
+tap HOME
+wait 7000
+# the crossfade by hand: GLO held, a key leaned on blends what is heard toward the next scene (F1 SPACE 58 to
+# F2's 70: at 64 % pressure, about 66); let go, the blend stays; the key played nothing
+midi C0 00
+wait 5000
+expect p3 58
+expect h3 58
+press GLO
+wait 400
+key 5 down 100 64
+wait 600
+expect pressure 82
+expect morphing 1
+expect h3 66
+expect bodies 3
+key 5 up
+wait 100
+release GLO
+wait 100
+expect h3 66
+expect morphing 1
+key 5 down 100 0
+wait 100
+expect bodies 4
+key 5 up
+midi C0 00
+wait 400
+expect morphing 1
+wait 5000
+expect h3 58

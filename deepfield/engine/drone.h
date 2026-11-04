@@ -28,9 +28,10 @@ enum {
     P_ORB_MODE, P_ORB_DIST, P_ORB_BODIES,                         /* ORBIT: the mode, CHORD's distance, SCATTER's count */
     P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER, P_ARP_OCT,               /* ARP: the runner's rate, gate, order, octaves */
     P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH,               /* NOISE 2: its texture, weather, ducking, width */
+    P_ORB_PROG,                                                   /* CYCLE: the progression it walks */
     P_COUNT
 };
-enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_COUNT };        /* P_ORB_MODE, stored as the index */
+enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_COUNT };   /* P_ORB_MODE, stored as the index */
 enum { AO_UP, AO_DOWN, AO_UPDOWN, AO_RANDOM, AO_PLAYED, AO_COUNT };   /* P_ARP_ORDER, the index; P_ARP_OCT: 0..2 = 1..3 octaves */
 
 #define SCENE_NAME 12u
@@ -50,6 +51,11 @@ void dr_load(const scene_t *s, float seconds);      /* a scene: its values morph
                                                      * in and the others fade (0 s: at once) */
 int dr_morphing(void);
 float dr_morph_pos(void);                            /* 0..1 */
+/* a blend by hand (GLO held, a key leaned on): from the values heard when the hold began toward a scene's, held
+ * at pos; the bodies stay. The blend stays where it was left; the next hold starts from there */
+void dr_morph_hold(const scene_t *to, float pos);
+void dr_morph_hold_end(void);
+float dr_heard(uint32_t id);                         /* a parameter as heard now, 0..127 (a blend lies between scenes) */
 /* the keys (main loop, queued): on strikes a body that sounds while the key is held, or lets a latched body at
  * that note go; off lets an unlatched body go. The engine sends the note offs of the keys' bodies (dr_note_out) */
 void dr_note(uint32_t note, uint32_t vel, int on);
@@ -85,8 +91,20 @@ float dr_orbit_next(void);                          /* how far to the next move,
                                                      * its bar of eight steps */
 uint32_t dr_orbit_mode(void);                       /* OM_*, from the scene */
 int dr_orbit_pending(uint32_t i, uint32_t *to);     /* body i has a move planned: 1 and its destination note */
+#define DR_PROGS 8u
+uint32_t dr_orbit_cycle_pos(void);                  /* CYCLE: the progression's step the chord stands on now */
 int32_t dr_arp_note(void);                          /* ARP: the note of the step sounding now, -1 none */
 int dr_arp_running(void);                           /* ARP runs and has notes (its own, or remembered) */
+/* MIDI clock (from the render, app.c): while clocks come, the runner steps every twelve (an eighth) and ORBIT
+ * counts its period in beats; two seconds without one and the knobs' own time returns. Clock out: while the runner
+ * runs from RATE, 24 a beat (and start / stop) through dr_realtime_out */
+void dr_clock(void);
+void dr_clock_start(void);
+void dr_clock_stop(void);
+int dr_clock_ext(void);                             /* following MIDI clock now */
+float dr_clock_bpm(void);                           /* the tempo followed (0 none) */
+void dr_clock_out(int on);
+void dr_realtime_out(void (*fn)(uint32_t status));   /* F8 / FA / FC out (render context) */
 uint32_t dr_arp_steps(void);                        /* ARP: steps so far */
 float dr_arp_bpm(uint32_t p);                       /* RATE as BPM (a step is an eighth) */
 void dr_freeze(int on);                             /* the reverb holds what it has, for as long as it is on */

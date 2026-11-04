@@ -16,12 +16,12 @@
  * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
  * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
 enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
-       PG_GLOBAL, PG_MIDI, PG_COUNT };
-enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_NONE,
-       PID_COUNT };
+       PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
+enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
+       PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_VIEW, K_MORPH, K_CHIN, K_CHOUT,
        K_ONOFF, K_HZ, K_STEPS, K_ATTACK, K_RELEASE, K_SEMI, K_OMODE, K_DIST, K_BODIES, K_BPM, K_ORDER, K_OCTS,
-       K_TEXTURE, K_NONE };
+       K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_NONE };
 typedef struct {
     const char *title, *button;
     uint8_t p[4];
@@ -41,6 +41,7 @@ static const page_t PAGES[PG_COUNT] = {
     {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, PID_NONE, PID_NONE}},
     {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_VIEW, PID_MORPH}},
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
+    {"USB", "GLO", {PID_SPEAKER, PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE}},   /* recording and clock over the cable */
 };
 typedef struct {
     const char *label;
@@ -63,10 +64,11 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_ORB_BODIES] = {"BODIES", K_BODIES}, [P_ARP_RATE] = {"RATE", K_BPM},  [P_ARP_GATE] = {"GATE", K_PCT},
     [P_ARP_ORDER] = {"ORDER", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
     [P_NZ_TEXTURE] = {"TEXTURE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
-    [P_NZ_WIDTH] = {"WIDTH", K_PCT},
+    [P_NZ_WIDTH] = {"WIDTH", K_PCT}, [P_ORB_PROG] = {"CHORDS", K_PROG},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_VIEW] = {"VIEW", K_VIEW},      [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
+    [PID_SPEAKER] = {"SPEAKER", K_SPEAKER}, [PID_USB_LEVEL] = {"USB LEVEL", K_USBLVL}, [PID_CLOCK_OUT] = {"CLOCK OUT", K_ONOFF},
     [PID_NONE] = {"", K_NONE},
 };
 static const char *const ENS_NAME[ENS_COUNT] = {"OFF", "CHOR I", "CHOR II", "ENSEMBLE"};
@@ -135,7 +137,8 @@ static struct {
     uint32_t keynotes;                   /* bit k: key k struck a note this press */
     uint32_t keylead;                    /* bit k: it struck a lead (LATCH off), let go at its release */
     uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
-    uint32_t rec_t, fx_t, fx_up, sel_t, sel_down;
+    uint32_t rec_t, fx_t, fx_up, sel_t, sel_down, glo_t;   /* GLO held: the crossfade layer (a key's pressure blends toward the next scene) */
+    uint8_t glo_xf;                      /* a key was leaned on during this hold */
     uint8_t fx_used, sel_used;
     uint32_t keys_sig;                   /* what the keys strip showed last */
     uint8_t redraw_keys;
@@ -143,6 +146,7 @@ static struct {
     uint8_t nz_last;                     /* the noise LEVEL before C4 switched it off, to come back to */
     uint32_t stat_t;                     /* the last load line in the log, and what it said */
     uint8_t stat_cpu, stat_bodies;
+    uint32_t stat_under;
     uint32_t play_down, orbit_flash_t;   /* PLAY pressed (a tap runs ORBIT, a hold opens its page); the pill's flash */
     uint8_t play_used, orbit_eighth;     /* the countdown shown in the pill, in eighths */
     uint32_t arp_steps, arp_step_t;      /* the runner's steps seen, and when the last came (PLAY winks) */
@@ -171,6 +175,8 @@ static struct {
     struct { uint16_t x, y; uint8_t z, hue; } star[NSTARS];
 } ui;
 
+static int usb_recording(void);          /* app.c: a computer takes the USB audio input */
+static uint32_t usb_underruns(void);     /* app.c: the USB audio ring ran dry, so far */
 static void text_cat(char *d, const char *s)
 {
     while (*d)
@@ -246,7 +252,9 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP"};
+static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP", "CYCLE"};
+static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI IV", "I VI III VII", "I IV I V",
+                                                "I II V", "I III VI IV", "I VII IV"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
 static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are the mode's */
 {
@@ -256,6 +264,7 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are th
             {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_DIST},    /* CHORD */
             {P_ORB_PERIOD, P_ORB_BODIES, P_ORB_RANGE},   /* SCATTER */
             {P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER},       /* ARP */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_PROG},    /* CYCLE */
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
@@ -272,6 +281,9 @@ static uint32_t value_of(uint32_t id)
     case PID_MIDI_OUT: return set.midi_out;
     case PID_LOCAL: return set.local;
     case PID_VEL: return set.vel;
+    case PID_SPEAKER: return set.speaker;
+    case PID_USB_LEVEL: return set.usb_level;
+    case PID_CLOCK_OUT: return set.clock_out;
     case PID_NONE: return 0;
     default: return dr_scene.p[id];
     }
@@ -281,6 +293,9 @@ static uint32_t value_max(uint32_t id)
     switch (PM[id].kind) {
     case K_MODEL: return M_COUNT - 1u;
     case K_OMODE: return OM_COUNT - 1u;
+    case K_PROG: return DR_PROGS - 1u;
+    case K_SPEAKER: return SPK_OFF;
+    case K_USBLVL: return 6u;
     case K_ORDER: return AO_COUNT - 1u;
     case K_OCTS: return 2u;
     case K_ENS: return ENS_COUNT - 1u;
@@ -360,6 +375,18 @@ static void value_text(uint32_t id, char *b)
         break;
     }
     case K_OMODE: text_cat(b, OMODE_NAME[v % OM_COUNT]); break;
+    case K_PROG: text_cat(b, PROG_NAME[v % DR_PROGS]); break;
+    case K_SPEAKER: text_cat(b, v == SPK_ON ? "ON" : v == SPK_AUTO ? "AUTO" : "OFF"); break;
+    case K_USBLVL:                       /* 0 .. -18 dB, in 3 dB steps */
+        if (!v)
+            text_cat(b, "0 DB");
+        else {
+            b[0] = '-';
+            b[1] = 0;
+            int_text((int32_t)(v * 3u), b + 1);
+            text_cat(b, " DB");
+        }
+        break;
     case K_TEXTURE: {                    /* hiss to a quarter, rain to a half, crackle beyond; the figure too */
         int_text((int32_t)(v * 100u / 127u), b);
         text_cat(b, v < 32u ? "% HISS" : v < 64u ? "% RAIN" : "% CRACKLE");
@@ -383,8 +410,13 @@ static void value_text(uint32_t id, char *b)
         }
         break;
     case K_BPM:
-        int_text((int32_t)(dr_arp_bpm(v) + 0.5f), b);
-        text_cat(b, " BPM");
+        if (dr_clock_ext()) {            /* following MIDI clock: the tempo heard, not the knob's */
+            text_cat(b, "EXT ");
+            int_text((int32_t)(dr_clock_bpm() + 0.5f), b);
+        } else {
+            int_text((int32_t)(dr_arp_bpm(v) + 0.5f), b);
+            text_cat(b, " BPM");
+        }
         break;
     case K_SEMI: {                       /* whole semitones up, as the engine rounds LIFT */
         uint32_t st = (uint32_t)((float)v * (1.0f / 127.0f) * 24.99f);
@@ -437,6 +469,22 @@ static void value_set(uint32_t id, uint32_t v)
             dr_all_off();
         break;
     case PID_VEL: set.vel = (uint8_t)v; set_dirty = 1; break;
+    case PID_USB_LEVEL:
+        set.usb_level = (uint8_t)v;
+        set_dirty = 1;
+        break;
+    case PID_CLOCK_OUT:
+        set.clock_out = (uint8_t)v;
+        set_dirty = 1;
+        dr_clock_out(set.clock_out);
+        break;
+    case PID_SPEAKER:                    /* ON: the speaker and USB both at MASTER; else USB at full level, the speaker
+                                          * at MASTER (AUTO: silent while a computer records; OFF: silent) */
+        set.speaker = (uint8_t)v;
+        set_dirty = 1;
+        plat_usb_audio_full(set.speaker != SPK_ON);
+        ui.redraw_head = 1;
+        break;
     case PID_NONE: break;
     default:
         dr_param(id, v);
@@ -695,7 +743,7 @@ static void ble_device_button(void)
 
 /* ------------------------------------------------------------------ buttons --- */
 static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_ARP,
-                                           B_GLO, B_GLO};
+                                           B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -739,7 +787,11 @@ static void button(uint32_t k, uint32_t now)
         ui.fx_used = 0;
         break;
     case B_ARP: page_to(PG_ORBIT); break;
-    case B_GLO: page_to(PG_GLOBAL); break;
+    case B_GLO:
+        page_to(PG_GLOBAL);
+        ui.glo_t = now;
+        ui.glo_xf = 0;
+        break;
     case B_SEL:
         ui.sel_down = now;
         ui.sel_used = 0;
@@ -791,7 +843,7 @@ static void input(void)
     for (k = 0; k < NKEYS; k++) {
         uint32_t bit = 1u << k;
         if ((keys & bit) && !(ui.keys & bit)) {
-            if (fx_layer || ui.fx_t || now - ui.fx_up < 120u)
+            if (fx_layer || ui.fx_t || now - ui.fx_up < 120u || ui.glo_t)
                 continue;
             key_on(k, touch_vel(k));
         } else if (!(keys & bit) && (ui.keys & bit)) {
@@ -819,6 +871,35 @@ static void input(void)
                 page_to(PG_FX_ENS);
             ui.fx_t = 0;
             ui.fx_up = now;
+        }
+    }
+    if (ui.glo_t) {                      /* GLO held: lean on a key and its pressure blends what is heard toward the
+                                          * next scene (the bar in the header); let go and the blend stays */
+        if (btn >> B_GLO & 1u) {
+            if (now - ui.glo_t >= 300u) {
+                uint32_t prs = 0, next = (set.scene + 1u) % NSLOTS;
+                for (k = 0; k < NKEYS; k++)
+                    if ((dkeys >> k & 1u) && touch_pressure(k) > prs)
+                        prs = touch_pressure(k);
+                if (dkeys) {
+                    char t[24], v[8];
+                    slot_title(next, t);
+                    dr_morph_hold(slot_scene(next), (float)prs * (1.0f / 127.0f));
+                    ui.glo_xf = 1;
+                    int_text((int32_t)(prs * 100u / 127u), v);
+                    text_cat(v, "%");
+                    ui_say(t, v);
+                } else if (!ui.glo_xf && now - ui.glo_t < 400u) {
+                    ui_say("CROSSFADE", "LEAN ON A KEY");
+                }
+            }
+        } else {
+            if (ui.glo_xf) {
+                dr_morph_hold_end();
+                ui_say("CROSSFADE", "HELD");
+            }
+            ui.glo_t = 0;
+            ui.redraw_head = 1;
         }
     }
     if (ui.play_down) {                  /* PLAY: a tap runs or stops ORBIT; held, its page */
@@ -2011,6 +2092,8 @@ static void draw_header(void)
         text_cat(t, c);
         text_cat(t, "  ");
     }
+    if (usb_recording())                 /* a computer records over USB (the speaker silent with SPEAKER AUTO) */
+        text_cat(t, set.speaker == SPK_AUTO ? "USB MUTE " : "USB ");
     if (FM1B_BLE && plat_ble_connected())
         text_cat(t, "BLE ");
     if (FM1B_BLE_CENTRAL && plat_ble_device() == BLE_DEV_READY)
@@ -2028,7 +2111,7 @@ static void draw_header(void)
     cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
     x = pill(3, "SEL LATCH", set.latch, 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
-        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP"};
+        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE"};
         x = pill(x, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
                  plat_ms() - ui.orbit_flash_t < 300u);
     }
@@ -2200,6 +2283,7 @@ static void ui_frame(void)
         }
     }
     states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2 | dr_orbit_mode() << 10
+           | (uint32_t)usb_recording() << 12 | (uint32_t)dr_clock_ext() << 13
            | (uint32_t)dr_morphing() << 3 | (uint32_t)overload_seen << 4 | dr_fx_active() << 5
            | (uint32_t)(now - ui.orbit_flash_t < 300u) << 9;
     if (states != last_states || dirty != last_dirty || (dr_morphing() && now - ui.head_t > 100u)) {
@@ -2211,11 +2295,13 @@ static void ui_frame(void)
         last_ble = (uint32_t)(plat_ble_connected() | plat_ble_device() << 1);
         ui.redraw_head = 1;
     }
-    if (now - ui.stat_t >= 10000u && (cpu > ui.stat_cpu + 4u || cpu + 4u < ui.stat_cpu || nb != ui.stat_bodies)) {
+    if (now - ui.stat_t >= 10000u
+        && (cpu > ui.stat_cpu + 4u || cpu + 4u < ui.stat_cpu || nb != ui.stat_bodies || usb_underruns() != ui.stat_under)) {
         char t[80], v[12];               /* the load, to the log (fm1_remote.py log): a capability probe */
         ui.stat_t = now;
         ui.stat_cpu = (uint8_t)cpu;
         ui.stat_bodies = (uint8_t)nb;
+        ui.stat_under = usb_underruns();
         t[0] = 0;                        /* short: the log keeps about 40 characters of a line */
         text_cat(t, "cpu ");
         int_text((int32_t)cpu, v);
@@ -2231,6 +2317,11 @@ static void ui_frame(void)
         text_cat(t, " x");
         int_text((int32_t)(plat_xruns() & 0xFFFFu), v);
         text_cat(t, v);
+        if (ui.stat_under) {             /* the USB audio ring's underruns: crackle in a recording */
+            text_cat(t, " u");
+            int_text((int32_t)(ui.stat_under & 0xFFFFu), v);
+            text_cat(t, v);
+        }
         plat_log(t);
     }
     if (nb != last_bodies || (cpu != last_cpu && now - ui.head_t > 1000u)) {   /* the status: bodies, CPU */
