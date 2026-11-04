@@ -78,10 +78,11 @@ for intended sound changes, a simulator check per new parameter, manual row per 
 # DEEP FIELD — second firmware, built overnight 2026-10-31 → 11-01
 
 **Status, 2026-11-03 (read this first):** the FM-1 still runs the build of 2026-11-02 evening (image 300 KB,
-identity FM-1_1400). The **playable pass** of 2026-11-03 and what followed it the same day (items 1-8 below) are flashed and
-committed; item 9 (MOTION 2, ECHO, PULSE) is built and waits for "Flash it". Kyle has played the lead layer and
-the runner only briefly; the three lighting questions are still open. Before this day he liked the sounds of the
-11-02 build but found it bland. On it: the three-rule interface (one button one
+identity FM-1_1400). The **playable pass** of 2026-11-03 and everything that followed it that day (items 1-9 below) are flashed
+(image 317 KB, identity FM-1_1400, booted clean), committed and pushed to github.com/WisestWizard/deepfield; the
+site at wisestwizard.github.io/deepfield carries 0.1 (the commit before item 9). Kyle has played the lead layer
+and the runner only briefly; nothing else since the morning has been heard. Before this day he liked the sounds
+of the 11-02 build but found it bland. Resume with "What's next" at the end of this section. On it: the three-rule interface (one button one
 page, SELECT between pages; a lit button is a mode; the screen mirrors the panel with the BEAMS view), the FDN hall
 on the second core a block behind the bus, the noise layer, eight models, sixteen factory scenes, the effects
 retuned by measurement, 21 review fixes including the watchdog reset's cause. Device CPU with eight bodies: 29–37 %
@@ -364,6 +365,24 @@ factory beds), scene RMS -12.7 to -17.0, sanitizer clean but for `fastmath.h:58`
 build with items 1-7 is flashed and boots clean; item 8's build (clock, CYCLE, the crossfade) waits for "Flash it". Device CPU
 of the leads, the chord bands and the runner unmeasured (host: the four bands about 1 µs a block; a lead costs
 a body).
+
+**What's next (agreed order, 2026-11-03 night):**
+
+1. Kyle's ears on everything since the morning: the leads and the accent, the five new ORBIT modes, the noise
+   weather and the chord breath, the lookahead limiter, MOTION 2. And the three lighting questions from the
+   review: SAVE lights for any settings change (autosave the settings?), the bed at mid under LATCH off, whether
+   the destination LED stays.
+2. Device CPU with the new load: STRING ×8 with SWAY and CROSS, the chord breath on, the runner clocked (the
+   header figure; `fm1_remote.py log` with `/usr/bin/python3`). Unread since the leads were added.
+3. Publish 0.2 once Kyle likes it (`base/tools/publish_site.sh deepfield 0.2`) and submit the site to
+   thefirmwarehub.com (its submission form).
+4. Sound depth still on the list: the hall breathing with TIDE, just intonation per scale, AGE on the master,
+   true audio-rate cross-FM (a pair-wise renderer rewrite; CROSS today is control-rate coupling).
+5. STACK: a second model per body (FRASIL stacks three); the second core has room beside the hall.
+6. The full MIDI pass: CC map for the new pages, MIDI learn, clock out for ORBIT's moves, and the two platform
+   changes to send upstream to fm1-base (a public "a computer is recording" call; the `leds` printer with
+   PLAY's colour).
+7. Pocket Poly: its v0.6 sound pass never happened; decide whether it stays in the repository or is parked.
 
 **TODO (Kyle, 2026-11-02): more sounds, presets and voices for DEEP FIELD** — more factory scenes than eight,
 more models than four (candidates in `deepfield/docs/research.md` §C: cross-FM pairs, a Shepard model, just
