@@ -372,8 +372,11 @@ a body).
    weather and the chord breath, the lookahead limiter, MOTION 2. And the three lighting questions from the
    review: SAVE lights for any settings change (autosave the settings?), the bed at mid under LATCH off, whether
    the destination LED stays.
-2. Device CPU with the new load: STRING ×8 with SWAY and CROSS, the chord breath on, the runner clocked (the
-   header figure; `fm1_remote.py log` with `/usr/bin/python3`). Unread since the leads were added.
+2. ~~Device CPU with the new load~~ Read 2026-11-03 night (Kyle's go-ahead to drive the unit over USB): every
+   factory scene with eight bodies 29–47 % (LOW CHOIR the heaviest at 47, ICE BELLS 42, DESCENT 41, NEBULA 40,
+   STRING scenes 35–37); the full load (STARLIGHT ×8 with CROSS and SWAY at 100, the breath on every body, ORBIT in
+   ARP at 120 BPM with CLOCK OUT) 56–57 %, no xruns. The breath costs 11 points, the runner 8, CROSS and SWAY
+   nothing readable. Figures in `deepfield/docs/BUDGET.md`. Still under the 70 % line; STACK (item 5) has room.
 3. Publish 0.2 once Kyle likes it (`base/tools/publish_site.sh deepfield 0.2`) and submit the site to
    thefirmwarehub.com (its submission form).
 4. Sound depth still on the list: the hall breathing with TIDE, just intonation per scale, AGE on the master,
