@@ -21,7 +21,7 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | LFO | MOTION page (SELECT for MOTION 2) | |
 | FX | The effects pages: ENSEMBLE, then SELECT for DELAY and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off, C4 = the noise layer, shown large (saved with the scene) |
 | ARP | ORBIT page (SELECT for ORBIT 2) | |
-| GLO | GLOBAL page (SELECT for MIDI, again for USB) | Lean on a key: its pressure crossfades toward the next scene; let go and the blend stays |
+| GLO | GLOBAL page (SELECT for MIDI, again for USB) | Lean on a key: its pressure crossfades toward the next scene (push after the key settles; D5 up read no lean: held, the blend climbs to full in 2 s); let go and the blend stays |
 | SEL | LATCH on / off (lit while on) | 1 s: every body let go |
 | PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD, SCATTER and CYCLE (the chord moves: along the scale, scattered, or through a progression), red ARP (a runner of leads over the bed, on after the bed is let go), orange ECHO (your last notes replayed, fading) and PULSE (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | ORBIT page |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
@@ -54,7 +54,7 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | MOTION | TIDE RATE | WOBBLE | WALK | WIDTH |
 | MOTION 2 | SPREAD (the bodies unlike each other) | CROSS (pairs bend each other) | TIMBRE (each body's MASS walks) | SWAY (each body drifts across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
-| FX DELAY | DLY TIME | DLY FDBK | DLY MIX | – |
+| FX DELAY | DLY TIME (ms; from 100 the beat's division 1/16 1/8 1/8D 1/4T 1/4, from the runner's RATE or the MIDI clock) | DLY FDBK | DLY MIX | DIFFUSE (repeats smeared into a cloud) |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
 | ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE: EVERY; ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE; ECHO: DECAY | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS; ECHO: JUMPS; PULSE: ROLL |
 | ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |

@@ -161,13 +161,15 @@ and value large over the view.
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (the random walk of pitch) | WIDTH (stereo spread, by note) |
 | LFO, then SELECT | MOTION 2 | SPREAD (how unlike each other the bodies are: detune, weight, breath, place) | CROSS (bodies in pairs: one's swell bends the other) | TIMBRE (each body's own slow walk of MASS) | SWAY (each body drifts across the stereo field on its own cycle) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II, ENSEMBLE) | ENS MIX | – | – |
-| FX, then SELECT | DELAY | DLY TIME | DLY FDBK | DLY MIX (the delay's level) | – |
+| FX, then SELECT | DELAY | DLY TIME (ms; from 100, a division of the beat) | DLY FDBK | DLY MIX (the delay's level) | DIFFUSE (the repeats smeared into a cloud) |
 | FX, then SELECT twice | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
 | ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP, CYCLE, ECHO, PULSE) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM; EXT while MIDI clock comes) | by MODE: CHANCE, BODIES (SCATTER), GATE (ARP), or DECAY (ECHO) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), ORDER (ARP), CHORDS (CYCLE), JUMPS (ECHO), or ROLL (PULSE) |
 | ARP, then SELECT | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
 | GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (0 to 30 s; NOW) |
 | GLO, then SELECT | MIDI | IN CH (OMNI, 1..16) | OUT CH (1..16) | LOCAL | VELOCITY |
 | GLO, then SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (0 to -18 dB, the recording's level) | CLOCK OUT | – |
+
+**The delay** is two legs, left then right: a note comes back on the left after DLY TIME, then on the right 1.382 times later, then left again, each repeat a little further away and a little darker, DLY FDBK saying how many. Below 100 DLY TIME is free, 50 to 418 ms; from 100 it reads a division of the beat (1/16, 1/8, 1/8D, 1/4T, 1/4) timed from the runner's RATE on the ORBIT page, or from the MIDI clock when one is coming in, so the runner and PULSE land their repeats in time. DIFFUSE smears each repeat: at 0 a tape echo, past the middle a short burst, at full a cloud that trails the bed by the delay time instead of repeating it. A change of DLY TIME bends the pitch on its way, like tape.
 
 **MOTION 2** (LFO, then SELECT) is what makes eight bodies eight voices instead of one spectrum at eight pitches.
 SPREAD gives each body its own small differences for its life: up to 14 cents of detune, a little more or less
@@ -324,9 +326,11 @@ delay).
 
 ---
 
-**The crossfade by hand.** Hold GLO and lean on any key: how hard you press is how far the sound blends toward the
+**The crossfade by hand.** Hold GLO and lean on a key: how hard you press is how far the sound blends toward the
 next scene (the slot after this one), the header's bar showing how far and the screen naming the scene and the
-percentage. Let the key go and the blend stays where it is, between two scenes; let GLO go and it stays there
+percentage. The lean is counted from where the key settles, so press the key, hold it a moment, then push. The
+top seven keys (D5 to G5) cannot read a lean: held under GLO, the blend climbs from where it is to full in two
+seconds. Let the key go and the blend stays where it is, between two scenes; let GLO go and it stays there
 until the next scene loads. The keys play nothing while GLO is held, and the bodies are left alone: only the
 values blend, never the model.
 

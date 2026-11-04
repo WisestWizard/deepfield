@@ -143,3 +143,9 @@ JUMPS	jumps
 ROLL	roll
 PLAY ECHO	play echo
 PLAY PULSE	play pulse
+DIFFUSE	diffuse
+1/16	sixteenth
+1/8	eighth
+1/8D	dotted eighth
+1/4T	quarter triplet
+1/4	quarter

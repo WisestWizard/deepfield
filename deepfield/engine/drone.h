@@ -31,6 +31,7 @@ enum {
     P_ORB_PROG,                                                   /* CYCLE: the progression it walks */
     P_SPREAD, P_CROSS, P_TWALK, P_SWAY,                           /* MOTION 2: the bodies apart, coupled, drifting in timbre, swaying */
     P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROLL,                        /* ECHO's decay and octave jumps; PULSE's roll */
+    P_DLY_DIFF,                                                   /* the delay's repeats smeared into a cloud */
     P_COUNT
 };
 enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_PULSE, OM_COUNT };   /* P_ORB_MODE, the index */
@@ -151,5 +152,8 @@ void dr_scope(const int16_t **l, const int16_t **r, uint32_t *n);   /* the last 
 uint32_t dr_harmonics(uint32_t i, float *amp);     /* body i's 8 harmonic levels (SOLAR; the others approximated) */
 float dr_time_s(uint32_t p);             /* the UI shows the engine's own mappings */
 float dr_orbit_s(uint32_t p);
-float dr_dly_time_s(uint32_t p);
+float dr_dly_time_s(uint32_t p);                    /* DLY TIME below 100: free, 50 to 418 ms */
+int32_t dr_dly_div(uint32_t p);                     /* DLY TIME from 100: a division of the beat (DR_DLY_DIV_NAME), else -1 */
+#define DR_DLY_MAX_S 0.418f
+extern const char *const DR_DLY_DIV_NAME[5];
 float dr_hz(uint32_t p);                 /* VOID's cutoff for a MASS value */

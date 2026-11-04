@@ -30,9 +30,24 @@ static float *ens_l, *ens_r;
 static uint32_t ens_pos;
 static float ens_ph1, ens_ph2;
 
+/* The delay: two legs on one 16-bit buffer (left, then right), the input into the left, each leg's repeat crossing
+ * into the other with the feedback, the right leg 1.382 times the left so the sides never coincide; two allpasses
+ * a leg smear the repeats by DIFFUSE; wow and flutter, a dark low-pass and a soft clip in each leg. */
+#define DLY_HALF (DLY_LEN / 2u)          /* a leg: 0.418 s */
+#define DLY_RATIO 1.382f
+#define DLY_WIDTH 0.7f                   /* the two legs' spread: 0 mono, 1 hard left and right */
+#define DLY_AP0 309u                     /* 7 and 11 ms on the left, 5 and 13 on the right */
+#define DLY_AP1 485u
+#define DLY_AP2 221u
+#define DLY_AP3 573u
+#define DLY_AP_SUM 794u                  /* a leg's allpasses delay it this much: its read is that much shorter */
+static const uint32_t DLY_AP[4] = {DLY_AP0, DLY_AP1, DLY_AP2, DLY_AP3};
+typedef char fx_ap_check[DLY_AP0 + DLY_AP1 + DLY_AP2 + DLY_AP3 == FX_DLY_AP
+                         && DLY_AP0 + DLY_AP1 == DLY_AP_SUM && DLY_AP2 + DLY_AP3 == DLY_AP_SUM ? 1 : -1];
 static int16_t *dly;
+static line_t dly_ap[4];
 static uint32_t dly_pos;
-static float dly_read, dly_lp, dly_dc_x, dly_dc_y, wow_ph, flut_ph;
+static float dly_read, dly_lp[2], dly_dc_x[2], dly_dc_y[2], wow_ph, flut_ph;
 
 static line_t rv_pre[2], rv_ap[4], rv_fd[8];
 static float rv_hp_l, rv_hp_r, rv_lp[8], rv_mod_ph;
@@ -124,6 +139,14 @@ void fx_init(void *arena)
     a += ENS_LEN * sizeof(float);
     dly = (int16_t *)a;
     a += DLY_LEN * 2u;
+    for (i = 0; i < 4u; i++) {
+        dly_ap[i].buf = (int16_t *)a;
+        dly_ap[i].len = DLY_AP[i];
+        dly_ap[i].pos = 0;
+        a += DLY_AP[i] * 2u;
+        for (k = 0; k < DLY_AP[i]; k++)
+            dly_ap[i].buf[k] = 0;
+    }
     shim = (int16_t *)a;
     a += SHIM_LEN * 2u;
     for (i = 0; i < SHIM_LEN; i++)
@@ -156,11 +179,41 @@ void fx_init(void *arena)
     dly_live = rv_live = 0;
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
     dly_read = 4410.0f;
-    dly_lp = dly_dc_x = dly_dc_y = rv_hp_l = rv_hp_r = 0.0f;
+    dly_lp[0] = dly_lp[1] = dly_dc_x[0] = dly_dc_x[1] = dly_dc_y[0] = dly_dc_y[1] = rv_hp_l = rv_hp_r = 0.0f;
     lim_gain = lim_tgt = 1.0f;
     for (i = 0; i < LIM_LA; i++)
         lim_dl[i] = lim_dr[i] = 0.0f;
     lim_pos = 0;
+}
+
+static inline float dly_tap(const int16_t *buf, float back, int32_t *live)   /* a leg read a fraction back */
+{
+    uint32_t b = (uint32_t)back, i0 = dly_pos + DLY_HALF - b, i1;
+    if (i0 >= DLY_HALF)
+        i0 -= DLY_HALF;
+    i1 = i0 == 0u ? DLY_HALF - 1u : i0 - 1u;
+    *live |= buf[i0] | buf[i1];
+    return ((float)buf[i0] + ((float)buf[i1] - (float)buf[i0]) * (back - (float)b)) * (1.0f / 32767.0f);
+}
+static inline void dly_put(int16_t *buf, float c, int32_t *live)
+{
+    c *= 32767.0f;
+    buf[dly_pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
+    *live |= buf[dly_pos];
+}
+static inline float dly_leg(uint32_t s, float c, float g, float lpc)   /* what goes into a leg: smeared, darker, softer */
+{
+    float y;
+    c = allpass(&dly_ap[2u * s], c, g);
+    c = allpass(&dly_ap[2u * s + 1u], c, g);
+    dly_lp[s] += (c - dly_lp[s]) * lpc;             /* the repeats get darker */
+    c = dly_lp[s] * 1.2f;                           /* and softer: a cubic clip */
+    c = c > 1.5f ? 1.5f : c < -1.5f ? -1.5f : c;
+    c = (c - c * c * c * (4.0f / 27.0f)) * 0.85f;
+    y = c - dly_dc_x[s] + 0.995f * dly_dc_y[s];     /* no DC build-up */
+    dly_dc_x[s] = c;
+    dly_dc_y[s] = y;
+    return y;
 }
 
 void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensemble and the delay, in place */
@@ -227,13 +280,14 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         }
         pk_ens = 0.0f;
     }
-    /* tape delay: mono in, the line read at a slowly wandering distance, dark and soft in the feedback */
+    /* the delay: mono in, two legs read at a slowly wandering distance, dark and soft in the feedback */
     if ((p->dly_send > 0.001f && bus_pk > 0.0f) || dly_live)
-        dly_tail = DLY_LEN / n + 2u;     /* the line's length: nothing in or out that long, and it is all zeros */
+        dly_tail = DLY_LEN / n + 2u;     /* both legs' length: nothing in or out that long, and it is all zeros */
     else if (dly_tail)
         dly_tail--;
     if (dly_tail && !(p->bypass & FX_BYP_DLY)) {
-        float tgt = p->dly_time_s * FS, slew = 0.0004f, fb = 0.95f * fm_sqrtf(p->dly_fdbk), lpc = 0.35f, send = p->dly_send;
+        float tgt = p->dly_time_s * FS - (float)DLY_AP_SUM, slew = 0.0004f, fb = 0.95f * fm_sqrtf(p->dly_fdbk),
+              lpc = 0.35f, send = p->dly_send, g = 0.6f * p->dly_diff, maxr = (float)(DLY_HALF - 128u);
                                          /* the feedback as a square root: repeats from the first turn, 0.95 at full */
         float wf0, wf1, dwf;
         int32_t live = 0;
@@ -247,53 +301,42 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             flut_ph -= 1.0f;
         wf1 = 1.0f + 0.0015f * fm_sin_turns(wow_ph) + 0.0003f * fm_sin_turns(flut_ph);
         dwf = (wf1 - wf0) / (float)n;
-        if (tgt > (float)(DLY_LEN - 128u))   /* wow and flutter read up to 0.18 % further back */
-            tgt = (float)(DLY_LEN - 128u);
+        if (tgt > maxr)                  /* wow and flutter read up to 0.18 % further back */
+            tgt = maxr;
         if (tgt < 64.0f)
             tgt = 64.0f;
         for (i = 0; i < n; i++) {
-            float in = (l[i] + r[i]) * 0.5f * send, d, out, back, c, wet;
-            uint32_t b, i0, i1;
+            float in = (l[i] + r[i]) * 0.5f * send, backl, backr, outl, outr, c, m;
             dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
             wf0 += dwf;
-            back = dly_read * wf0;
-            b = (uint32_t)back;
-            i0 = dly_pos + DLY_LEN - b;
-            if (i0 >= DLY_LEN)
-                i0 -= DLY_LEN;
-            i1 = i0 == 0u ? DLY_LEN - 1u : i0 - 1u;
-            live |= dly[i0] | dly[i1];
-            d = (float)dly[i0] + ((float)dly[i1] - (float)dly[i0]) * (back - (float)b);
-            out = d * (1.0f / 32767.0f);
-            wet = out;
-            c = in + out * fb;
-            dly_lp += (c - dly_lp) * lpc;               /* the repeats get darker */
-            c = dly_lp * 1.2f;                          /* and softer: a cubic clip */
-            c = c > 1.5f ? 1.5f : c < -1.5f ? -1.5f : c;
-            c = (c - c * c * c * (4.0f / 27.0f)) * 0.85f;
-            {
-                float y = c - dly_dc_x + 0.995f * dly_dc_y;   /* no DC build-up */
-                dly_dc_x = c;
-                dly_dc_y = y;
-                c = y;
-            }
-            c *= 32767.0f;
-            dly[dly_pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
-            live |= dly[dly_pos];
-            dly_pos = dly_pos + 1u == DLY_LEN ? 0u : dly_pos + 1u;
-            l[i] += wet;
-            r[i] += wet;
+            backl = dly_read * wf0;
+            backr = dly_read * DLY_RATIO;
+            if (backr > maxr)
+                backr = maxr;
+            backr *= wf0;
+            outl = dly_tap(dly, backl, &live);
+            outr = dly_tap(dly + DLY_HALF, backr, &live);
+            c = dly_leg(0, in + outr * fb, g, lpc);    /* the left leg: the input, and the right's repeat back */
+            dly_put(dly, c, &live);
+            c = dly_leg(1, outl * fb, g, lpc);         /* the right leg: the left's repeat crossing over */
+            dly_put(dly + DLY_HALF, c, &live);
+            dly_pos = dly_pos + 1u == DLY_HALF ? 0u : dly_pos + 1u;
+            m = (outl + outr) * 0.5f;
+            l[i] += m + (outl - m) * DLY_WIDTH;
+            r[i] += m + (outr - m) * DLY_WIDTH;
         }
         dly_live = live != 0;
-        dly_lp = fm_flush(dly_lp);
-        dly_dc_x = fm_flush(dly_dc_x);
-        dly_dc_y = fm_flush(dly_dc_y);
+        for (i = 0; i < 2u; i++) {
+            dly_lp[i] = fm_flush(dly_lp[i]);
+            dly_dc_x[i] = fm_flush(dly_dc_x[i]);
+            dly_dc_y[i] = fm_flush(dly_dc_y[i]);
+        }
         pk_dly = block_peak(l, r, n);
         bus_pk = pk_dly;
     } else {
-        float tgt = p->dly_time_s * FS, slew = 0.0004f;
-        if (tgt > (float)(DLY_LEN - 128u))
-            tgt = (float)(DLY_LEN - 128u);
+        float tgt = p->dly_time_s * FS - (float)DLY_AP_SUM, slew = 0.0004f;
+        if (tgt > (float)(DLY_HALF - 128u))
+            tgt = (float)(DLY_HALF - 128u);
         if (tgt < 64.0f)
             tgt = 64.0f;
         for (i = 0; i < n; i++)          /* at rest: the time still settles */

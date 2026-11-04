@@ -366,6 +366,29 @@ build with items 1-7 is flashed and boots clean; item 8's build (clock, CYCLE, t
 of the leads, the chord bands and the runner unmeasured (host: the four bands about 1 µs a block; a lead costs
 a body).
 
+**Delay pass (2026-11-03 night, after Kyle's "not really feeling it"):** an electronic-musician persona read the
+delay and said why: a dark mono repeat of a sustained drone is a comb filter, not an echo; the wet sat dead centre
+between a wide ensemble and a stereo hall; and it had no relation to the runner's tempo, then ran into the hall.
+Built its first pass. The one 0.836 s line is now two legs of 0.418 s (`fx.c` DLY_HALF): the input into the left,
+each leg's repeat crossing into the other with the feedback, the right leg 1.382 times the left so the sides never
+coincide, the wet spread by DLY_WIDTH 0.7; two allpasses a leg (7 + 11 ms left, 5 + 13 ms right, 3.2 KB from the
+arena, their 18 ms taken off the read so the knob's time is the hop) smear the repeats by DIFFUSE, the DELAY
+page's fourth knob (P_DLY_DIFF at the end of the enum: the scene bank migrates by size, old scenes get INIT's 25).
+DLY TIME below 100 is free, 50 to 418 ms; from 100 a division of the beat (1/16, 1/8, 1/8D, 1/4T, 1/4;
+`dr_dly_div`) timed from the MIDI clock when it is followed, else the runner's RATE, clamped to the leg. Measured
+in the simulator on a 120 ms lead over an empty bed (DLY TIME 273 ms, FDBK 55): repeats at about 290 ms left,
+then 350 ms later right, then left, then right, each hop 4 to 5 dB down, the sides 15 dB apart; at DIFFUSE 100
+the gaps between them fill. Factory: the delay is now absent (DLY MIX 0, also INIT's default) in FIRST LIGHT, VOID
+TIDE, BOWED SKY, STARLIGHT, CATHEDRAL, LOW CHOIR, ICE BELLS, ASCENT and FOLDED SUN; in time on GLASS ORBIT (1/8D,
+FDBK 50, MIX 40, DIFFUSE 30), PULSAR (1/8) and GAMELAN (1/16, clean); a second dark room on DEEP VOID (418 ms, FDBK
+75, DIFFUSE 85) and TIDE POOL (380 ms, DIFFUSE 60); a trailing cloud on NEBULA and DESCENT (MIX 25, DIFFUSE 70).
+301 simulator checks (the DELAY page, the sync labels), goldens rewritten (every scene with a delay changed; scene
+RMS -11.5 to -17.7), device package built (image 317,996 B, RAM 79,836 of 98,304, pool 324,800 of 344,064), not
+flashed, not heard by Kyle. The musician's next steps, in order: a COLOUR in the feedback (a high-pass at about
+120 Hz to keep the sub out of the loop, the low-pass brighter than 0.35: "probably a quarter of the mud"),
+modulation depth as a knob (the wow from clean to chorus to seasick), half the wet into the hall instead of all of
+it; they would skip ducking, reverse and pitch-shifted repeats on this material.
+
 **What's next (agreed order, 2026-11-03 night):**
 
 1. Kyle's ears on everything since the morning: the leads and the accent, the five new ORBIT modes, the noise
@@ -386,6 +409,14 @@ a body).
    changes to send upstream to fm1-base (a public "a computer is recording" call; the `leds` printer with
    PLAY's colour).
 7. Pocket Poly: its v0.6 sound pass never happened; decide whether it stays in the repository or is parked.
+
+**TODO (Kyle, 2026-11-03): the crossfade by hand needs a reason to exist.** Kyle tried GLO + a key and could not
+tell what it was for. Fixed the same night: the top row (D5 up) has no pressure sensing, so a held top-row key
+now climbs the blend to full in two seconds (flashed). The remaining question is musical: the blend slides the
+values toward the next slot and never the model or the notes, so between unrelated factory neighbours (F1 SOLAR
+to F2 VOID) it is subtle. Try it where it should be obvious (F6 NEBULA toward F7 DEEP VOID: SPACE 69 to 39,
+DRIFT 55 to 23) and as designed pairs in the user slots (a calm U1 and a stormy U2 of the same patch). If it
+still does not earn its place: let GLO + PRESET pick the far scene while held, or cut the feature.
 
 **TODO (Kyle, 2026-11-02): more sounds, presets and voices for DEEP FIELD** — more factory scenes than eight,
 more models than four (candidates in `deepfield/docs/research.md` §C: cross-FM pairs, a Shepard model, just

@@ -127,7 +127,16 @@ static inline float frand(uint32_t *rng)  /* -1..1 */
 
 float dr_time_s(uint32_t p) { return 0.03f * fm_exp2f((float)(p & 127u) * (9.4f / 127.0f)); }       /* 0.03 .. 20 s */
 float dr_orbit_s(uint32_t p) { return fm_exp2f((float)(p & 127u) * (5.9f / 127.0f)); }              /* 1 .. 60 s */
-float dr_dly_time_s(uint32_t p) { return 0.05f + (float)(p & 127u) * (0.78f / 127.0f); }
+float dr_dly_time_s(uint32_t p)
+{
+    p &= 127u;
+    if (p >= 100u)
+        p = 99u;
+    return 0.05f + (float)p * ((DR_DLY_MAX_S - 0.05f) / 99.0f);
+}
+int32_t dr_dly_div(uint32_t p) { p &= 127u; return p < 100u ? -1 : (int32_t)((p - 100u) * 5u / 28u); }
+const char *const DR_DLY_DIV_NAME[5] = {"1/16", "1/8", "1/8D", "1/4T", "1/4"};
+static const float DLY_DIV_BEATS[5] = {0.25f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f};
 float dr_hz(uint32_t p) { return 60.0f * fm_exp2f((float)(p & 127u) * (7.6f / 127.0f)); }
 static float glide_s(float p) { return 0.02f * fm_exp2f(p * 8.6f); }                                  /* 0.02 .. 7.8 s */
 float dr_attack_s(uint32_t p) { return 0.001f * fm_exp2f((float)(p & 127u) * (11.0f / 127.0f)); }    /* 1 ms .. 2 s */
@@ -2085,8 +2094,21 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     space = p01(P_SPACE);
     fx.ens_mode = dr_scene.p[P_ENS] < ENS_COUNT ? dr_scene.p[P_ENS] : 0u;   /* this block's effect settings */
     fx.ens_mix = p01(P_ENS_MIX);
-    fx.dly_time_s = dr_dly_time_s((uint32_t)(p01(P_DLY_TIME) * 127.0f));
+    {
+        uint32_t pt = (uint32_t)(p01(P_DLY_TIME) * 127.0f + 0.5f);
+        int32_t dv = dr_dly_div(pt);
+        if (dv >= 0) {                   /* in time: the MIDI clock followed, else the runner's RATE */
+            float bpm = dr_clock_bpm(), t;
+            if (bpm <= 0.0f)
+                bpm = dr_arp_bpm(dr_scene.p[P_ARP_RATE]);
+            t = DLY_DIV_BEATS[dv] * 60.0f / bpm;
+            fx.dly_time_s = t < 0.05f ? 0.05f : t > DR_DLY_MAX_S ? DR_DLY_MAX_S : t;
+        } else {
+            fx.dly_time_s = dr_dly_time_s(pt);
+        }
+    }
     fx.dly_fdbk = p01(P_DLY_FDBK);
+    fx.dly_diff = p01(P_DLY_DIFF);
     fx.dly_send = fm_sqrtf(p01(P_DLY_MIX)) * (0.6f + 0.4f * space);   /* DLY MIX is the delay's level; SPACE
                                                                         * only pushes it a little further */
     fx.rev_decay = p01(P_REV_SIZE);

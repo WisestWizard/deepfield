@@ -36,7 +36,7 @@ static const page_t PAGES[PG_COUNT] = {
     {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
     {"MOTION 2", "LFO", {P_SPREAD, P_CROSS, P_TWALK, P_SWAY}},   /* the bodies apart from each other */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
-    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, PID_NONE}},
+    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, P_DLY_DIFF}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
     {"ORBIT", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, PID_NONE, PID_NONE}},
@@ -57,6 +57,7 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"REV SIZE", K_PCT}, [P_REV_DAMP] = {"REV DAMP", K_PCT},
     [P_SHIMMER] = {"SHIMMER", K_PCT},   [P_DLY_MIX] = {"DLY MIX", K_PCT},   [P_DLY_TIME] = {"DLY TIME", K_DLYTIME},
     [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
+    [P_DLY_DIFF] = {"DIFFUSE", K_PCT},
     [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
     [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
     [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},
@@ -142,6 +143,8 @@ static struct {
     uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
     uint32_t rec_t, fx_t, fx_up, sel_t, sel_down, glo_t;   /* GLO held: the crossfade layer (a key's pressure blends toward the next scene) */
     uint8_t glo_xf;                      /* a key was leaned on during this hold */
+    uint8_t glo_amt;                     /* the blend last set (0..127) */
+    uint32_t glo_kt;                     /* a key without pressure (the top row) held under GLO: when its climb began */
     uint8_t fx_used, sel_used;
     uint32_t keys_sig;                   /* what the keys strip showed last */
     uint8_t redraw_keys;
@@ -346,8 +349,12 @@ static void value_text(uint32_t id, char *b)
         break;
     case K_ENS: text_cat(b, ENS_NAME[v % ENS_COUNT]); break;
     case K_DLYTIME:
-        int_text((int32_t)(dr_dly_time_s(v) * 1000.0f), b);
-        text_cat(b, "MS");
+        if (dr_dly_div(v) >= 0) {
+            text_cat(b, DR_DLY_DIV_NAME[dr_dly_div(v)]);
+        } else {
+            int_text((int32_t)(dr_dly_time_s(v) * 1000.0f), b);
+            text_cat(b, "MS");
+        }
         break;
     case K_SCALE: text_cat(b, SCALE_NAME[v % SC_COUNT]); break;
     case K_ROOT: text_cat(b, NOTE_NAME[v % 12u]); break;
@@ -796,6 +803,8 @@ static void button(uint32_t k, uint32_t now)
         page_to(PG_GLOBAL);
         ui.glo_t = now;
         ui.glo_xf = 0;
+        ui.glo_amt = 0;
+        ui.glo_kt = 0;
         break;
     case B_SEL:
         ui.sel_down = now;
@@ -882,15 +891,33 @@ static void input(void)
                                           * next scene (the bar in the header); let go and the blend stays */
         if (btn >> B_GLO & 1u) {
             if (now - ui.glo_t >= 300u) {
-                uint32_t prs = 0, next = (set.scene + 1u) % NSLOTS;
+                uint32_t prs = 0, next = (set.scene + 1u) % NSLOTS, plain = 0;
                 for (k = 0; k < NKEYS; k++)
-                    if ((dkeys >> k & 1u) && touch_pressure(k) > prs)
-                        prs = touch_pressure(k);
+                    if (dkeys >> k & 1u) {
+                        if (!touch_sensed(k))
+                            plain = 1;
+                        else if (touch_pressure(k) > prs)
+                            prs = touch_pressure(k);
+                    }
+                if (plain) {             /* the top row reads no pressure: held, the blend climbs from where it
+                                          * is to full in two seconds */
+                    uint32_t held;
+                    if (!ui.glo_kt)
+                        ui.glo_kt = now - (uint32_t)ui.glo_amt * 2000u / 127u;
+                    held = now - ui.glo_kt;
+                    if (held > 2000u)
+                        held = 2000u;
+                    if (held * 127u / 2000u > prs)
+                        prs = held * 127u / 2000u;
+                } else {
+                    ui.glo_kt = 0;
+                }
                 if (dkeys) {
                     char t[24], v[8];
                     slot_title(next, t);
                     dr_morph_hold(slot_scene(next), (float)prs * (1.0f / 127.0f));
                     ui.glo_xf = 1;
+                    ui.glo_amt = (uint8_t)prs;
                     int_text((int32_t)(prs * 100u / 127u), v);
                     text_cat(v, "%");
                     ui_say(t, v);

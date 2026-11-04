@@ -4,16 +4,18 @@
  * (one line, wow and flutter, dark saturated feedback), a hall (an eight-line feedback delay network, 16-bit
  * lines, pre-delay) with a shimmer (its output an octave up, fed back in) and a freeze (the network holds what it
  * has), a peak limiter. Stereo float
- * in place; memory from the arena. From Pocket Poly's fx.c. */
+ * in place; memory from the arena. From Pocket Poly's fx.c. The delay is two legs of 0.418 s, left then right
+ * (the right 1.382 times the left), the repeats crossing over, two allpasses a leg smearing them by DIFFUSE. */
 #pragma once
 #include <stdint.h>
 
 typedef struct {
     uint32_t ens_mode;                   /* ENS_* */
     float ens_mix;                       /* 0..1 */
-    float dly_time_s;                    /* 0.02 .. 0.83 */
+    float dly_time_s;                    /* 0.05 .. 0.418: the left leg; the right is 1.382 of it */
     float dly_fdbk;                      /* 0..1 */
     float dly_send;                      /* 0..1 */
+    float dly_diff;                      /* 0..1: the repeats smeared into a cloud */
     float rev_decay;                     /* 0..1: the decay time, 0.6 to 8 s */
     float rev_damp;                      /* 0..1 */
     float rev_send;                      /* 0..1 */
@@ -28,10 +30,11 @@ typedef struct {
 #define FX_BYP_SHIM 8u
 
 #define FX_ENS_LEN 512u                  /* 11.6 ms a channel, float */
-#define FX_DLY_LEN 36864u                /* 0.836 s, int16 */
+#define FX_DLY_LEN 36864u                /* two legs of 0.418 s, int16 */
+#define FX_DLY_AP 1588u                  /* the legs' four allpasses, int16 */
 #define FX_RV_TOTAL 33291u               /* the hall's fourteen lines, int16 (fx.c checks the sum) */
 #define FX_SHIM_LEN 4096u                /* the shimmer's window, int16 */
-#define FX_BYTES (FX_ENS_LEN * 2u * 4u + FX_DLY_LEN * 2u + FX_RV_TOTAL * 2u + FX_SHIM_LEN * 2u + 64u)
+#define FX_BYTES (FX_ENS_LEN * 2u * 4u + FX_DLY_LEN * 2u + FX_DLY_AP * 2u + FX_RV_TOTAL * 2u + FX_SHIM_LEN * 2u + 64u)
 
 uint32_t fx_bytes(void);                 /* the arena the effects need (FX_BYTES) */
 void fx_init(void *arena);
