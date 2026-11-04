@@ -89,13 +89,16 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
         if (set.midi_in && (full & 0x0Fu) != (uint32_t)set.midi_in - 1u)   /* not our channel */
             continue;
         switch (st) {
-        case 0x90u:
-            if (d2)
-                dr_note_now(d1, d2, 1);
+        case 0x90u:                      /* a MIDI note is a key: LATCH on holds a body, off plays a lead */
+            if (set.latch)
+                dr_note_now(d1, d2, d2 != 0u);
             else
-                dr_note_now(d1, 0, 0);
+                dr_lead_now(d1, d2, d2 != 0u);
             break;
-        case 0x80u: dr_note_now(d1, 0, 0); break;
+        case 0x80u:
+            dr_note_now(d1, 0, 0);
+            dr_lead_now(d1, 0, 0);
+            break;
         case 0xA0u: dr_pressure(d1, d2); break;
         case 0xB0u: midi_cc(d1, d2); break;
         case 0xD0u: dr_channel_pressure(d1); break;
@@ -181,6 +184,17 @@ int app_expect(const char *what, int *got)
         *got = set.vel;
     else if (!strcmp(what, "orbit"))
         *got = dr_orbit_on();
+    else if (!strcmp(what, "orbitmode"))
+        *got = (int)dr_orbit_mode();
+    else if (!strcmp(what, "pending")) {     /* bodies with a move planned */
+        uint32_t i, to;
+        *got = 0;
+        for (i = 0; i < DR_NV; i++)
+            *got += dr_orbit_pending(i, &to);
+    } else if (!strcmp(what, "arpnote"))
+        *got = (int)dr_arp_note();
+    else if (!strcmp(what, "arprun"))
+        *got = dr_arp_running();
     else if (!strcmp(what, "freeze"))
         *got = dr_frozen();
     else if (!strcmp(what, "model"))
@@ -197,6 +211,27 @@ int app_expect(const char *what, int *got)
         *got = (int)dr_fx_active();
     else if (!strncmp(what, "sounding", 8))
         *got = dr_sounding((uint32_t)atoi(what + 8));
+    else if (!strcmp(what, "leads"))         /* leads sounding (held or releasing) */
+        *got = (int)dr_leads();
+    else if (!strcmp(what, "leadnote")) {    /* the newest held lead's key note, -1 none */
+        uint32_t i;
+        dr_body_t b;
+        *got = -1;
+        for (i = 0; i < DR_NL; i++)
+            if (dr_lead_body(i, &b) && !b.fading)
+                *got = b.home;
+    } else if (!strncmp(what, "lead", 4)) {  /* "lead60": a lead at this key note is held */
+        uint32_t i;
+        dr_body_t b;
+        *got = 0;
+        for (i = 0; i < DR_NL; i++)
+            if (dr_lead_body(i, &b) && !b.fading && b.home == (uint32_t)atoi(what + 4))
+                *got = 1;
+    }
+    else if (!strcmp(what, "gust"))          /* the gust's envelope, in percent */
+        *got = (int)(dr_noise_gust() * 100.0f);
+    else if (!strcmp(what, "gusts"))         /* gusts so far */
+        *got = (int)dr_noise_gusts();
     else if (!strcmp(what, "noise")) {       /* the noise layer is heard now */
         float lv, nt, co, bd;
         dr_noise(&lv, &nt, &co, &bd);

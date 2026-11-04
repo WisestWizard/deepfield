@@ -60,15 +60,29 @@ felucca-bsp's `fm1_rescue`.
 
 ---
 
-## 3. The screen
+## 3. The screen and the lights
 
 The screen mirrors the panel: what is on it sits where your hands are.
+
+**The key lights** have three levels, each meaning one thing in every mode. **Lit** is what your fingers address
+now: a latched body's key with LATCH on (tap it to let the body go), a lead's key while you hold it. **Mid** is the
+machine's: a body fading, the home key a body was moved from, the bed's keys while LATCH is off (they sound, but
+the keys play leads now), a lead releasing, a body above or below the keys at the end key. **Glow** is the scale.
+Where ORBIT is taking a body, its key sits at mid and blinks through the last eighth of the countdown. A lead's
+strike winks its key off for a moment, so a runner's step, or an accent on a key that is already lit, is seen.
+
+**The buttons:** the page's button is lit (mid while FX is held, so FX is the one bright page light); SEL for
+LATCH, SEQ for FREEZE, SAVE while there is something to save (blinking in the save dialog); PLAY in the mode's
+colour while ORBIT runs: green WANDER, orange CHORD, orange SCATTER winking at each move, red ARP winking at each
+step; OCT- and OCT+ at mid one octave out and lit two out. A button you hold blinks from a third of a second
+until its hold fires (SEL for every body let go, PLAY for the ORBIT page, REC for Bluetooth), so you know it is
+counting.
 
 | Part | What it shows |
 | --- | --- |
 | Header | The scene's slot (F1..F16, U1..U16) and name (orange while it has unsaved changes). At the right: OCT when the octave is not zero, BLE and DEV when Bluetooth is connected, bodies sounding and CPU; LOAD in orange if the render ever ran out of time (a body is shed). Below, the three states as pills named for their buttons, SEL LATCH, PLAY ORBIT and SEQ FRZ, filled when on, and the letters E D R S lit for the effects heard. A bar along the bottom edge while a scene morphs in. |
 | The view | The bodies, as beams over their keys or in one of the other views (section 10). Any knob or button shows its name and value large here for a moment. With FX held, the switches are named over their keys. |
-| The keys strip | The 27 keys as they are lit: a body's colour while it sounds, dim while it fades, lighter when in the scale, a yellow frame while latched. |
+| The keys strip | The 27 keys as they are lit: a body's colour while it sounds, dim while it fades, lighter when in the scale, a yellow frame while latched, white for a lead (grey as it releases), the body's dim colour on the key ORBIT is taking it to. |
 | Footer | The page band: the button that opened the page, its name, and the SELECT arrows (`<` and `>`) for the pages before and after; the model and the scale at the right. Then the four knobs in a row, under the four real ones: name, value, bar. |
 
 ---
@@ -81,9 +95,20 @@ you lean.
 
 **LATCH** (the SEL button, lit while on; on from the factory): a key strikes a body that stays after the key is
 released, and the same key pressed again lets it go (it fades over FADE seconds). Its key lights while it sounds
-and dims while it fades; on the keys strip a latched key has a yellow frame. Tap SEL to switch LATCH off: a body
-then sounds while its key is held and fades when it is released; a body that was latched goes on sounding only if
-its key is held at that moment, and the others are let go. Hold SEL for a second to let every body go.
+and dims while it fades; on the keys strip a latched key has a yellow frame. Hold SEL for a second to let every
+body go.
+
+**Playing over the bed.** Tap SEL to switch LATCH off (the screen says LATCH OFF, KEYS PLAY): the latched bodies
+stay exactly as they are, and the keys now play **leads** over them: the scene's own model struck short, with its
+own envelope on the LEAD page (ENV, then SELECT): ATTACK (1 ms to 2 s), RELEASE (30 ms to 8 s), LIFT (up to two
+octaves up, in semitones) and LEVEL (75 is level with a body, full is 6 dB over). A lead sounds while its key is
+held and releases when it is let go; it never latches and ORBIT never moves it. A key whose note is latched plays
+a lead on top of its body, an accent. Four leads at a time; a fifth takes the oldest. On screen a lead is a thin
+white beam over its key and its key is white on the keys strip; its key light is lit while held and dim as it
+releases. Tap SEL again to latch with the keys. MIDI notes follow the same rule: bodies with LATCH on, leads with
+it off.
+
+![LATCH off: two leads as thin white beams over the bed's beams, their keys white on the keys strip](img/screen-leads.png "Leads over the bed")
 
 A scene's bodies come in latched, and loading one switches LATCH on. The keys in the scale glow.
 
@@ -129,13 +154,16 @@ and value large over the view.
 | --- | --- | --- | --- | --- | --- |
 | HOME | HOME | MASS | DRIFT | SPACE | TIDE |
 | EDIT | BODY | MODEL (also on the ALGO encoder) | SHAPE | SUB | AIR |
-| EDIT, then SELECT | NOISE | LEVEL (0 is off) | COLOUR (brown to white) | WIND (how fast the band wanders) | BAND (a wide bed at 0; narrowing, it sits on the newest body's note) |
+| EDIT, then SELECT | NOISE | LEVEL (0 is off) | COLOUR (brown to white) | WIND (how fast the band wanders, and how often a gust comes) | BAND (a wide bed at 0; to a half, a band that narrows onto the newest body's note; past a half, the chord's breath) |
+| EDIT, then SELECT twice | NOISE 2 | TEXTURE (hiss, then rain, then crackle) | GUST (the weather: how far the layer swells and drops) | DUCK (how far it draws back under a chord) | WIDTH |
 | ENV | ENVELOPE | SWELL (0.03 s to 20 s) | FADE (0.03 s to 20 s) | PRESS (how much pressure brightens) | GLIDE (how long an ORBIT move takes) |
+| ENV, then SELECT | LEAD (the keys with LATCH off) | ATTACK (1 ms to 2 s) | RELEASE (30 ms to 8 s) | LIFT (0 to +2 octaves, in semitones) | LEVEL |
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (the random walk of pitch) | WIDTH (stereo spread, by note) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II, ENSEMBLE) | ENS MIX | – | – |
 | FX, then SELECT | DELAY | DLY TIME | DLY FDBK | DLY MIX (the delay's level) | – |
 | FX, then SELECT twice | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
-| ARP, or PLAY held | ORBIT | EVERY (1 s to 60 s between moves) | CHANCE | STEPS UP TO (1 to 4 scale steps) | HOME PULL |
+| ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM) | by MODE: CHANCE, BODIES (SCATTER), or GATE (ARP) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), or ORDER (ARP) |
+| ARP, then SELECT | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
 | GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (0 to 30 s; NOW) |
 | GLO, then SELECT | MIDI | IN CH (OMNI, 1..16) | OUT CH (1..16) | LOCAL | VELOCITY |
 
@@ -161,27 +189,55 @@ shown in NEBULA.
 
 ---
 
-**The noise layer** (the NOISE page, EDIT then SELECT) is a stereo noise under the bodies, or alone with no key
-held: wind, sea, breath. LEVEL is its switch (0 is off) and its loudness; COLOUR runs from brown to white; WIND is
-how fast its band wanders; BAND is the band's width, a wide bed at 0 and, past a third, a narrowing band that
-moves onto the newest body's note, so it breathes with the chord. The forces shape it too: MASS brightens it,
-DRIFT widens the wander, SPACE sends it to the hall, TIDE breathes it on its own cycle; leaning on a key brightens
-it, and it swells and fades at SWELL and FADE like a body. On the FX layer, C4 switches it off and back to its
-level (from zero, to a third), and N lights in the header while it is heard. CC 20 is its LEVEL.
+**The noise layer** (the NOISE page, EDIT then SELECT, and NOISE 2 one more click on) is a stereo noise under the
+bodies, or alone with no key held: wind, sea, rain, breath. LEVEL is its switch (0 is off) and its loudness;
+COLOUR runs from brown (a rumble, down to 25 Hz) to white; WIND is how fast its band wanders and how often the
+weather turns; BAND is the band: a wide bed at 0, a band narrowing onto the newest body's note up to a half, and
+past a half **the chord's breath**, up to four narrow bands sitting on the bodies that sound, each as loud as its
+body, so the noise becomes the air through the harmony. On NOISE 2: **TEXTURE** runs from hiss through rain (dense
+drops) to crackle (sparse, dusty ticks), all at the same loudness; **GUST** is the weather: now and then (at
+WIND's pace, every few seconds to every half minute) the layer swells louder, brighter and higher over a second
+or three and dies back over several, and between gusts the bed drops by as much as GUST says (up to 18 dB); the
+layer always arrives with a gust, and FREEZE holds the weather where it is. **DUCK** draws it back under a chord
+(up to 12 dB at full) so it fills the gaps instead of masking the bodies. **WIDTH** is its own stereo width. The
+forces shape it too: MASS brightens it, DRIFT widens the wander, SPACE sends it to the hall, TIDE breathes it on
+its own cycle; leaning on a key brightens it, and it swells and fades at SWELL and FADE like a body. On the FX
+layer, C4 switches it off and back to the level it had (from zero, to the scene's saved level, else a third), and
+N lights in the header while it is heard. CC 20 is its LEVEL. The beam on the keys strip rises and brightens with
+a gust.
 
 ## 7. ORBIT
 
-PLAY runs ORBIT: the button lights green, the screen says ORBIT ON, EVERY 5S, and the PLAY ORBIT pill fills
-toward the next move and flashes when it comes. While it runs, EVERY so many seconds (give or take a quarter),
-with CHANCE, one latched body moves to a neighbouring note of the scale, up to STEPS UP TO scale steps away,
-gliding there over GLIDE seconds (ENVELOPE page). With HOME PULL, a body that has wandered is pulled back to the
-key it was struck at. Bodies held over MIDI are left alone. Each move goes out over MIDI as a note off and a note
-on; the screen says where the body went (E4 > F#4), the body's beam slides to the new key, and its key light
-walks with it (the home key stays half-lit). Press PLAY again to stop; the bodies stay where they are.
+PLAY runs ORBIT: the button lights, the screen names the mode (ORBIT ON, WANDER EVERY 5S), and the PLAY pill
+fills toward the next move and flashes when it comes. ORBIT has four modes, MODE on the ORBIT page (ARP, or PLAY
+held); the other three knobs of the page are the mode's, and PLAY's colour is the mode: **green** WANDER,
+**orange** (both lights) CHORD and SCATTER, **red** ARP. The pill is named for the mode while it runs (PLAY ORBIT,
+PLAY CHORD, PLAY SCATTER, PLAY ARP).
 
-Hold PLAY (or press ARP) for the ORBIT page.
+- **WANDER**: EVERY so many seconds (give or take a quarter), with CHANCE, one latched body moves to a
+  neighbouring note of the scale, up to STEPS UP TO scale steps away, gliding there over GLIDE seconds (ENVELOPE
+  page). It never moves onto a note another body holds.
+- **CHORD**: every latched body moves together by the same number of scale steps, up to DISTANCE, so the whole
+  chord shifts along the scale to a related one; with HOME PULL the chord is drawn back to where it was struck.
+- **SCATTER**: BODIES of them move at once, each its own way, the timing looser (give or take a half).
+- **ARP**: a runner. The latched bodies keep droning and a lead (section 4) steps through their notes, low to
+  high, at RATE (40 to 240 BPM, a step an eighth), held for GATE of the step (at the top, legato), in ORDER (UP,
+  DOWN, UP DOWN, RANDOM, PLAYED: the order the keys were struck), over OCTAVES (ORBIT 2). The runner remembers
+  the notes: let every body go (SEL held) and it plays on over nothing until PLAY stops it. The pill fills
+  through a bar of eight steps.
 
-![The ORBIT page: EVERY 5S, CHANCE, STEPS UP TO, HOME PULL](img/screen-orbit.png "The ORBIT page")
+HOME PULL (ORBIT 2) is the chance that a body (in CHORD, the chord) is pulled back to the key it was struck at.
+Bodies held over MIDI and leads are left alone. Each move goes out over MIDI as a note off and a note on.
+
+**Where it is going.** A move is chosen when the countdown starts, not when it ends: from then on the body's beam
+grows a line from its top toward the destination key as the pill fills, a ghost of the beam stands at the
+destination, the destination key is drawn in the body's dim colour on the keys strip and its key light glows.
+When the move comes, the beam slides along the line, its key light walks with it (the home key stays half-lit),
+and the pill flashes. Press PLAY again to stop; the bodies stay where they are.
+
+![CHORD mode mid-countdown: each beam with a line growing from its top toward a ghost beam at the destination key, PLAY CHORD filling](img/screen-orbit-going.png "Where the chord is going")
+
+![The ORBIT page: MODE, EVERY, CHANCE, STEPS UP TO](img/screen-orbit.png "The ORBIT page")
 
 On the ORBITS view a moved body shows a bright point beside it and its orbit's radius changes as it glides.
 

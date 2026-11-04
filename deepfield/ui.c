@@ -15,11 +15,13 @@
  * body let go), PLAY runs ORBIT, SEQ freezes the reverb, the page's button lights. FX held: F3 G3 A3 B3 switch the
  * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
  * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
-enum { PG_HOME, PG_BODY, PG_NOISE, PG_ENV, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_GLOBAL, PG_MIDI, PG_COUNT };
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
+       PG_GLOBAL, PG_MIDI, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_NONE,
        PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_VIEW, K_MORPH, K_CHIN, K_CHOUT,
-       K_ONOFF, K_HZ, K_STEPS, K_NONE };
+       K_ONOFF, K_HZ, K_STEPS, K_ATTACK, K_RELEASE, K_SEMI, K_OMODE, K_DIST, K_BODIES, K_BPM, K_ORDER, K_OCTS,
+       K_TEXTURE, K_NONE };
 typedef struct {
     const char *title, *button;
     uint8_t p[4];
@@ -28,12 +30,15 @@ static const page_t PAGES[PG_COUNT] = {
     {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
     {"BODY", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
     {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
+    {"NOISE 2", "EDIT", {P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH}},
     {"ENVELOPE", "ENV", {P_SWELL, P_FADE, P_PRESS, P_GLIDE}},
+    {"LEAD", "ENV", {P_LD_ATTACK, P_LD_RELEASE, P_LD_LIFT, P_LD_LEVEL}},   /* the keys with LATCH off */
     {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
     {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, PID_NONE}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
-    {"ORBIT", "ARP", {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE, P_GRAVITY}},
+    {"ORBIT", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
+    {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, PID_NONE, PID_NONE}},
     {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_VIEW, PID_MORPH}},
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
 };
@@ -52,7 +57,14 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
     [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
     [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
-    [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},   [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
+    [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},
+    [P_LD_ATTACK] = {"ATTACK", K_ATTACK}, [P_LD_RELEASE] = {"RELEASE", K_RELEASE}, [P_LD_LIFT] = {"LIFT", K_SEMI},
+    [P_LD_LEVEL] = {"LEVEL", K_PCT},    [P_ORB_MODE] = {"MODE", K_OMODE},   [P_ORB_DIST] = {"DISTANCE", K_DIST},
+    [P_ORB_BODIES] = {"BODIES", K_BODIES}, [P_ARP_RATE] = {"RATE", K_BPM},  [P_ARP_GATE] = {"GATE", K_PCT},
+    [P_ARP_ORDER] = {"ORDER", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
+    [P_NZ_TEXTURE] = {"TEXTURE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
+    [P_NZ_WIDTH] = {"WIDTH", K_PCT},
+    [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_VIEW] = {"VIEW", K_VIEW},      [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
     [PID_NONE] = {"", K_NONE},
@@ -100,6 +112,8 @@ static const uint8_t HUE_RGB[8][3] = {{236, 240, 255}, {255, 196, 96}, {80, 224,
 #define C_KB_OFF RGB(18, 22, 32)
 #define C_KB_IN RGB(60, 68, 88)
 #define C_LATCH RGB(255, 220, 0)
+#define C_LEAD RGB(245, 245, 255)
+#define C_LEAD_OFF RGB(120, 120, 135)
 #define C_FX_ON RGB(40, 210, 160)
 static const uint8_t WHITE_K[16] = PLAT_WHITE_KEYS;
 static const uint8_t BLACK_K[11] = PLAT_BLACK_KEYS;
@@ -119,6 +133,7 @@ static struct {
     uint8_t vel[NKEYS], prs[NKEYS];
     uint8_t keynote[NKEYS];              /* the note a key struck */
     uint32_t keynotes;                   /* bit k: key k struck a note this press */
+    uint32_t keylead;                    /* bit k: it struck a lead (LATCH off), let go at its release */
     uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
     uint32_t rec_t, fx_t, fx_up, sel_t, sel_down;
     uint8_t fx_used, sel_used;
@@ -130,6 +145,10 @@ static struct {
     uint8_t stat_cpu, stat_bodies;
     uint32_t play_down, orbit_flash_t;   /* PLAY pressed (a tap runs ORBIT, a hold opens its page); the pill's flash */
     uint8_t play_used, orbit_eighth;     /* the countdown shown in the pill, in eighths */
+    uint32_t arp_steps, arp_step_t;      /* the runner's steps seen, and when the last came (PLAY winks) */
+    uint32_t lead_seen, lead_rel;        /* bit i: lead i was there last frame; was releasing */
+    uint32_t lead_t[DR_NL];              /* when each lead was struck: its key winks off for 40 ms */
+    uint8_t lead_home[DR_NL];
     int32_t sel_slot;                    /* SELECT's candidate while it turns; -1 none */
     uint32_t sky_t, foot_t, head_t;      /* when the sky, the footer and the header were last drawn */
     uint8_t redraw_head, redraw_foot;
@@ -227,7 +246,21 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static uint32_t page_param(uint32_t pg, uint32_t k) { return PAGES[pg].p[k]; }
+static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP"};
+static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
+static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are the mode's */
+{
+    if (pg == PG_ORBIT && k) {
+        static const uint8_t BY_MODE[OM_COUNT][3] = {
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE},   /* WANDER */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_DIST},    /* CHORD */
+            {P_ORB_PERIOD, P_ORB_BODIES, P_ORB_RANGE},   /* SCATTER */
+            {P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER},       /* ARP */
+        };
+        return BY_MODE[dr_orbit_mode()][k - 1u];
+    }
+    return PAGES[pg].p[k];
+}
 static uint32_t value_of(uint32_t id)
 {
     switch (id) {
@@ -247,6 +280,9 @@ static uint32_t value_max(uint32_t id)
 {
     switch (PM[id].kind) {
     case K_MODEL: return M_COUNT - 1u;
+    case K_OMODE: return OM_COUNT - 1u;
+    case K_ORDER: return AO_COUNT - 1u;
+    case K_OCTS: return 2u;
     case K_ENS: return ENS_COUNT - 1u;
     case K_SCALE: return SC_COUNT - 1u;
     case K_ROOT: return 11u;
@@ -313,6 +349,55 @@ static void value_text(uint32_t id, char *b)
     case K_CHOUT: int_text((int32_t)v, b); break;
     case K_ONOFF: text_cat(b, v ? "ON" : "OFF"); break;
     case K_STEPS: int_text((int32_t)(1u + v * 4u / 128u), b); break;   /* the engine's 1 .. 4 scale steps */
+    case K_ATTACK:
+    case K_RELEASE: {
+        float s = id == P_LD_ATTACK ? dr_attack_s(v) : dr_release_s(v);
+        if (s < 1.0f) {
+            int_text((int32_t)(s * 1000.0f + 0.5f), b);
+            text_cat(b, "MS");
+        } else
+            dec1_text(s, "S", b);
+        break;
+    }
+    case K_OMODE: text_cat(b, OMODE_NAME[v % OM_COUNT]); break;
+    case K_TEXTURE: {                    /* hiss to a quarter, rain to a half, crackle beyond; the figure too */
+        int_text((int32_t)(v * 100u / 127u), b);
+        text_cat(b, v < 32u ? "% HISS" : v < 64u ? "% RAIN" : "% CRACKLE");
+        break;
+    }
+    case K_ORDER: text_cat(b, ORDER_NAME[v % AO_COUNT]); break;
+    case K_OCTS:
+        int_text((int32_t)(v % 3u) + 1, b);
+        text_cat(b, v % 3u ? " OCTS" : " OCT");
+        break;
+    case K_DIST:                         /* the engine's 1 .. 3 scale degrees */
+        int_text((int32_t)(1u + v * 3u / 128u), b);
+        text_cat(b, v * 3u / 128u ? " STEPS" : " STEP");
+        break;
+    case K_BODIES:                       /* 1 .. all (the count depends on what is latched) */
+        if (v >= 120u)
+            text_cat(b, "ALL");
+        else {
+            int_text((int32_t)(1u + v * 7u / 127u), b);
+            text_cat(b, " OF 8");
+        }
+        break;
+    case K_BPM:
+        int_text((int32_t)(dr_arp_bpm(v) + 0.5f), b);
+        text_cat(b, " BPM");
+        break;
+    case K_SEMI: {                       /* whole semitones up, as the engine rounds LIFT */
+        uint32_t st = (uint32_t)((float)v * (1.0f / 127.0f) * 24.99f);
+        if (!st)
+            text_cat(b, "0");
+        else {
+            b[0] = '+';
+            b[1] = 0;
+            int_text((int32_t)st, b + 1);
+            text_cat(b, st % 12u ? " ST" : st == 12u ? " OCT" : " OCTS");
+        }
+        break;
+    }
     default: break;
     }
 }
@@ -460,36 +545,52 @@ static void key_on(uint32_t k, uint32_t vel)
     ui.keynotes |= 1u << k;
     ui.prs[k] = 0;
     ui.vel[k] = (uint8_t)vel;
-    if (set.local) {                     /* a latched body pressed again is let go: its note off comes from the engine */
-        if (!dr_body_latched(note))
-            midi_note_out(note, vel, 1);
-        if (set.latch)
+    if (set.local) {                     /* LATCH on: a latched body pressed again is let go (its note off comes from
+                                          * the engine); off: a lead over the bed, whatever is latched */
+        if (set.latch) {
+            if (!dr_body_latched(note))
+                midi_note_out(note, vel, 1);
             dr_note_latched(note, vel);
-        else
-            dr_note(note, vel, 1);
+        } else {
+            midi_note_out(note, vel, 1);
+            dr_lead(note, vel, 1);
+            ui.keylead |= 1u << k;
+        }
     } else {
         midi_note_out(note, vel, 1);
     }
 }
 static void key_off(uint32_t k)
 {
-    uint32_t note = ui.keynote[k];
+    uint32_t note = ui.keynote[k], lead = ui.keylead >> k & 1u;
     ui.keynotes &= ~(1u << k);
-    if (set.local) {
-        dr_note(note, 0, 0);             /* (the engine sends the note off, unless the body is latched) */
+    ui.keylead &= ~(1u << k);
+    if (set.local) {                     /* the engine sends the note off (a latched body keeps it until let go) */
+        if (lead)
+            dr_lead(note, 0, 0);
+        else
+            dr_note(note, 0, 0);
     } else {
         midi_note_out(note, 0, 0);
     }
 }
 static void orbit_toggle(void)
 {
-    char t[16];
+    char t[24], v[12];
     dr_orbit(!dr_orbit_on());
     if (dr_orbit_on()) {
+        uint32_t mode = dr_orbit_mode();
         t[0] = 0;
-        text_cat(t, "EVERY ");
-        int_text((int32_t)(dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) + 0.5f), t + 6);
-        text_cat(t, "S");
+        text_cat(t, OMODE_NAME[mode]);
+        text_cat(t, " ");
+        if (mode == OM_ARP) {
+            value_text(P_ARP_RATE, v);
+            text_cat(t, v);
+        } else {
+            text_cat(t, "EVERY ");
+            value_text(P_ORB_PERIOD, v);
+            text_cat(t, v);
+        }
         ui_say("ORBIT ON", t);
     } else
         ui_say("ORBIT", "OFF");
@@ -500,29 +601,19 @@ static void all_let_go(void)
     dr_all_off();
     ui_say("EVERY BODY", "LET GO");
 }
-static void latch_set(uint32_t on, int say)   /* SEL: the LATCH mode; off, a latched body stays only while its key
-                                               * is held */
+static void latch_set(uint32_t on, int say)   /* SEL: the LATCH mode. On, a key strikes a body that stays; off, the
+                                               * keys play leads over the bed, which stays as it is */
 {
-    uint32_t i, k;
-    dr_body_t b;
     if (set.latch != on) {
         set.latch = (uint8_t)on;
         set_dirty = 1;
-        if (!on)
-            for (i = 0; i < DR_NV; i++)
-                if (dr_body(i, &b) && b.latched && !b.fading) {
-                    int held = 0;
-                    for (k = 0; k < NKEYS; k++)
-                        if ((ui.keynotes >> k & 1u) && ui.keynote[k] == b.home)
-                            held = 1;
-                    if (held)
-                        dr_unlatch(b.home);
-                    else
-                        dr_note(b.home, 0, 1);   /* struck again: let go */
-                }
     }
-    if (say)
-        ui_say("LATCH", on ? "ON" : "OFF");
+    if (say) {
+        if (on)
+            ui_say("LATCH", "ON");
+        else
+            ui_say("LATCH OFF", "KEYS PLAY");
+    }
     ui.redraw_head = 1;
 }
 
@@ -552,7 +643,8 @@ static void fx_key(uint32_t k)
             value_set(P_NZ_LEVEL, 0);
             ui_say("NOISE", "OFF");
         } else {
-            value_set(P_NZ_LEVEL, ui.nz_last ? ui.nz_last : 44u);
+            uint32_t saved = slot_scene(set.scene)->p[P_NZ_LEVEL];
+            value_set(P_NZ_LEVEL, ui.nz_last ? ui.nz_last : saved ? saved : 44u);
             value_text(P_NZ_LEVEL, t);
             ui_say("NOISE", t);
         }
@@ -602,7 +694,8 @@ static void ble_device_button(void)
 }
 
 /* ------------------------------------------------------------------ buttons --- */
-static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_GLO, B_GLO};
+static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_ARP,
+                                           B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -682,7 +775,7 @@ static void button(uint32_t k, uint32_t now)
 static void input(void)
 {
     uint32_t keys, btn = plat_buttons(), k, fx_layer = btn >> B_FX & 1u, dkeys = plat_keys(), now = plat_ms();
-    uint32_t lit_keys = 0, dim_keys = 0, lit_btn, i;
+    uint32_t lit_keys = 0, mid_keys = 0, glow_keys = 0, wink_keys = 0, lit_btn, mid_btn = 0, i, play_led = 0;
     int32_t e;
     dr_body_t b;
     touch_poll();
@@ -810,39 +903,103 @@ static void input(void)
     }
     ui.keys = keys;
     ui.btn = btn;
-    /* the lights: a key lit while its body sounds, dim while it fades, a glow on the keys in the scale;
-     * SEL for LATCH, SEQ freeze, PLAY orbit (green), SAVE with something to save, the page's button, OCT- or OCT+
-     * half-lit one octave out and lit two out */
-    for (i = 0; i < DR_NV; i++)          /* a key lit at the note its body is at now; half-lit at the home key
-                                          * ORBIT moved it from */
+    /* the lights. Keys, three levels, each one meaning: LIT is what your fingers address now (a body under LATCH
+     * on, a lead while held), MID is the machine's (a fading body, a moved body's home key, the bed under LATCH
+     * off, a lead releasing, a body off the strip at the end key), GLOW is the scale. ORBIT's destination sits at
+     * mid and blinks through the last eighth of the countdown; a lead's strike winks its key off for 60 ms, so a
+     * runner's step or an accent on a lit key is seen. Buttons: the page's button lit (mid under the FX layer),
+     * SEL LATCH, SEQ FREEZE, SAVE with something to save (blinking in its dialog), PLAY in the mode's colour (green
+     * WANDER, orange CHORD, orange SCATTER winking at each move, red ARP winking at each step), OCT- / OCT+ mid one
+     * octave out and lit two; a held button blinks from 300 ms until its hold fires */
+    for (i = 0; i < DR_NV; i++)
         if (dr_body(i, &b)) {
             int32_t kk = (int32_t)(b.pitch + 0.5f) - 53 - 12 * set.octave, kh = (int32_t)b.home - 53 - 12 * set.octave;
-            if (kk >= 0 && kk < (int32_t)NKEYS) {
-                if (b.fading)
-                    dim_keys |= 1u << kk;
-                else
-                    lit_keys |= 1u << kk;
+            if (kk < 0 || kk >= (int32_t)NKEYS) {   /* off the strip: the end key, mid */
+                mid_keys |= 1u << (kk < 0 ? 0u : NKEYS - 1u);
+            } else if (b.fading || (!set.latch && b.latched)) {
+                mid_keys |= 1u << kk;
+            } else {
+                lit_keys |= 1u << kk;
             }
             if (kh != kk && kh >= 0 && kh < (int32_t)NKEYS)
-                dim_keys |= 1u << kh;
+                mid_keys |= 1u << kh;
         }
+    for (i = 0; i < DR_NV; i++) {        /* where ORBIT is taking a body: mid, blinking as the move nears */
+        uint32_t to;
+        if (dr_orbit_pending(i, &to)) {
+            int32_t kk = (int32_t)to - 53 - 12 * set.octave;
+            if (kk >= 0 && kk < (int32_t)NKEYS) {
+                if (dr_orbit_next() >= 0.875f && (now / 125u) & 1u)
+                    lit_keys |= 1u << kk;
+                else
+                    mid_keys |= 1u << kk;
+            }
+        }
+    }
+    for (i = 0; i < DR_NL; i++) {        /* a lead: a wink at its strike, lit while held, mid as it releases */
+        uint32_t here = dr_lead_body(i, &b) != 0;
+        int32_t kk = (int32_t)b.home - 53 - 12 * set.octave;
+        if (here && (!(ui.lead_seen >> i & 1u) || ui.lead_home[i] != b.home || (ui.lead_rel >> i & 1u && !b.fading))) {
+            ui.lead_t[i] = now;          /* struck (or struck again while releasing) */
+            ui.lead_home[i] = b.home;
+        }
+        ui.lead_seen = (ui.lead_seen & ~(1u << i)) | here << i;
+        ui.lead_rel = (ui.lead_rel & ~(1u << i)) | (uint32_t)(here && b.fading) << i;
+        if (!here || kk < 0 || kk >= (int32_t)NKEYS)
+            continue;
+        if (now - ui.lead_t[i] < 60u)
+            wink_keys |= 1u << kk;
+        else if (b.fading)
+            mid_keys |= 1u << kk;
+        else
+            lit_keys |= 1u << kk;
+    }
     if (set.scale != SC_CHROMA)
         for (k = 0; k < NKEYS; k++) {
             uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
             if (dr_snap(note) == note)
-                dim_keys |= 1u << k;
+                glow_keys |= 1u << k;
         }
+    lit_keys &= ~wink_keys;
+    mid_keys &= ~(lit_keys | wink_keys);
+    glow_keys &= ~(lit_keys | mid_keys | wink_keys);
     if (fx_layer) {
         lit_keys = fx_keys_lit();
-        dim_keys = 0;
+        mid_keys = glow_keys = 0;
     }
     ui.oct_lit = (uint8_t)(set.octave >= 2 ? 2u : set.octave <= -2 ? 1u : 0u);
     ui.oct_mid = (uint8_t)(set.octave == 1 ? 2u : set.octave == -1 ? 1u : 0u);
-    lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u)
-            | ((set_dirty || scene_dirty) ? 1u << B_SAVE : 0u) | (dr_orbit_on() ? LED_PLAY_GREEN : 0u)
-            | (ui.dialog ? 1u << B_SAVE : 1u << PAGE_BTN[ui.page]) | (uint32_t)ui.oct_lit << B_OCTDN;
-    plat_lights(lit_btn, lit_keys, (1u << NB) - 1u, 0, 1);
-    plat_lights_mid((uint32_t)ui.oct_mid << B_OCTDN, dim_keys & ~lit_keys);
+    if (dr_orbit_on()) {
+        uint32_t m = dr_orbit_mode(), steps = dr_arp_steps();
+        play_led = (m == OM_ARP ? 0u : LED_PLAY_GREEN) | (m == OM_WANDER ? 0u : 1u << B_PLAY);
+        if (steps != ui.arp_steps) {
+            ui.arp_steps = steps;
+            ui.arp_step_t = now;
+        }
+        if ((m == OM_SCATTER && now - ui.orbit_flash_t < 150u) || (m == OM_ARP && now - ui.arp_step_t < 60u))
+            play_led = 0;
+    }
+    lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u) | play_led
+            | (uint32_t)ui.oct_lit << B_OCTDN;
+    if ((now / 150u) & 1u) {             /* a hold under way blinks until it fires, over the mode's light too */
+        if (ui.sel_down && !ui.sel_used && now - ui.sel_down >= 300u)
+            lit_btn &= ~(1u << B_SEL);
+        if (ui.play_down && !ui.play_used && now - ui.play_down >= 300u)
+            lit_btn &= ~(1u << B_PLAY | LED_PLAY_GREEN);
+        if (ui.rec_t && now - ui.rec_t >= 300u)
+            lit_btn &= ~(1u << B_REC);
+    }
+    if (ui.dialog)
+        lit_btn |= ((now / 250u) & 1u) ? 1u << B_SAVE : 0u;
+    else {
+        lit_btn |= (set_dirty || scene_dirty) ? 1u << B_SAVE : 0u;
+        if (fx_layer)
+            mid_btn |= 1u << PAGE_BTN[ui.page];
+        else
+            lit_btn |= 1u << PAGE_BTN[ui.page];
+    }
+    plat_lights(lit_btn, lit_keys, (1u << NB) - 1u, glow_keys, 1);
+    plat_lights_mid(mid_btn | (uint32_t)ui.oct_mid << B_OCTDN, mid_keys);
 }
 static void ui_input_only(void) { input(); }
 
@@ -1564,9 +1721,9 @@ static float beam_x(float pitch, int *off)   /* where a pitch stands over the st
 static void sky_beams(void)                  /* each body a beam over its key: its level the height, latched a
                                               * cap, fading dim, an ORBIT move slides it and marks where it was */
 {
-    uint32_t i;
+    uint32_t i, to;
     dr_body_t b;
-    float nlv, nnote, ncol, nband;
+    float nlv, nnote, ncol, nband, frac = dr_orbit_next();
     stars_draw((float)dr_scene.p[P_DRIFT] * (1.0f / 127.0f) * 0.4f);
     dr_noise(&nlv, &nnote, &ncol, &nband);
     if (nlv > 0.004f) {                  /* the noise: a soft wide beam where its band sits, brown to white */
@@ -1608,6 +1765,37 @@ static void sky_beams(void)                  /* each body a beam over its key: i
             int32_t hx = (int32_t)(beam_x((float)b.home, &off) + 0.5f);
             for (y = SKY_H - 4; y < SKY_H; y++)
                 ph_dot(hx, y, hue, 24u);
+        }
+        if (dr_orbit_pending(i, &to)) {  /* where ORBIT is taking it: a ghost of the beam at the destination, and
+                                          * a line reaching out from the beam's top toward it as the countdown fills */
+            int32_t tx = (int32_t)(beam_x((float)to, &off) + 0.5f), ty = top < 5 ? 5 : top;
+            int32_t ex = x + (int32_t)((float)(tx - x) * frac);
+            for (y = ty; y < SKY_H; y++) {
+                ph_dot(tx - 1, y, hue, 6u);
+                ph_dot(tx, y, hue, 9u);
+                ph_dot(tx + 1, y, hue, 6u);
+            }
+            ph_line(x, ty - 3, ex, ty - 3, hue, 26u);
+            ph_line(x, ty - 4, ex, ty - 4, hue, 18u);
+            ph_dot(ex, ty - 5, hue, 31u);
+            ph_dot(ex, ty - 2, hue, 31u);
+        }
+    }
+    for (i = 0; i < DR_NL; i++) {        /* a lead: a thin white beam over its key, dim as it releases */
+        int off;
+        int32_t x, h, y, dx;
+        uint32_t lvl;
+        if (!dr_lead_body(i, &b))
+            continue;
+        x = (int32_t)(beam_x((float)b.home, &off) + 0.5f);
+        h = (int32_t)(b.level * (float)(SKY_H - 10));
+        if (h < 1)
+            h = 1;
+        lvl = b.fading ? 16u : 31u;
+        for (dx = -2; dx <= 2; dx++) {
+            uint32_t l = (dx == -2 || dx == 2) ? lvl / 3u : (dx == 0) ? lvl : lvl * 2u / 3u;
+            for (y = SKY_H - 1 - h; y < SKY_H; y++)
+                ph_dot(x + dx, y, dx == 0 ? HUE_STAR : body_hue(b.home), l);
         }
     }
     if (dr_frozen()) {                   /* ice: a dotted frame round the view */
@@ -1703,6 +1891,12 @@ static uint32_t keys_sig(void)           /* what the strip would show: drawn aga
     for (i = 0; i < DR_NV; i++)
         h = hash32(h ^ (dr_body(i, &b) ? (uint32_t)b.home | (uint32_t)b.fading << 8 | (uint32_t)b.latched << 9
                                            | (uint32_t)(b.pitch + 0.5f) << 10 : 0xFFFFu));
+    for (i = 0; i < DR_NL; i++)
+        h = hash32(h ^ (dr_lead_body(i, &b) ? (uint32_t)b.home | (uint32_t)b.fading << 8 | 1u << 20 : 0xFFFEu));
+    for (i = 0; i < DR_NV; i++) {
+        uint32_t to;
+        h = hash32(h ^ (dr_orbit_pending(i, &to) ? to | 1u << 21 : 0xFFFDu));
+    }
     return hash32(h ^ (uint32_t)(set.octave + 2) ^ (uint32_t)set.scale << 4 ^ (uint32_t)set.root << 8
                   ^ (ui.btn >> B_FX & 1u) << 12 ^ dr_fx_active() << 13);
 }
@@ -1739,6 +1933,23 @@ static void keys_draw(void)
             fill[kk] = body_rgb(b.home, b.fading);
             latched[kk] = (uint8_t)(b.latched && !b.fading);
         }
+    }
+    for (i = 0; i < DR_NV; i++) {        /* where ORBIT is taking a body: its key in the body's dim colour */
+        uint32_t to;
+        int32_t kk;
+        if (!dr_orbit_pending(i, &to) || !dr_body(i, &b))
+            continue;
+        kk = (int32_t)to - 53 - 12 * set.octave;
+        if (kk >= 0 && kk < (int32_t)NKEYS && !latched[kk])
+            fill[kk] = body_rgb(b.home, 1);
+    }
+    for (i = 0; i < DR_NL; i++) {        /* a lead: its key white while held, grey as it releases */
+        int32_t kk;
+        if (!dr_lead_body(i, &b))
+            continue;
+        kk = (int32_t)b.home - 53 - 12 * set.octave;
+        if (kk >= 0 && kk < (int32_t)NKEYS)
+            fill[kk] = b.fading ? C_LEAD_OFF : C_LEAD;
     }
     if (fx_layer)
         for (i = 0; i < NFXK; i++) {
@@ -1816,7 +2027,11 @@ static void draw_header(void)
     cv_rect(x - 5, 0, 240 - x + 5, 17, C_BLACK);   /* a long name ends under it */
     cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
     x = pill(3, "SEL LATCH", set.latch, 0.0f, 0);
-    x = pill(x, "PLAY ORBIT", dr_orbit_on(), (float)ui.orbit_eighth * 0.125f, plat_ms() - ui.orbit_flash_t < 300u);
+    {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
+        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP"};
+        x = pill(x, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
+                 plat_ms() - ui.orbit_flash_t < 300u);
+    }
     pill(x, "SEQ FRZ", dr_frozen(), 0.0f, 0);
     for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */
         cv_text(196 + (int32_t)i * 9, 18, &FONT_T, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
@@ -1945,7 +2160,6 @@ static void ui_frame(void)
     static uint32_t last_ble, last_bodies, last_states, last_dirty, last_cpu;
     uint32_t now = plat_ms(), nb = dr_bodies(), dirty = (uint32_t)(set_dirty | scene_dirty << 1), from, to, moves;
     uint32_t states, sent, sig, cpu = plat_cpu_pct();
-    char a[16], b[8];                    /* "C#-1 > D#-1" at most */
     CRUMB(2);
     input();
     CRUMB(3);
@@ -1973,15 +2187,10 @@ static void ui_frame(void)
         ui.redraw_foot = 1;
     }
     moves = dr_orbit_moved(&from, &to);
-    if (moves != ui.orbit_moves) {       /* ORBIT moved a body: say where, flash the pill */
+    if (moves != ui.orbit_moves) {       /* ORBIT moved a body: the pill flashes (the beam slides, the light walks) */
         ui.orbit_moves = moves;
         ui.orbit_flash_t = now;
         ui.redraw_head = 1;
-        note_text((int32_t)from, a);
-        note_text((int32_t)to, b);
-        text_cat(a, " > ");
-        text_cat(a, b);
-        ui_say("ORBIT", a);
     }
     {                                    /* the countdown to the next ORBIT move, in eighths; the flash ending */
         uint8_t e = (uint8_t)(dr_orbit_next() * 8.0f);
@@ -1990,7 +2199,7 @@ static void ui_frame(void)
             ui.redraw_head = 1;
         }
     }
-    states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2
+    states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2 | dr_orbit_mode() << 10
            | (uint32_t)dr_morphing() << 3 | (uint32_t)overload_seen << 4 | dr_fx_active() << 5
            | (uint32_t)(now - ui.orbit_flash_t < 300u) << 9;
     if (states != last_states || dirty != last_dirty || (dr_morphing() && now - ui.head_t > 100u)) {

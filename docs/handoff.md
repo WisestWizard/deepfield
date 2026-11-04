@@ -77,8 +77,11 @@ for intended sound changes, a simulator check per new parameter, manual row per 
 
 # DEEP FIELD — second firmware, built overnight 2026-10-31 → 11-01
 
-**Status, end of 2026-11-02 (read this first):** the FM-1 runs the build of that evening (image 300 KB, identity
-FM-1_1400), flashed after Kyle played it; he likes the sounds. On it: the three-rule interface (one button one
+**Status, 2026-11-03 (read this first):** the FM-1 still runs the build of 2026-11-02 evening (image 300 KB,
+identity FM-1_1400). The **playable pass** of 2026-11-03 (the lead layer, ORBIT's modes and runner, the noise's
+weather; its paragraph below) was flashed on Kyle's word the same evening (image 311 KB, identity FM-1_1400): it booted clean on F1
+FIRST LIGHT, three bodies, 32 % CPU, and is committed. Not yet played by Kyle. Before it, he liked the sounds
+of the 11-02 build but found it bland. On it: the three-rule interface (one button one
 page, SELECT between pages; a lit button is a mode; the screen mirrors the panel with the BEAMS view), the FDN hall
 on the second core a block behind the bus, the noise layer, eight models, sixteen factory scenes, the effects
 retuned by measurement, 21 review fixes including the watchdog reset's cause. Device CPU with eight bodies: 29–37 %
@@ -255,6 +258,63 @@ block. Goldens rewritten. Flashed: the figure did not move (34 % with three bodi
 because plat_cpu_pct is the half's wall time including the wait for core 2, which with the hall and five bodies had
 become the longer core. Rebalanced to two bodies beside the hall on core 2 and six on core 1: SOLAR ×8 now reads 29–31 % (was 41), CHOIR ×8 36, SHEPARD ×8 33,
 VOID ×4 (VOID TIDE, ensemble and wind) 37, no xruns; STRING ×8 not yet read since the move.
+
+**The playable pass (2026-11-03, after Kyle: "a little bland still", "play live over latched keys", "orbit more
+variation, maybe a real arp"; a three-persona review first, then four steps):**
+
+1. *The lead layer.* LATCH off (SEL dark) no longer lets the bed go: the keys (and MIDI notes) play **leads**, the
+   scene's model struck short, over the latched bodies. Four lead voices beyond the eight (`vc[NV_ALL]`, each voice
+   padded to whole 32-byte lines; the leads render on core 2 beside the hall and bodies 0..1), a LEAD page after
+   ENVELOPE (ATTACK 1 ms..2 s, RELEASE 30 ms..8 s, LIFT in semitones to +24, LEVEL: 75 level with a body), a
+   little MASS of their own (`vmass`, +0.15) so they cut, no tide, never latched, never moved by ORBIT. A key on a
+   latched note plays a lead over its body (Kyle: an accent). The screen: a thin white beam over the key, the key
+   white on the strip (grey as it releases), the LED lit then dim. The old momentary mode is gone (a long ATTACK
+   and RELEASE is the same thing).
+2. *ORBIT's modes* (the name kept, Kyle's call): MODE on the ORBIT page, knobs 2-4 by mode (`page_param`):
+   WANDER (as before, but never onto a note another body holds or is going to), CHORD (every latched body by the
+   same number of degrees up to DISTANCE, the chord shifting along the scale; HOME PULL pulls the chord home),
+   SCATTER (BODIES of them at once, each its own way, timing give or take a half), ARP (below). ORBIT 2 under
+   SELECT: HOME PULL, OCTAVES. Moves are **planned at the start of the countdown** (`orbit_plan`, `pend_to[]`,
+   `dr_orbit_pending`) and made at its end (`orbit_apply`), so the screen shows where each body is going: a ghost
+   of the beam at the destination, a line from the beam's top growing toward it with the pill, the destination
+   key in the body's dim colour on the strip and glowing (mid) on the panel; the "E4 > F#4" HUD is gone (Kyle:
+   smaller). PLAY's colour is the mode: green WANDER, orange CHORD/SCATTER, red ARP; the pill reads PLAY CHORD /
+   PLAY SCATTER / PLAY ARP while running.
+3. *The runner.* ARP mode strikes leads over the latched notes (low to high, OCTAVES up) at RATE (40..240 BPM, a
+   step an eighth), GATE of the step (top = legato), ORDER UP / DOWN / UP DOWN / RANDOM / PLAYED (strike order). It
+   keeps the note set, so after SEL held (every body let go) it plays on over nothing until PLAY stops it (Kyle's
+   spec). BPM only; MIDI clock sync is a TODO for a full MIDI pass (clock bytes are still dropped in app.c).
+4. *The noise pass* (both personas: "a steady bed and nothing else"): GUST, the layer's own weather (Poisson
+   gusts at WIND's pace, 36 s to 6 s apart, 0.3-3 s up, 2-10 s down, louder + brighter + higher together, the
+   bed between gusts down to -18 dB at GUST full; the layer always starts with a gust; FREEZE holds it; a WIND turn
+   shortens a pending wait); BAND past a half is **the chord's breath**: up to four narrow bands on the loudest
+   bodies, each as loud as its body, spread left/right in turn; TEXTURE hiss → rain → crackle (Poisson bursts, gain
+   matched to the hiss's RMS: measured, `deepfield/tools/noise_levels.py`); DUCK under a chord (to -12 dB); its own
+   WIDTH; brown's high-pass down to 25 Hz; C4 on the FX layer comes back to the scene's saved level. NOISE 2 page
+   after NOISE. Factory beds: NEBULA gusts, DEEP VOID crackle, LOW CHOIR and ICE BELLS breathe on the chord (and
+   ICE BELLS rains), DESCENT gusts dark.
+
+5. *The lights* (the interaction designer's review of every state through the simulator's `leds`): the keys had
+   one dim level for five meanings and the runner was invisible. (The host's `leds` prints mid and glow alike and
+   not PLAY's colour; a printer that tells them apart was tried in `base/host/plat_host.c` and reverted, since
+   `base` is the upstream fm1-base submodule: worth sending upstream.)
+   Now three levels, one meaning each: LIT = what the keys address (a body under LATCH on, a held lead), MID =
+   the machine's (fading, a moved body's home, the bed under LATCH off, a lead releasing, an off-strip body at
+   the end key, ORBIT's destination, which blinks through the last eighth), GLOW = the scale (`plat_lights`'s
+   dim keys, which the app never used). A lead's strike winks its key off 60 ms (a runner's step and an accent
+   on a lit key are seen); PLAY winks at a SCATTER move and an ARP step; a hold (SEL, PLAY, REC) blinks the
+   button from 300 ms until it fires, over the mode light; SAVE blinks in its dialog; the page button sits at
+   mid under the FX layer. Left for Kyle (the reviewer's questions): SAVE lights for any settings change (LATCH,
+   octave, scale, MIDI) and stays lit all session, so it carries little; the bed at mid under LATCH off is a
+   choice; whether the destination light is worth an LED at all.
+
+Scenes grew by 15 bytes (bank SCN4; SCN3 and SCN2 banks migrate through one generic unpack-from-the-end). 223
+simulator checks (basic.txt: the lead layer, the three modes and the runner with pending counts and MIDI out,
+gust counts, FREEZE holding the weather), goldens rewritten (the beds changed: hpk, DUCK 30 by default, the
+factory beds), scene RMS -12.7 to -17.0, sanitizer clean but for `fastmath.h:58`. Device package built: image
+311,404 B, RAM 78,628 of 98,304 (19.2 KB spare), pool 324,488 of 344,064 (19.1 KB spare); flashed, boots clean. Device CPU
+of the leads, the chord bands and the runner unmeasured (host: the four bands about 1 µs a block; a lead costs
+a body).
 
 **TODO (Kyle, 2026-11-02): more sounds, presets and voices for DEEP FIELD** — more factory scenes than eight,
 more models than four (candidates in `deepfield/docs/research.md` §C: cross-FM pairs, a Shepard model, just

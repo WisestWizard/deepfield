@@ -7,34 +7,36 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | Do | Result |
 | --- | --- |
 | LATCH on (SEL lit, the default) | A key strikes a body that stays. The same key again lets it go. |
-| LATCH off | A body sounds while its key is held and fades when released. |
+| LATCH off (SEL dark, the screen says KEYS PLAY) | The bed stays; a key plays a lead over it: the scene's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its body (an accent). |
 | Lean on a key | Brighter, more wobble, while you lean. |
 | Hold SEL for a second | Every body let go. |
-| Keys light | While a body sounds, at the note it is at now (an ORBIT move walks the light; the home key half-lit); dim while it fades; in-scale keys glow. On screen the same, a yellow frame on a latched key. |
+| Keys light | Three levels: LIT = what the keys do now (a latched body under LATCH on, a lead while held); MID = the machine's (a body fading, a moved body's home key, the bed under LATCH off, a lead releasing, a body off the keys at the end key, ORBIT's destination, blinking as the move nears); GLOW = the scale. A lead's strike winks its key off. On screen the same, a yellow frame on a latched key, white for a lead, the destination in the body's dim colour. |
 
 ## Buttons
 | Button | Tap | Hold |
 | --- | --- | --- |
 | HOME | HOME page (the four forces) | |
-| EDIT | BODY page (SELECT for NOISE) | |
-| ENV | ENVELOPE page | |
+| EDIT | BODY page (SELECT for NOISE, again for NOISE 2) | |
+| ENV | ENVELOPE page (SELECT for LEAD) | |
 | LFO | MOTION page | |
 | FX | The effects pages: ENSEMBLE, then SELECT for DELAY and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off, C4 = the noise layer, shown large (saved with the scene) |
-| ARP | ORBIT page | |
+| ARP | ORBIT page (SELECT for ORBIT 2) | |
 | GLO | GLOBAL page (SELECT for MIDI) | |
 | SEL | LATCH on / off (lit while on) | 1 s: every body let go |
-| PLAY | ORBIT on / off (green): bodies wander within the scale; the pill fills toward the next move | ORBIT page |
+| PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD and SCATTER (several move together), red ARP (a runner of leads over the bed, on after the bed is let go); the pill fills toward the next move, a line reaches from a beam toward where it is going | ORBIT page |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
 | REC | Scan for a Bluetooth MIDI device, ALGO picks, REC again connects | 1 s: Bluetooth on / off |
 
-The page's button lights. A page stays until a button or SELECT moves it.
+The page's button lights (mid while FX is held). A page stays until a button or SELECT moves it. A held button
+blinks from a third of a second until its hold fires. PLAY's colour while ORBIT runs: green WANDER, orange CHORD,
+orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks in its dialog.
 
 ## Encoders
 | Encoder | Does |
 | --- | --- |
-| SELECT | The page before or after (HOME, BODY, NOISE, ENVELOPE, MOTION, FX ENSEMBLE, FX DELAY, FX REVERB, ORBIT, GLOBAL, MIDI) |
+| SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, FX ENSEMBLE, FX DELAY, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI) |
 | PRESET | Scroll the scenes (the presets); the one you stop on morphs in over MORPH seconds |
 | ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs |
@@ -45,13 +47,16 @@ The page's button lights. A page stays until a button or SELECT moves it.
 | --- | --- | --- | --- | --- |
 | HOME | MASS (bright) | DRIFT (wander) | SPACE (the hall) | TIDE (ebb and swell) |
 | BODY | MODEL | SHAPE | SUB | AIR |
-| NOISE | LEVEL (0 = off) | COLOUR (brown → white) | WIND (how fast the band wanders) | BAND (wide bed → narrow, on the newest body's note) |
+| NOISE | LEVEL (0 = off) | COLOUR (brown → white) | WIND (how fast the band wanders; how often a gust) | BAND (wide bed → narrow on the newest note → past half, breath on every body) |
+| NOISE 2 | TEXTURE (hiss → rain → crackle) | GUST (the weather's depth) | DUCK (back under a chord) | WIDTH |
 | ENVELOPE | SWELL | FADE | PRESS | GLIDE |
+| LEAD | ATTACK | RELEASE | LIFT (semitones up) | LEVEL |
 | MOTION | TIDE RATE | WOBBLE | WALK | WIDTH |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
 | FX DELAY | DLY TIME | DLY FDBK | DLY MIX | – |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
-| ORBIT | EVERY (s between moves) | CHANCE | STEPS UP TO | HOME PULL |
+| ORBIT | MODE | WANDER, CHORD, SCATTER: EVERY; ARP: RATE (BPM) | CHANCE; SCATTER: BODIES; ARP: GATE | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER |
+| ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |
 | GLOBAL | SCALE | ROOT | VIEW | MORPH |
 | MIDI | IN CH | OUT CH | LOCAL | VELOCITY |
 

@@ -86,3 +86,34 @@ CHOIR	choir
 BELL	bell
 SHEPARD	shepard
 FOLD	fold
+LEAD	lead
+ATTACK	attack
+RELEASE	release
+LIFT	lift
+LATCH OFF	latch off
+KEYS PLAY	keys play
+MODE	mode
+WANDER	wander
+CHORD	chord
+SCATTER	scatter
+ARP	arp
+DISTANCE	distance
+BODIES	bodies
+RATE	rate
+GATE	gate
+ORDER	order
+OCTAVES	octaves
+UP DOWN	up down
+RANDOM	random
+PLAYED	played
+ORBIT 2	orbit two
+NOISE 2	noise two
+TEXTURE	texture
+GUST	gust
+DUCK	duck
+HISS	hiss
+RAIN	rain
+CRACKLE	crackle
+PLAY CHORD	play chord
+PLAY SCATTER	play scatter
+PLAY ARP	play arp

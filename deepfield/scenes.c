@@ -23,8 +23,10 @@ typedef struct {
 static settings_t set;
 static uint8_t set_dirty, scene_dirty;   /* changed since the last save: SAVE is lit */
 
-#define BANK_MAGIC 0x334E4353u           /* "SCN3": the noise layer's four values */
-#define BANK_MAGIC_V2 0x324E4353u        /* "SCN2": read and brought up to date */
+#define BANK_MAGIC 0x344E4353u           /* "SCN4": the LEAD page's four values */
+#define BANK_MAGIC_V3 0x334E4353u        /* "SCN3" (the noise layer) and "SCN2": read and brought up to date */
+#define BANK_MAGIC_V2 0x324E4353u
+#define P_COUNT_V3 32u
 #define P_COUNT_V2 28u
 #define NFACTORY 16u
 #define NUSER 16u
@@ -34,12 +36,9 @@ typedef struct {
     uint8_t count, ssize, rsv[2];
     scene_t u[NUSER];
 } bank_t;
-typedef struct {                         /* a scene as SCN2 stored it */
-    char name[SCENE_NAME];
-    uint8_t p[P_COUNT_V2];
-    uint8_t note[DR_NV], vel[DR_NV];
-    uint8_t fx_off, rsv[3];
-} scene_v2_t;
+/* a scene as an older bank stored it: the same layout with fewer parameters (name, p[old], notes, vels, fx_off,
+ * three spare bytes) */
+#define OLD_SCENE_SIZE(np) (SCENE_NAME + (np) + 2u * DR_NV + 4u)
 static bank_t bank PLAT_POOL;
 static scene_t factory[NFACTORY] PLAT_POOL;
 
@@ -97,6 +96,10 @@ static void scene_init(scene_t *s, const char *name)
         [P_DLY_TIME] = 60, [P_DLY_FDBK] = 45, [P_ENS] = 0, [P_ENS_MIX] = 40,
         [P_ORB_PERIOD] = 50, [P_ORB_CHANCE] = 70, [P_ORB_RANGE] = 40, [P_GRAVITY] = 30,
         [P_NZ_LEVEL] = 0, [P_NZ_COLOUR] = 50, [P_NZ_WIND] = 40, [P_NZ_BAND] = 30,
+        [P_LD_ATTACK] = 30, [P_LD_RELEASE] = 55, [P_LD_LIFT] = 0, [P_LD_LEVEL] = 75,
+        [P_ORB_MODE] = OM_WANDER, [P_ORB_DIST] = 40, [P_ORB_BODIES] = 60,
+        [P_ARP_RATE] = 51, [P_ARP_GATE] = 60, [P_ARP_ORDER] = AO_UP, [P_ARP_OCT] = 1,
+        [P_NZ_TEXTURE] = 0, [P_NZ_GUST] = 0, [P_NZ_DUCK] = 30, [P_NZ_WIDTH] = 70,
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
@@ -150,13 +153,13 @@ static void factory_build(void)
                                       {P_SUB, 25}, {P_SWELL, 95}, {P_FADE, 100}, {P_TIDE_RATE, 25}, {P_WALK, 60},
                                       {P_WOBBLE, 15}, {P_WIDTH, 100}, {P_REV_SIZE, 95}, {P_REV_DAMP, 30},
                                       {P_SHIMMER, 60}, {P_DLY_MIX, 25}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
-                                      {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, END};
+                                      {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, {P_NZ_GUST, 50}, END};
     static const uint8_t NEBULA_N[] = {41, 48, 55, 62, 0};
     static const change_t DEEP_VOID[] = {{P_MODEL, M_VOID}, {P_MASS, 34}, {P_DRIFT, 30}, {P_SPACE, 50}, {P_TIDE, 20},
                                          {P_SHAPE, 35}, {P_SUB, 100}, {P_SWELL, 35}, {P_FADE, 80}, {P_WALK, 20},
                                          {P_WIDTH, 50}, {P_REV_SIZE, 75}, {P_REV_DAMP, 70}, {P_DLY_MIX, 70},
                                          {P_DLY_TIME, 90}, {P_DLY_FDBK, 70}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
-                                         {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, END};
+                                         {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 85}, {P_NZ_GUST, 25}, END};
     static const uint8_t DEEP_VOID_N[] = {40, 47, 0};
     static const change_t STARLIGHT[] = {{P_MODEL, M_STRING}, {P_MASS, 85}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
                                          {P_AIR, 70}, {P_SUB, 10}, {P_SWELL, 25}, {P_FADE, 78}, {P_TIDE_RATE, 50},
@@ -180,8 +183,8 @@ static void factory_build(void)
         static const change_t LOW_CHOIR[] = {{P_MODEL, M_CHOIR}, {P_MASS, 60}, {P_DRIFT, 40}, {P_SPACE, 55}, {P_TIDE, 35},
                                              {P_SHAPE, 95}, {P_SUB, 80}, {P_AIR, 45}, {P_SWELL, 35}, {P_FADE, 85},
                                              {P_TIDE_RATE, 25}, {P_WOBBLE, 20}, {P_WALK, 35}, {P_WIDTH, 70},
-                                             {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35}, {P_NZ_LEVEL, 16},
-                                             {P_NZ_COLOUR, 25}, {P_NZ_WIND, 35}, {P_NZ_BAND, 10}, END};
+                                             {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35}, {P_NZ_LEVEL, 20},
+                                             {P_NZ_COLOUR, 25}, {P_NZ_WIND, 35}, {P_NZ_BAND, 80}, END};
         static const uint8_t LOW_CHOIR_N[] = {36, 43, 50, 0};
         static const change_t GAMELAN[] = {{P_MODEL, M_BELL}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 60}, {P_TIDE, 55},
                                            {P_SHAPE, 85}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 15}, {P_FADE, 75},
@@ -193,7 +196,7 @@ static void factory_build(void)
                                              {P_SHAPE, 50}, {P_SUB, 5}, {P_AIR, 35}, {P_SWELL, 20}, {P_FADE, 85},
                                              {P_TIDE_RATE, 35}, {P_WOBBLE, 8}, {P_WIDTH, 100}, {P_REV_SIZE, 90},
                                              {P_REV_DAMP, 15}, {P_SHIMMER, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 95},
-                                             {P_NZ_WIND, 50}, {P_NZ_BAND, 25}, END};
+                                             {P_NZ_WIND, 50}, {P_NZ_BAND, 25}, {P_NZ_TEXTURE, 55}, {P_NZ_GUST, 35}, END};
         static const uint8_t ICE_BELLS_N[] = {67, 74, 79, 86, 0};
         static const change_t ASCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 50}, {P_DRIFT, 30}, {P_SPACE, 65}, {P_TIDE, 20},
                                           {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 15}, {P_SWELL, 40}, {P_FADE, 85},
@@ -204,7 +207,7 @@ static void factory_build(void)
                                            {P_SHAPE, 30}, {P_SUB, 45}, {P_AIR, 25}, {P_SWELL, 50}, {P_FADE, 90},
                                            {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
                                            {P_REV_DAMP, 55}, {P_DLY_MIX, 30}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 50},
-                                           {P_NZ_LEVEL, 14}, {P_NZ_COLOUR, 15}, {P_NZ_WIND, 25}, {P_NZ_BAND, 5}, END};
+                                           {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25}, {P_NZ_BAND, 5}, {P_NZ_GUST, 65}, END};
         static const uint8_t DESCENT_N[] = {41, 48, 53, 0};
         static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
                                               {P_SHAPE, 55}, {P_SUB, 35}, {P_AIR, 10}, {P_SWELL, 25}, {P_FADE, 80},
@@ -294,25 +297,32 @@ static void project_load(void)
         settings_defaults();
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
-        if (got == (int)(8u + NUSER * sizeof(scene_v2_t)) && bank.magic == BANK_MAGIC_V2 && bank.count == NUSER
-            && bank.ssize == sizeof(scene_v2_t)) {   /* SCN2: the same scenes, four bytes short each; from the
-                                                      * end, so nothing is overwritten before it is read */
+        uint32_t oldp = bank.magic == BANK_MAGIC_V3 ? P_COUNT_V3 : bank.magic == BANK_MAGIC_V2 ? P_COUNT_V2 : 0u;
+        if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
+            && bank.ssize == OLD_SCENE_SIZE(oldp)) {   /* an older bank: the same scenes, a few bytes short each;
+                                                        * unpacked from the end, so nothing is overwritten before it
+                                                        * is read; the new values take the INIT scene's */
             uint8_t *raw = (uint8_t *)&bank + 8u;
+            uint32_t osz = OLD_SCENE_SIZE(oldp);
             int32_t k;
             for (k = (int32_t)NUSER - 1; k >= 0; k--) {
-                scene_v2_t o;
+                uint8_t o[sizeof(scene_t)];
                 scene_t *d = &bank.u[k];
                 uint32_t j;
-                for (j = 0; j < sizeof o; j++)
-                    ((uint8_t *)&o)[j] = raw[(uint32_t)k * sizeof o + j];
-                scene_init(d, o.name);
-                for (j = 0; j < P_COUNT_V2; j++)
-                    d->p[j] = o.p[j];
+                char name[SCENE_NAME];
+                for (j = 0; j < osz; j++)
+                    o[j] = raw[(uint32_t)k * osz + j];
+                for (j = 0; j < SCENE_NAME; j++)
+                    name[j] = (char)o[j];
+                name[SCENE_NAME - 1u] = 0;
+                scene_init(d, name);
+                for (j = 0; j < oldp; j++)
+                    d->p[j] = o[SCENE_NAME + j];
                 for (j = 0; j < DR_NV; j++) {
-                    d->note[j] = o.note[j];
-                    d->vel[j] = o.vel[j];
+                    d->note[j] = o[SCENE_NAME + oldp + j];
+                    d->vel[j] = o[SCENE_NAME + oldp + DR_NV + j];
                 }
-                d->fx_off = o.fx_off;
+                d->fx_off = o[SCENE_NAME + oldp + 2u * DR_NV];
             }
             bank.magic = BANK_MAGIC;
             bank.ssize = (uint8_t)sizeof(scene_t);
@@ -328,6 +338,12 @@ static void project_load(void)
             bank.u[i].p[k] &= 127u;
         if (bank.u[i].p[P_MODEL] >= M_COUNT)
             bank.u[i].p[P_MODEL] = 0;
+        if (bank.u[i].p[P_ORB_MODE] >= OM_COUNT)
+            bank.u[i].p[P_ORB_MODE] = 0;
+        if (bank.u[i].p[P_ARP_ORDER] >= AO_COUNT)
+            bank.u[i].p[P_ARP_ORDER] = 0;
+        if (bank.u[i].p[P_ARP_OCT] >= 3u)
+            bank.u[i].p[P_ARP_OCT] = 0;
         for (k = 0; k < DR_NV; k++) {
             bank.u[i].note[k] &= 127u;
             bank.u[i].vel[k] &= 127u;
