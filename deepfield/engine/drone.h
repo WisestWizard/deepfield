@@ -29,9 +29,11 @@ enum {
     P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER, P_ARP_OCT,               /* ARP: the runner's rate, gate, order, octaves */
     P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH,               /* NOISE 2: its texture, weather, ducking, width */
     P_ORB_PROG,                                                   /* CYCLE: the progression it walks */
+    P_SPREAD, P_CROSS, P_TWALK, P_SWAY,                           /* MOTION 2: the bodies apart, coupled, drifting in timbre, swaying */
+    P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROLL,                        /* ECHO's decay and octave jumps; PULSE's roll */
     P_COUNT
 };
-enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_COUNT };   /* P_ORB_MODE, stored as the index */
+enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_PULSE, OM_COUNT };   /* P_ORB_MODE, the index */
 enum { AO_UP, AO_DOWN, AO_UPDOWN, AO_RANDOM, AO_PLAYED, AO_COUNT };   /* P_ARP_ORDER, the index; P_ARP_OCT: 0..2 = 1..3 octaves */
 
 #define SCENE_NAME 12u
@@ -95,6 +97,7 @@ int dr_orbit_pending(uint32_t i, uint32_t *to);     /* body i has a move planned
 uint32_t dr_orbit_cycle_pos(void);                  /* CYCLE: the progression's step the chord stands on now */
 int32_t dr_arp_note(void);                          /* ARP: the note of the step sounding now, -1 none */
 int dr_arp_running(void);                           /* ARP runs and has notes (its own, or remembered) */
+int dr_echo_running(void);                          /* ECHO runs and holds a phrase */
 /* MIDI clock (from the render, app.c): while clocks come, the runner steps every twelve (an eighth) and ORBIT
  * counts its period in beats; two seconds without one and the knobs' own time returns. Clock out: while the runner
  * runs from RATE, 24 a beat (and start / stop) through dr_realtime_out */

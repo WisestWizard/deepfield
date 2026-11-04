@@ -159,14 +159,22 @@ and value large over the view.
 | ENV | ENVELOPE | SWELL (0.03 s to 20 s) | FADE (0.03 s to 20 s) | PRESS (how much pressure brightens) | GLIDE (how long an ORBIT move takes) |
 | ENV, then SELECT | LEAD (the keys with LATCH off) | ATTACK (1 ms to 2 s) | RELEASE (30 ms to 8 s) | LIFT (0 to +2 octaves, in semitones) | LEVEL |
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (the random walk of pitch) | WIDTH (stereo spread, by note) |
+| LFO, then SELECT | MOTION 2 | SPREAD (how unlike each other the bodies are: detune, weight, breath, place) | CROSS (bodies in pairs: one's swell bends the other) | TIMBRE (each body's own slow walk of MASS) | SWAY (each body drifts across the stereo field on its own cycle) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II, ENSEMBLE) | ENS MIX | – | – |
 | FX, then SELECT | DELAY | DLY TIME | DLY FDBK | DLY MIX (the delay's level) | – |
 | FX, then SELECT twice | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
-| ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP, CYCLE) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM; EXT while MIDI clock comes) | by MODE: CHANCE, BODIES (SCATTER), or GATE (ARP) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), ORDER (ARP), or CHORDS (CYCLE) |
+| ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP, CYCLE, ECHO, PULSE) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM; EXT while MIDI clock comes) | by MODE: CHANCE, BODIES (SCATTER), GATE (ARP), or DECAY (ECHO) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), ORDER (ARP), CHORDS (CYCLE), JUMPS (ECHO), or ROLL (PULSE) |
 | ARP, then SELECT | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
 | GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (0 to 30 s; NOW) |
 | GLO, then SELECT | MIDI | IN CH (OMNI, 1..16) | OUT CH (1..16) | LOCAL | VELOCITY |
 | GLO, then SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (0 to -18 dB, the recording's level) | CLOCK OUT | – |
+
+**MOTION 2** (LFO, then SELECT) is what makes eight bodies eight voices instead of one spectrum at eight pitches.
+SPREAD gives each body its own small differences for its life: up to 14 cents of detune, a little more or less
+MASS, its own breathing rate and its own place in the stereo field. CROSS couples the bodies in pairs (1 and 2,
+3 and 4, and so on): when one swells, the other's pitch bends toward it, Lyra-fashion. TIMBRE lets each body's
+MASS walk slowly on its own, so the chord's colour shifts unevenly. SWAY moves each body across the field on its
+own slow cycle (a swing in 50 s down to 3 s).
 
 **The models** (ALGO, or KNOB 1 on BODY): SOLAR is eight harmonics that breathe, each on its own slow cycle; SHAPE
 moves from odd harmonics (hollow) through all of them to even ones (organ-like). VOID is three detuned saws and a
@@ -225,6 +233,11 @@ PLAY CHORD, PLAY SCATTER, PLAY ARP).
   of the CHORDS progression from where it was struck (I IV V I, I VI IV V, I V VI IV, I VI III VII, I IV I V,
   I II V, I III VI IV, I VII IV: degrees of the scale, so in a minor key I IV V reads as i iv v), and the
   destination lines show the whole chord going. PLAY again starts it from the first chord.
+- **ECHO**: what you played comes back. The last eight notes the keys (or MIDI) played as leads are a phrase;
+  every EVERY it replays over the period, quieter each time, dropping notes and jumping octaves with DECAY and
+  JUMPS, until it is gone. Any new note you play wakes it with the new phrase. The runner's own notes do not count.
+- **PULSE**: rhythm without pitch. Every EVERY, with CHANCE, each latched body dips and swells back at SWELL, low to
+  high, ROLL apart: a slow strum across the chord.
 - **ARP**: a runner. The latched bodies keep droning and a lead (section 4) steps through their notes, low to
   high, at RATE (40 to 240 BPM, a step an eighth), held for GATE of the step (at the top, legato), in ORDER (UP,
   DOWN, UP DOWN, RANDOM, PLAYED: the order the keys were struck), over OCTAVES (ORBIT 2). The runner remembers

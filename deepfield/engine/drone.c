@@ -30,6 +30,9 @@ typedef struct {
     uint8_t model;                       /* the model it sounds in (a change restarts it) */
     uint8_t lead, held;                  /* a lead (LATCH off): held while its key is down, then it releases */
     float mboost;                        /* a lead cuts: a little MASS of its own */
+    float sp_det, sp_mass, sp_tide, sp_pan;   /* its own small differences (SPREAD): detune, MASS, tide rate, pan */
+    float twalk, sway_ph, pan_live;      /* the timbre's walk, the sway's phase, the pan heard */
+    uint32_t pulse_left;                 /* PULSE: samples to its dip and swell, 0 none */
     float target, pitch;                 /* the note it goes to (ORBIT) and where the glide has it */
     float env, vel, press, pan;
     float walk, tide_ph, wob_ph, breath_ph, spark;
@@ -49,6 +52,7 @@ typedef struct {                         /* what a block shares between its voic
     float mass, drift, shape, sub, air, swell_k, fade_m, press_amt, glide_k, tide_inc, tide_depth, wob_depth, wob_inc,
           walk_depth, width, bend, wheel, chan_press, breath_inc, hinc;
     float attack_k, rel_m, lead_level, lift;   /* the leads' envelope and place */
+    float spread, cross, twalk_depth, sway_inc, sway;   /* MOTION 2 */
     uint32_t model, n;
 } blk_t;
 static blk_t g_blk PLAT_POOL;
@@ -72,6 +76,12 @@ static uint8_t pend_to[NV];              /* ORBIT: a body's destination note, 0 
 static const uint8_t PROG[DR_PROGS][4] = {{0, 3, 4, 0}, {0, 5, 3, 4}, {0, 4, 5, 3}, {0, 5, 2, 6},
                                           {0, 3, 0, 4}, {0, 1, 4, 0}, {0, 2, 5, 3}, {0, 6, 3, 0}};
 static uint32_t cyc_pos;                 /* the step the chord stands on */
+/* ECHO: the last eight lead notes the keys (or MIDI) played, replayed each period over the period, quieter each
+ * time, notes dropped and jumped an octave with DECAY and JUMPS, until the phrase is gone or new notes come */
+static uint8_t echo_ring[8], echo_n, echo_w, lead_machine;
+static float echo_vel = 1.0f;
+static uint32_t echo_due[8], echo_off[8];
+static uint8_t echo_note[8];
 static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count, arp_due;
 static uint32_t clk_now, clk_last, clk_period, clk_count, clk_ext, clk_out, orbit_clk_left, orbit_clk_per;
 static float clk_acc;
@@ -124,7 +134,8 @@ float dr_attack_s(uint32_t p) { return 0.001f * fm_exp2f((float)(p & 127u) * (11
 float dr_release_s(uint32_t p) { return 0.03f * fm_exp2f((float)(p & 127u) * (8.0f / 127.0f)); }     /* 30 ms .. 7.7 s */
 static inline float vmass(const voice_t *v, const blk_t *b)   /* a voice's MASS: the force, pressure, a lead's boost */
 {
-    return clamp01(b->mass + v->press * b->press_amt * 0.6f + v->mboost);
+    return clamp01(b->mass + v->press * b->press_amt * 0.6f + v->mboost + v->sp_mass * b->spread * 0.15f
+                   + v->twalk * b->twalk_depth * 0.25f);
 }
 
 /* ------------------------------------------------------------------ the scale --- */
@@ -197,6 +208,13 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
         v->lvl_s = 0.0f;
     v->age = ++age_ctr;
     v->rng = 0x9E3779B9u ^ (note * 2654435761u) ^ age_ctr;
+    v->sp_det = frand(&v->rng);          /* SPREAD: its own small differences, fixed for its life */
+    v->sp_mass = frand(&v->rng);
+    v->sp_tide = 1.0f + 0.25f * frand(&v->rng);
+    v->sp_pan = frand(&v->rng);
+    v->twalk = 0.0f;
+    v->sway_ph = 0.5f + 0.5f * frand(&v->rng);
+    v->pulse_left = 0;
     v->tide_ph = 0.75f + 0.13f * (float)(v - vc);        /* each body breathes from its own point of the wave */
     v->wob_ph = 0.0f;
     v->breath_ph = 0.0f;
@@ -208,6 +226,7 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     {
         float pan = ((float)note - 60.0f) * (1.0f / 24.0f);
         v->pan = fm_clampf(pan, -1.0f, 1.0f);
+        v->pan_live = v->pan;
     }
     if (!steal)
         voice_osc_init(v, dr_scene.p[P_MODEL] < M_COUNT ? dr_scene.p[P_MODEL] : 0u);
@@ -270,8 +289,9 @@ static void note_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t latch,
             return;
         }
         v = find_body(note, 1);
-        if (v) {                         /* fading: swell back from where it is */
+        if (v) {                         /* fading: swell back from where it is, gliding home if ORBIT had moved it */
             v->fading = 0;
+            v->target = (float)note;
             v->latched = (uint8_t)latch;
             v->sustained = 0;
             v->midi = (uint8_t)midi;
@@ -335,6 +355,13 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         voice_strike(v, note, vel, 0, midi);
         v->lead = 1;
         v->held = 1;
+        if (!lead_machine) {             /* a player's note: into ECHO's phrase, which wakes */
+            echo_ring[echo_w] = (uint8_t)note;
+            echo_w = (echo_w + 1u) % 8u;
+            if (echo_n < 8u)
+                echo_n++;
+            echo_vel = 1.0f;
+        }
         v->mboost = 0.15f;
         v->target = v->pitch = (float)note + g_blk.lift;
         v->walk = 0.0f;
@@ -685,6 +712,15 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
             v->quick = 0;
         }
     }
+    if (v->pulse_left) {                 /* PULSE: a dip, and the swell brings it back */
+        if (v->pulse_left > CTL)
+            v->pulse_left -= CTL;
+        else {
+            v->pulse_left = 0;
+            if (!v->fading && !v->lead)
+                v->env *= 0.25f;
+        }
+    }
     /* pressure: brighter and more wobble while the key is leaned on */
     prs = (float)press[v->home] * (1.0f / 127.0f);
     prs = prs > b->chan_press ? prs : b->chan_press;
@@ -693,7 +729,18 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
     /* pitch: the glide, the random walk, the wobble */
     v->pitch += (v->target - v->pitch) * b->glide_k;
     v->walk += frand(&v->rng) * 0.012f - v->walk * 0.0015f;
-    cents = v->walk * b->walk_depth * 40.0f;
+    cents = v->walk * b->walk_depth * 40.0f + v->sp_det * b->spread * 14.0f;   /* SPREAD: up to 14 cents apart */
+    v->twalk += frand(&v->rng) * 0.003f - v->twalk * 0.0006f;   /* the timbre's own slow walk */
+    v->twalk = fm_clampf(v->twalk, -1.0f, 1.0f);
+    v->sway_ph += b->sway_inc * (0.8f + 0.4f * v->sp_tide);
+    if (v->sway_ph >= 1.0f)
+        v->sway_ph -= 1.0f;
+    v->pan_live = fm_clampf(v->pan + v->sp_pan * b->spread * 0.5f + tsin(v->sway_ph) * b->sway * 0.7f, -1.0f, 1.0f);
+    if (b->cross > 0.0f && !v->lead) {  /* CROSS: the partner's swell bends this body (bodies in pairs) */
+        const voice_t *q = &vc[(v - vc) ^ 1u];
+        if (q->on && !q->lead)
+            cents += (q->lvl_s - v->lvl_s) * b->cross * 180.0f;
+    }
     v->wob_ph += b->wob_inc * (1.0f + 0.09f * (float)(v - vc));
     if (v->wob_ph >= 1.0f)
         v->wob_ph -= 1.0f;
@@ -704,7 +751,7 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
         f = 8000.0f;
     *f_out = f;
     /* the breathing */
-    v->tide_ph += b->tide_inc * (0.85f + 0.045f * (float)(v - vc));
+    v->tide_ph += b->tide_inc * (0.85f + 0.045f * (float)(v - vc)) * (1.0f + (v->sp_tide - 1.0f) * b->spread);
     if (v->tide_ph >= 1.0f)
         v->tide_ph -= 1.0f;
     v->spark = 0.5f + 0.5f * tsin(v->tide_ph);
@@ -812,7 +859,7 @@ static void render_solar(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     float inc = f / FS, sinc = inc * 0.5f, ph = v->ph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m;
     float sub = b->sub * 0.5f, a0 = v->amp[0], a1 = v->amp[1], a2 = v->amp[2], a3 = v->amp[3], a4 = v->amp[4],
           a5 = v->amp[5], a6 = v->amp[6], a7 = v->amp[7];
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i;
     for (i = 0; i < m; i++) {
         float s, p;
@@ -846,7 +893,7 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float mass = vmass(v, b), fc = dr_hz((uint32_t)(mass * 127.0f)), a;
     float p0 = v->ph3[0], p1 = v->ph3[1], p2 = v->ph3[2], z0 = v->z[0], z1 = v->z[1], z2 = v->z[2];
     float lp1 = v->lp1, lp2 = v->lp2, sph = v->sub_ph, sinc = inc0 * 0.5f, sub = b->sub * 0.6f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i;
     if (fc < f * 1.2f)
         fc = f * 1.2f;
@@ -907,7 +954,7 @@ static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     float idx = mass * 4.0f * (1.0f - b->drift * 0.45f * (0.5f + 0.5f * tsin(v->breath_ph))) * 0.159155f;
     float ph = v->ph, ph2 = v->ph2, mph = v->mph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m,
           sub = b->sub * 0.5f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i;
     if (minc > 0.45f)
         minc = 0.45f;
@@ -950,7 +997,7 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
     float len = FS / f, damp = 0.06f + mass * 0.8f, inc = f / FS, ph = v->ph, sl = v->sl, l = v->lvl_s,
           dl = (lvl - l) / (float)m, air = 0.3f * (0.1f + b->air), bow = 0.05f * (1.0f - b->air * 0.6f),
           dcx = v->dc_x, dcy = v->dc_y, sph = v->sub_ph, sinc = inc * 0.5f, sub = b->sub * 0.4f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i, pos = v->lpos, rng = v->rng;
     if (len > (float)(LINE_LEN - 4u))
         len = (float)(LINE_LEN - 4u);
@@ -1005,7 +1052,7 @@ static void render_choir(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     float mass = vmass(v, b), F[3], G[3], a1[3], a2[3], a3[3], k = 0.14f;
     float inc = f / FS, p0 = v->ph3[0], z0 = v->z[0], c0 = 0.25f / inc, l = v->lvl_s, dl = (lvl - l) / (float)m;
     float air = b->air * 0.5f, sph = v->sub_ph, sinc = inc * 0.5f, sub = b->sub * 0.5f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i, j, rng = v->rng;
     choir_formants(b->shape, mass, F, G);
     for (j = 0; j < 3u; j++) {           /* three band-passes, trapezoidal, Q about 7 */
@@ -1055,8 +1102,8 @@ static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
 {
     float mass = vmass(v, b), inc[4], a[4], tilt = 2.5f - 2.3f * mass;
     float ph[4], sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, l = v->lvl_s, dl = (lvl - l) / (float)m;
-    float air = b->air * 0.12f, lp = v->lp1, gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f),
-          gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float air = b->air * 0.12f, lp = v->lp1, gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f),
+          gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i, h, rng = v->rng;
     ph[0] = v->ph;
     ph[1] = v->ph2;
@@ -1109,7 +1156,7 @@ static void render_shepard(voice_t *v, const blk_t *b, float f, float lvl, uint3
     float rate = (d < 0.0f ? -1.0f : 1.0f) * 0.35f * d * d * (float)m / FS;   /* octaves this block, falling or rising */
     float inc[6], a[6], ph[6], l = v->lvl_s, dl = (lvl - l) / (float)m, sum = 0.0f, air = b->air * 0.1f, lp = v->lp1;
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.4f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i, k, rng = v->rng;
     v->gp += rate;
     if (v->gp >= 1.0f)
@@ -1170,7 +1217,7 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float drive = (0.15f + b->shape * 2.2f) * (1.0f - b->drift * 0.3f * (0.5f + 0.5f * tsin(v->breath_ph)));
     float inc = f / FS, ph = v->ph, sph = v->sub_ph, sinc = inc * 0.5f, sub = b->sub * 0.5f, lp = v->lp1,
           l = v->lvl_s, dl = (lvl - l) / (float)m, air = b->air * 0.3f;
-    float gl = tsin(0.25f - (v->pan * b->width + 1.0f) * 0.125f), gr = tsin((v->pan * b->width + 1.0f) * 0.125f);
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     uint32_t i, rng = v->rng;
     if (fc < f * 1.5f)
         fc = f * 1.5f;
@@ -1310,6 +1357,41 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
+    if (mode == OM_PULSE) {              /* a roll of dips across the chord, low to high, ROLL apart */
+        uint32_t j, k;
+        float roll = p01(P_ORB_ROLL) * (float)orbit_per * 0.6f / (float)(cnt > 1u ? cnt - 1u : 1u);
+        for (j = 0; j < cnt; j++)        /* sorted low to high */
+            for (k = j + 1u; k < cnt; k++)
+                if (cand[k]->pitch < cand[j]->pitch) {
+                    voice_t *t = cand[j];
+                    cand[j] = cand[k];
+                    cand[k] = t;
+                }
+        for (j = 0; j < cnt; j++)
+            cand[j]->pulse_left = 1u + (uint32_t)(roll * (float)j);
+        return;
+    }
+    if (mode == OM_ECHO) {               /* the phrase, over the period */
+        uint32_t j, n = echo_n, jump = dr_scene.p[P_ECHO_JUMP] * 100u / 127u, decay = dr_scene.p[P_ECHO_DECAY] * 100u / 127u;
+        if (!n || echo_vel < 0.08f)
+            return;
+        for (j = 0; j < n; j++) {
+            uint32_t note = echo_ring[(echo_w + 8u - n + j) % 8u], at = 1u + (uint32_t)((float)orbit_per * (float)j / (float)(n + 1u));
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;
+            if ((orbit_rng >> 8) % 100u < decay / 2u)   /* dropped */
+                continue;
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;
+            if ((orbit_rng >> 8) % 100u < jump)
+                note = (orbit_rng & 0x100u) && note >= 24u ? note - 12u : note + 12u;
+            if (note > 108u)
+                note -= 12u;
+            echo_due[j] = at;
+            echo_note[j] = (uint8_t)note;
+            echo_off[j] = 0;
+        }
+        echo_vel *= 1.0f - 0.45f * (float)decay * 0.01f - 0.05f;
+        return;
+    }
     if (mode == OM_CYCLE) {              /* the chord to the progression's next degree, from where it was struck */
         uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, nxt_pos = (cyc_pos + 1u) % 4u;
         int32_t d = (int32_t)PROG[prog][nxt_pos];
@@ -1516,7 +1598,9 @@ static void arp_tick(uint32_t n)
 play:
         if (note_out)
             note_out(note, 100, 1);
+        lead_machine = 1;
         lead_event(note, 100, 1, 0);
+        lead_machine = 0;
         arp_held = (int32_t)note;
         /* GATE: the lead let go that far through the step; at the top, legato, at the next step */
         arp_gate_left = gate >= 125u ? 0u : (uint32_t)((float)arp_step * (0.05f + 0.95f * (float)gate / 127.0f));
@@ -1529,6 +1613,9 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
         pend_to[i] = 0;
     arp_n = arp_pos = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = 0;
     cyc_pos = 0;
+    for (i = 0; i < 8u; i++)
+        echo_due[i] = echo_off[i] = 0;
+    echo_vel = 1.0f;
     orbit_clk_left = orbit_clk_per = 0;
     if (arp_held >= 0)
         arp_release();
@@ -1572,6 +1659,34 @@ int dr_clock_ext(void) { return (int)clk_ext; }
 float dr_clock_bpm(void) { return clk_ext && clk_period ? 60.0f * FS / ((float)clk_period * 24.0f) : 0.0f; }
 void dr_clock_out(int on) { clk_out = on != 0; }
 void dr_realtime_out(void (*fn)(uint32_t)) { rt_out = fn; }
+static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then let go half a step later */
+{
+    uint32_t j;
+    for (j = 0; j < 8u; j++) {
+        if (echo_due[j]) {
+            if (echo_due[j] > n)
+                echo_due[j] -= n;
+            else {
+                uint32_t vel = (uint32_t)(echo_vel * 100.0f);
+                echo_due[j] = 0;
+                if (note_out)
+                    note_out(echo_note[j], vel, 1);
+                lead_machine = 1;
+                lead_event(echo_note[j], vel, 1, 0);
+                lead_machine = 0;
+                echo_off[j] = 1u + orbit_per / (2u * (echo_n ? echo_n + 1u : 2u));
+            }
+        } else if (echo_off[j]) {
+            if (echo_off[j] > n)
+                echo_off[j] -= n;
+            else {
+                echo_off[j] = 0;
+                lead_event(echo_note[j], 0, 0, 0);
+            }
+        }
+    }
+}
+int dr_echo_running(void) { return orbit_on && dr_orbit_mode() == OM_ECHO && echo_n > 0u && echo_vel >= 0.08f; }
 static void orbit_tick(uint32_t n)
 {
     uint32_t mode;
@@ -1584,6 +1699,8 @@ static void orbit_tick(uint32_t n)
     if (!orbit_on)
         return;
     mode = dr_orbit_mode();
+    if (mode == OM_ECHO)
+        echo_tick(n);
     if (mode == OM_ARP) {
         if (clk_out && !clk_ext && rt_out) {   /* 24 clocks a beat from RATE */
             float per = 60.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS * (1.0f / 24.0f);
@@ -1952,6 +2069,11 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     b->rel_m = fm_expf(-(float)CTL / (dr_release_s((uint32_t)(p01(P_LD_RELEASE) * 127.0f)) * FS) * 5.0f);
     b->lead_level = p01(P_LD_LEVEL) * fm_sqrtf(p01(P_LD_LEVEL)) * 2.0f;   /* 75: level with a body; full: 6 dB over */
     b->lift = (float)(uint32_t)(p01(P_LD_LIFT) * 24.99f);                 /* whole semitones, up to two octaves */
+    b->spread = p01(P_SPREAD);
+    b->cross = p01(P_CROSS);
+    b->twalk_depth = p01(P_TWALK);
+    b->sway = p01(P_SWAY);
+    b->sway_inc = b->sway > 0.0f ? (1.0f / 50.0f + b->sway * (1.0f / 4.0f)) * ((float)CTL / FS) : 0.0f;   /* a swing in 50 s to 3 s */
     b->n = n;
     for (i = 0; i < NV_ALL; i++)         /* a voice in another model than the scene's restarts */
         if (vc[i].on && vc[i].model != b->model && !vc[i].restart)

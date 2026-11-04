@@ -78,10 +78,10 @@ for intended sound changes, a simulator check per new parameter, manual row per 
 # DEEP FIELD — second firmware, built overnight 2026-10-31 → 11-01
 
 **Status, 2026-11-03 (read this first):** the FM-1 still runs the build of 2026-11-02 evening (image 300 KB,
-identity FM-1_1400). The **playable pass** of 2026-11-03 (the lead layer, ORBIT's modes and runner, the noise's
-weather; its paragraph below) was flashed on Kyle's word the same evening (image 311 KB, identity FM-1_1400): it booted clean on F1
-FIRST LIGHT, three bodies, 32 % CPU, and is committed. Not yet played by Kyle. Before it, he liked the sounds
-of the 11-02 build but found it bland. On it: the three-rule interface (one button one
+identity FM-1_1400). The **playable pass** of 2026-11-03 and what followed it the same day (items 1-8 below) are flashed and
+committed; item 9 (MOTION 2, ECHO, PULSE) is built and waits for "Flash it". Kyle has played the lead layer and
+the runner only briefly; the three lighting questions are still open. Before this day he liked the sounds of the
+11-02 build but found it bland. On it: the three-rule interface (one button one
 page, SELECT between pages; a lit button is a mode; the screen mirrors the panel with the BEAMS view), the FDN hall
 on the second core a block behind the bus, the noise layer, eight models, sixteen factory scenes, the effects
 retuned by measurement, 21 review fixes including the watchdog reset's cause. Device CPU with eight bodies: 29–37 %
@@ -337,7 +337,26 @@ variation, maybe a real arp"; a three-persona review first, then four steps):**
    --web`, Emscripten from Homebrew, 6.0.13) into deepfield/build/emu; there is no git remote, so nothing is
    published: `base/tools/publish_site.sh` is the path once the app has a GitHub repository.
 
-Scenes grew by 15 bytes (bank SCN4; SCN3 and SCN2 banks migrate through one generic unpack-from-the-end). 276
+9. *Motion and depth* (Kyle: "what else can we do to add motion and depth", then "flash and go on"): a MOTION 2
+   page (LFO, SELECT): **SPREAD** gives each body fixed differences for its life (up to 14 cents of detune, MASS
+   ±15 %, its own tide rate, its own place: `sp_*` in voice_t, from the body's own generator at the strike),
+   **CROSS** couples bodies in pairs (the partner's level bends the pitch, up to 180 cents at full: not audio-rate
+   FM, the renderers run a voice at a time), **TIMBRE** a slow per-body walk of MASS, **SWAY** each body across the
+   field on its own cycle (`pan_live`, which the renderers read now). Two ORBIT modes: **ECHO** (the last eight
+   notes the player's leads struck, `echo_ring`, replayed over the period each EVERY, quieter each pass, notes
+   dropped and jumped an octave by DECAY and JUMPS, until gone or a new note wakes it; the runner's and ECHO's
+   own leads do not count, `lead_machine`) and **PULSE** (each body dips to a quarter and swells back at SWELL,
+   low to high, ROLL apart: a strum). Defaults SPREAD 30, TIMBRE 25, SWAY 15 change every render: goldens
+   rewritten, scene RMS -12.8 to -16.7; PULSAR and FOLDED SUN carry CROSS. The bank migrates by record size now
+   (any of our magics), so a scene saved on an earlier build today survives. Also fixed: a body struck again
+   while fading glides home (it kept ORBIT's moved pitch). Device package: image 316,604 B, RAM 79,772 of 98,304
+   (18.1 KB spare), pool 324,760 of 344,064 (18.9 KB spare). **The repository**: github.com/WisestWizard/deepfield
+   (public, MPL-2.0, the LICENSE file added) and the site with the installer, the manual and the browser demo at
+   wisestwizard.github.io/deepfield (`base/tools/publish_site.sh deepfield 0.1`, from the commit before this pass;
+   Emscripten from Homebrew). Homebrew's python3 is 3.15 now, without mido: the FM-1 tools run with
+   `/usr/bin/python3`.
+
+Scenes grew by 15 bytes (bank SCN4; SCN3 and SCN2 banks migrate through one generic unpack-from-the-end). 287
 simulator checks (basic.txt: the lead layer, the three modes and the runner with pending counts and MIDI out,
 gust counts, FREEZE holding the weather), goldens rewritten (the beds changed: hpk, DUCK 30 by default, the
 factory beds), scene RMS -12.7 to -17.0, sanitizer clean but for `fastmath.h:58`. Device package built: image

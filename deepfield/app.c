@@ -296,6 +296,8 @@ int app_expect(const char *what, int *got)
             if ((plat_keys() >> k & 1u) && touch_pressure(k) > (uint32_t)*got)
                 *got = touch_pressure(k);
     }
+    else if (!strcmp(what, "echorun"))
+        *got = dr_echo_running();
     else if (!strcmp(what, "cyclepos"))
         *got = (int)dr_orbit_cycle_pos();
     else if (!strcmp(what, "arpsteps"))

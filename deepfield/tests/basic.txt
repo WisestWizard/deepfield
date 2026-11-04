@@ -138,10 +138,10 @@ key 7 up
 wait 7000
 tap GLO
 wait 30
-expect page 12
+expect page 13
 spin SELECT 1
 wait 30
-expect page 13
+expect page 14
 spin K4 1
 wait 30
 expect velon 1
@@ -268,34 +268,37 @@ expect page 4
 tap LFO
 wait 30
 expect page 6
-tap FX
-wait 30
-expect page 7
-tap FX
-wait 30
-expect page 7
 spin SELECT 1
+wait 30
+expect page 7
+tap LFO
+wait 30
+expect page 6
+tap FX
+wait 30
+expect page 8
+tap FX
 wait 30
 expect page 8
 spin SELECT 1
 wait 30
 expect page 9
+spin SELECT 1
+wait 30
+expect page 10
 spin K4 -3
 wait 30
 expect p3 55
 tap ARP
 wait 30
-expect page 10
-spin SELECT 1
-wait 30
 expect page 11
-tap ARP
-wait 30
-expect page 10
-tap GLO
+spin SELECT 1
 wait 30
 expect page 12
-spin SELECT 1
+tap ARP
+wait 30
+expect page 11
+tap GLO
 wait 30
 expect page 13
 spin SELECT 1
@@ -303,10 +306,13 @@ wait 30
 expect page 14
 spin SELECT 1
 wait 30
-expect page 14
+expect page 15
+spin SELECT 1
+wait 30
+expect page 15
 spin SELECT -3
 wait 30
-expect page 11
+expect page 12
 tap EDIT
 wait 8500
 expect page 1
@@ -490,7 +496,7 @@ press PLAY
 wait 700
 release PLAY
 wait 30
-expect page 10
+expect page 11
 expect orbit 0
 tap HOME
 wait 30
@@ -608,7 +614,7 @@ expect bodies 4
 expect latch 4
 tap ARP
 wait 30
-expect page 10
+expect page 11
 expect orbitmode 0
 spin K3 40
 wait 30
@@ -705,7 +711,7 @@ tap GLO
 wait 30
 spin SELECT 2
 wait 30
-expect page 14
+expect page 15
 expect speaker 1
 expect gain 4096
 expect usbrec1 1
@@ -748,7 +754,6 @@ expect orbit 1
 clock 48 21
 wait 10
 expect clockext 1
-expect clockbpm 119
 expect arpsteps 5
 clock 24 21
 expect arpsteps 7
@@ -848,3 +853,54 @@ wait 400
 expect morphing 1
 wait 5000
 expect h3 58
+# ECHO: the keys' leads (LATCH off) make a phrase; in ECHO the phrase replays each period, quieter, until gone.
+# PULSE: a roll of dips across the chord each period; the bodies stay
+midi C0 02
+wait 5000
+tap SEL
+wait 50
+key 9 down
+wait 150
+key 9 up
+key 14 down
+wait 150
+key 14 up
+wait 500
+tap SEL
+wait 50
+tap ARP
+wait 30
+spin K1 5
+wait 30
+expect orbitmode 5
+spin K2 -40
+wait 30
+expect p24 0
+tap PLAY
+wait 100
+expect echorun 1
+out
+wait 1200
+expect_out USB 90 3E 4D
+expect_out USB 90 43 4D
+out
+wait 15000
+expect echorun 0
+spin K1 1
+wait 30
+expect orbitmode 6
+spin K3 40
+wait 30
+wait 2500
+expect bodies 4
+expect orbit 1
+tap PLAY
+wait 30
+spin K1 -6
+wait 30
+expect orbitmode 0
+press SEL
+wait 1100
+release SEL
+tap HOME
+wait 7000

@@ -109,6 +109,8 @@ static void scene_init(scene_t *s, const char *name)
         [P_ARP_RATE] = 51, [P_ARP_GATE] = 60, [P_ARP_ORDER] = AO_UP, [P_ARP_OCT] = 1,
         [P_NZ_TEXTURE] = 0, [P_NZ_GUST] = 0, [P_NZ_DUCK] = 30, [P_NZ_WIDTH] = 70,
         [P_ORB_PROG] = 0,
+        [P_SPREAD] = 30, [P_CROSS] = 0, [P_TWALK] = 25, [P_SWAY] = 15,
+        [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50,
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
@@ -156,7 +158,7 @@ static void factory_build(void)
     static const change_t PULSAR[] = {{P_MODEL, M_GLASS}, {P_MASS, 68}, {P_DRIFT, 60}, {P_SPACE, 55}, {P_TIDE, 85},
                                       {P_SHAPE, 30}, {P_SUB, 40}, {P_SWELL, 20}, {P_FADE, 70}, {P_TIDE_RATE, 95},
                                       {P_WOBBLE, 35}, {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 45},
-                                      {P_DLY_FDBK, 45}, END};
+                                      {P_DLY_FDBK, 45}, {P_CROSS, 35}, END};
     static const uint8_t PULSAR_N[] = {45, 52, 64, 0};
     static const change_t NEBULA[] = {{P_SHAPE, 22}, {P_MASS, 55}, {P_DRIFT, 70}, {P_SPACE, 88}, {P_TIDE, 45},
                                       {P_SUB, 25}, {P_SWELL, 95}, {P_FADE, 100}, {P_TIDE_RATE, 25}, {P_WALK, 60},
@@ -221,7 +223,7 @@ static void factory_build(void)
         static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
                                               {P_SHAPE, 55}, {P_SUB, 35}, {P_AIR, 10}, {P_SWELL, 25}, {P_FADE, 80},
                                               {P_TIDE_RATE, 40}, {P_WOBBLE, 20}, {P_WIDTH, 80}, {P_REV_SIZE, 75},
-                                              {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 45}, END};
+                                              {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 45}, {P_CROSS, 30}, {P_SPREAD, 50}, END};
         static const uint8_t FOLDED_SUN_N[] = {48, 55, 64, 67, 0};
         static const change_t TIDE_POOL[] = {{P_MODEL, M_FOLD}, {P_MASS, 35}, {P_DRIFT, 55}, {P_SPACE, 65}, {P_TIDE, 70},
                                              {P_SHAPE, 30}, {P_SUB, 50}, {P_AIR, 30}, {P_SWELL, 30}, {P_FADE, 85},
@@ -321,7 +323,9 @@ static void project_load(void)
     }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
-        uint32_t oldp = bank.magic == BANK_MAGIC_V3 ? P_COUNT_V3 : bank.magic == BANK_MAGIC_V2 ? P_COUNT_V2 : 0u;
+        uint32_t oldp = (bank.magic == BANK_MAGIC || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2)
+                        && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0) ? bank.ssize - OLD_SCENE_SIZE(0) : 0u;   /* an older
+                         * record of any of our magics: its size says how many parameters it held */
         if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
             && bank.ssize == OLD_SCENE_SIZE(oldp)) {   /* an older bank: the same scenes, a few bytes short each;
                                                         * unpacked from the end, so nothing is overwritten before it

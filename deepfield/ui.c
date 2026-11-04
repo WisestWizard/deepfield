@@ -15,7 +15,7 @@
  * body let go), PLAY runs ORBIT, SEQ freezes the reverb, the page's button lights. FX held: F3 G3 A3 B3 switch the
  * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
  * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
-enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_MOTION2, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
        PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
@@ -34,6 +34,7 @@ static const page_t PAGES[PG_COUNT] = {
     {"ENVELOPE", "ENV", {P_SWELL, P_FADE, P_PRESS, P_GLIDE}},
     {"LEAD", "ENV", {P_LD_ATTACK, P_LD_RELEASE, P_LD_LIFT, P_LD_LEVEL}},   /* the keys with LATCH off */
     {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
+    {"MOTION 2", "LFO", {P_SPREAD, P_CROSS, P_TWALK, P_SWAY}},   /* the bodies apart from each other */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
     {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, PID_NONE}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
@@ -65,6 +66,8 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_ARP_ORDER] = {"ORDER", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
     [P_NZ_TEXTURE] = {"TEXTURE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
     [P_NZ_WIDTH] = {"WIDTH", K_PCT}, [P_ORB_PROG] = {"CHORDS", K_PROG},
+    [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS", K_PCT}, [P_TWALK] = {"TIMBRE", K_PCT}, [P_SWAY] = {"SWAY", K_PCT},
+    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"JUMPS", K_PCT}, [P_ORB_ROLL] = {"ROLL", K_PCT},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_VIEW] = {"VIEW", K_VIEW},      [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
@@ -252,7 +255,7 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP", "CYCLE"};
+static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP", "CYCLE", "ECHO", "PULSE"};
 static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI IV", "I VI III VII", "I IV I V",
                                                 "I II V", "I III VI IV", "I VII IV"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
@@ -265,6 +268,8 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are th
             {P_ORB_PERIOD, P_ORB_BODIES, P_ORB_RANGE},   /* SCATTER */
             {P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER},       /* ARP */
             {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_PROG},    /* CYCLE */
+            {P_ORB_PERIOD, P_ECHO_DECAY, P_ECHO_JUMP},   /* ECHO */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_ROLL},    /* PULSE */
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
@@ -742,7 +747,7 @@ static void ble_device_button(void)
 }
 
 /* ------------------------------------------------------------------ buttons --- */
-static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_ARP,
+static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_ARP,
                                            B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
@@ -2111,7 +2116,8 @@ static void draw_header(void)
     cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
     x = pill(3, "SEL LATCH", set.latch, 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
-        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE"};
+        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE",
+                                                   "PLAY ECHO", "PLAY PULSE"};
         x = pill(x, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
                  plat_ms() - ui.orbit_flash_t < 300u);
     }
