@@ -467,7 +467,10 @@ knob (DELAY 2 has three free slots) and half the wet into the hall.
    STRING scenes 35–37); the full load (STARLIGHT ×8 with CROSS and SWAY at 100, the breath on every body, ORBIT in
    ARP at 120 BPM with CLOCK OUT) 56–57 %, no xruns. The breath costs 11 points, the runner 8, CROSS and SWAY
    nothing readable. Figures in `deepfield/docs/BUDGET.md`. Still under the 70 % line; STACK (item 5) has room.
-3. Publish 0.2 once Kyle likes it (`base/tools/publish_site.sh deepfield 0.2`) and submit the site to
+3. ~~Publish 0.2~~ Done 2026-11-05 from 79bae26, before Kyle had heard the 11-04 flash: the site, the installer
+   and the browser emulator at deepfield.fog.baby (GitHub Pages, a Namecheap CNAME to wisestwizard.github.io; the
+   front page leads with the emulator for people without an FM-1). Publish with `deepfield/tools/publish_site.sh
+   X.Y`, never the base script: its push drops the custom domain. Still to do: submit the site to
    thefirmwarehub.com (its submission form).
 4. Sound depth still on the list: the hall breathing with TIDE, just intonation per scale, AGE on the master,
    true audio-rate cross-FM (a pair-wise renderer rewrite; CROSS today is control-rate coupling).
