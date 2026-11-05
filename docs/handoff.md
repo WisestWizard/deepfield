@@ -449,7 +449,8 @@ while the screen was stuck (render idle + sound on = a main-loop loop; render bu
 seven lanes (white keys C4..G5 by letter), every eaten mushroom plays a note of a public-domain tune, the band
 climbs from a straight folk rendition through house, deep house, acid, rave, breaks, IDM and hard across eight
 stages, the background warps and cycles while the field stays crisp, a trip meter is the life bar, JAM never
-ends. **Never flashed** (Kyle's rule: only on "Flash it"); nothing committed. The design and every module
+ends. **Never flashed** (Kyle's rule: only on "Flash it"). Committed on master as 3f447b5 (2026-11-04, the whole
+tree, build outputs ignored); not pushed. The design and every module
 contract: `gnomnom/docs/DESIGN.md` and `gnomnom/gn.h` (gn.h wins). Kyle's brief: concept 1 of the game
 discussion re-themed as a gnome eating mushrooms, "really trippy and wavy and colorful at a bunch of points",
 music that starts as the normal songs and gets more IDM / house / acid as the levels go on.
@@ -477,6 +478,10 @@ music that starts as the normal songs and gets more IDM / house / acid as the le
   only inline on the host; the tearing of a 21 ms full-screen write on invert/strobe/cycling needs a finger test on
   the unit; the transcriptions are from memory (Hungarian Dance, the later bars of Alla Turca and the Can-Can are
   "that tune at tempo"); the ACID bass slide was fixed twice on integration (it now glides and gates) and only re-rendered by number.
+- **Next (nothing decided yet):** flash on Kyle's word and read the device CPU per stage (`fm1_remote.py log`), listen to
+  stage 1's band and the acid line, finger-test strobe and invert for tearing, then fix the transcriptions he flags and
+  the levels by ear; the design reviews' untaken ideas (a second stutter ring for the wet bus, an ensemble switch
+  ramp) are in the review notes, not the code.
 - **Resume:** `./build.sh gnomnom --host && gnomnom/build/host/gnomnom_host gnomnom/tests/basic.txt
   gnomnom/build/host`, `python3 gnomnom/tools/levels.py`, `./build.sh gnomnom --web`, `./build.sh gnomnom`
   (colima running), `python3 base/tools/fm1_install.py gnomnom/build/gnomnom.fwsc` only on "Flash it". Device
