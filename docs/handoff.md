@@ -440,3 +440,48 @@ whether the render was in progress; the next boot after such a reset logs "deepf
 busy/idle" (fm1_remote.py log). If it recurs: read the log before power-cycling; ask whether the sound kept playing
 while the screen was stuck (render idle + sound on = a main-loop loop; render busy = the audio interrupt).
 
+
+---
+
+# GNOMNOM — third firmware, built 2026-11-03 night → 11-04
+
+**Status, 2026-11-04 (read this first):** a rhythm game in `gnomnom/`: a garden gnome eats mushrooms falling down
+seven lanes (white keys C4..G5 by letter), every eaten mushroom plays a note of a public-domain tune, the band
+climbs from a straight folk rendition through house, deep house, acid, rave, breaks, IDM and hard across eight
+stages, the background warps and cycles while the field stays crisp, a trip meter is the life bar, JAM never
+ends. **Never flashed** (Kyle's rule: only on "Flash it"); nothing committed. The design and every module
+contract: `gnomnom/docs/DESIGN.md` and `gnomnom/gn.h` (gn.h wins). Kyle's brief: concept 1 of the game
+discussion re-themed as a gnome eating mushrooms, "really trippy and wavy and colorful at a bunch of points",
+music that starts as the normal songs and gets more IDM / house / acid as the levels go on.
+
+- **How it was built:** the design spec and gn.h first, four independent design reviews (hardware budget, game
+  feel, music, concurrency) that reshaped both (a field layer over a warped background, falls kept near a second,
+  three audio buses, a tune format with alterations, four tune swaps, every cross-context protocol spelled out),
+  then six modules written in parallel from briefs (gfx, art, band, music, game, ui) and integrated. The host
+  build compiled first time; two fixes on integration (the title music never started at boot; the stage gap
+  field was a byte); the test ordering fixed once.
+- **Verified:** `gnomnom/tests/basic.txt` passes in the host simulator (title → run → eats, misses, pause with the
+  count-in, game over, the saved high score across a reboot, JAM's wobble, knobs, the screen reader); the manual's
+  six screenshots in `gnomnom/docs/img`; `gnomnom/tools/levels.py`: every stage peaks at −0.8 dBFS under the
+  limiter, RMS −18 (folk) to −12 (hard); the browser emulator (`./build.sh gnomnom --web`, `.claude/launch.json`
+  "gnomnom-emu", port 8766) plays: P starts a run, qwertyui/asdfghjk are the white keys; the device package
+  builds: image 286,468 B, RAM 72.5 KB of 96, pool 317 KB of 344 (`gnomnom/build/gnomnom.fwsc`, identity FM-1_1500),
+  every build check ok. Three code reviews after integration (concurrency, contract conformance, audio and
+  renderer) found no blocker; their fixes are in: MIDI-in black notes no longer fire the stash, endless cycles the
+  tunes, the boss gets its one-bar riser every stage, the LED bright threshold honours the shorter of half the fall
+  and a beat, the saved high score is re-fed to the render, the core-2 hall job takes its buffer by argument, a slid
+  acid note gates itself off, FREEZE's stutter slice halves its division until it fits the ring, FLASH OFF also
+  gates the PERFECT flash, three envelopes flush denormals, the snare keeps its tone phase on a roll.
+- **Not verified:** nothing heard by ear (levels and routing by number only); the device CPU figure (the band's
+  host timing extrapolates to 30–40 % on core 1 with the hall on core 2); the two-core path and its fallback ran
+  only inline on the host; the tearing of a 21 ms full-screen write on invert/strobe/cycling needs a finger test on
+  the unit; the transcriptions are from memory (Hungarian Dance, the later bars of Alla Turca and the Can-Can are
+  "that tune at tempo"); the ACID bass slide was fixed twice on integration (it now glides and gates) and only re-rendered by number.
+- **Resume:** `./build.sh gnomnom --host && gnomnom/build/host/gnomnom_host gnomnom/tests/basic.txt
+  gnomnom/build/host`, `python3 gnomnom/tools/levels.py`, `./build.sh gnomnom --web`, `./build.sh gnomnom`
+  (colima running), `python3 base/tools/fm1_install.py gnomnom/build/gnomnom.fwsc` only on "Flash it". Device
+  instructions for Kyle: 1. PLAY starts a run on the title (OCT−/OCT+ pick the stage, SEL toggles JAM, EDIT
+  toggles FLASH). 2. Eat a mushroom with the white key of its lane as it reaches the gnome; the LEDs under the keys
+  show which lanes have something coming. 3. The lowest three black keys use the stashed power-ups. 4. PLAY pauses,
+  PLAY again counts in; HOME from the pause quits. First things to hear: stage 1's Mountain King with the band,
+  the house drop at stage 2, the acid line at stage 4.

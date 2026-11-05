@@ -1,4 +1,5 @@
 app/build/
 deepfield/build/
+gnomnom/build/
 */web/words/*.json
 .DS_Store

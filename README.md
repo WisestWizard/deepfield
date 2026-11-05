@@ -1,7 +1,9 @@
 # Pocket Poly — custom firmware for the M-VAVE FM-1
 
-This repository holds two firmwares on one fm1-base: **Pocket Poly** (`app/`, below) and **DEEP FIELD**
-(`deepfield/`, an ambient drone machine: see `deepfield/README.md`). `./build.sh deepfield ...` builds the latter.
+This repository holds three firmwares on one fm1-base: **Pocket Poly** (`app/`, below), **DEEP FIELD**
+(`deepfield/`, an ambient drone machine: see `deepfield/README.md`) and **GNOMNOM** (`gnomnom/`, a rhythm game where a
+gnome eats mushrooms that play a tune: see `gnomnom/README.md`). `./build.sh deepfield ...` and `./build.sh gnomnom ...`
+build the other two.
 
 A synthesizer, not a groovebox: a stereo polysynth with a discovery engine (seeded dice / mutate / morph / breed
 for patches, an arpeggiator with Turing and Euclidean generators). MIDI is first-class: USB, TRS in, and Bluetooth
