@@ -11,7 +11,7 @@
 #define DR_CTL 32u                       /* samples per control tick */
 #define DR_NV 8u                         /* bodies */
 #define DR_NL 4u                         /* leads: the keys with LATCH off, the scene's model struck short */
-#define DR_ARENA_BYTES (230u * 1024u)    /* what dr_init wants from the app's pool: lines, tables, mix and hall buffers */
+#define DR_ARENA_BYTES (235u * 1024u)    /* what dr_init wants from the app's pool: lines, tables, mix and hall buffers */
 
 enum { M_SOLAR, M_VOID, M_GLASS, M_STRING, M_CHOIR, M_BELL, M_SHEPARD, M_FOLD, M_COUNT };
 enum { ENS_OFF, ENS_CHORUS1, ENS_CHORUS2, ENS_ENSEMBLE, ENS_COUNT };
@@ -32,6 +32,7 @@ enum {
     P_SPREAD, P_CROSS, P_TWALK, P_SWAY,                           /* MOTION 2: the bodies apart, coupled, drifting in timbre, swaying */
     P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROLL,                        /* ECHO's decay and octave jumps; PULSE's roll */
     P_DLY_DIFF,                                                   /* the delay's repeats smeared into a cloud */
+    P_DLY_COLOUR,                                                 /* the delay's repeats dark and full to bright and thin */
     P_COUNT
 };
 enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_PULSE, OM_COUNT };   /* P_ORB_MODE, the index */
@@ -65,6 +66,7 @@ void dr_note(uint32_t note, uint32_t vel, int on);
 void dr_note_latched(uint32_t note, uint32_t vel);  /* LATCH on: strikes a body that stays; at a latched body's note,
                                                      * lets it go */
 void dr_unlatch(uint32_t note);                     /* LATCH off while its key is held: the body sounds while held */
+void dr_transpose_to(uint32_t note);                /* the latched bodies moved together, the lowest to this note */
 void dr_note_now(uint32_t note, uint32_t vel, int on);   /* MIDI, from the render: held while on, let go at off */
 /* LATCH off: a key (or a MIDI note) plays a lead, the scene's model with the LEAD envelope (ATTACK up, held, then
  * RELEASE), LIFT semitones up, never latched, never moved by ORBIT; the bed of latched bodies is left alone */
@@ -152,8 +154,9 @@ void dr_scope(const int16_t **l, const int16_t **r, uint32_t *n);   /* the last 
 uint32_t dr_harmonics(uint32_t i, float *amp);     /* body i's 8 harmonic levels (SOLAR; the others approximated) */
 float dr_time_s(uint32_t p);             /* the UI shows the engine's own mappings */
 float dr_orbit_s(uint32_t p);
-float dr_dly_time_s(uint32_t p);                    /* DLY TIME below 100: free, 50 to 418 ms */
+float dr_dly_time_s(uint32_t p);                    /* DLY TIME below 100: free, 50 to 800 ms */
 int32_t dr_dly_div(uint32_t p);                     /* DLY TIME from 100: a division of the beat (DR_DLY_DIV_NAME), else -1 */
-#define DR_DLY_MAX_S 0.418f
-extern const char *const DR_DLY_DIV_NAME[5];
+#define DR_DLY_MAX_S 0.8f
+#define DR_DLY_NDIV 7u
+extern const char *const DR_DLY_DIV_NAME[DR_DLY_NDIV];
 float dr_hz(uint32_t p);                 /* VOID's cutoff for a MASS value */

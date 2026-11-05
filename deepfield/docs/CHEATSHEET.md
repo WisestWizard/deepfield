@@ -9,7 +9,8 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | LATCH on (SEL lit, the default) | A key strikes a body that stays. The same key again lets it go. |
 | LATCH off (SEL dark, the screen says KEYS PLAY) | The bed stays; a key plays a lead over it: the scene's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its body (an accent). |
 | Lean on a key | Brighter, more wobble, while you lean. |
-| Hold SEL for a second | Every body let go. |
+| Hold SEL for a second | Every body let go (and TRANSPOSE ends). |
+| Hold SEL, touch a key (TRANSPOSE, pill SEL TRANS) | Every key then moves the latched bodies together, the lowest to that key, gliding over GLIDE; letting go leaves them there. Tap SEL to latch again. |
 | Keys light | Three levels: LIT = what the keys do now (a latched body under LATCH on, a lead while held); MID = the machine's (a body fading, a moved body's home key, the bed under LATCH off, a lead releasing, a body off the keys at the end key, ORBIT's destination, blinking as the move nears); GLOW = the scale. A lead's strike winks its key off. On screen the same, a yellow frame on a latched key, white for a lead, the destination in the body's dim colour. |
 
 ## Buttons
@@ -19,10 +20,10 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | EDIT | BODY page (SELECT for NOISE, again for NOISE 2) | |
 | ENV | ENVELOPE page (SELECT for LEAD) | |
 | LFO | MOTION page (SELECT for MOTION 2) | |
-| FX | The effects pages: ENSEMBLE, then SELECT for DELAY and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off, C4 = the noise layer, shown large (saved with the scene) |
+| FX | The effects pages: ENSEMBLE, then SELECT for DELAY, DELAY 2 and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off on every scene (one at zero comes in at a usable amount), C4 = the noise layer, shown large (saved with the scene) |
 | ARP | ORBIT page (SELECT for ORBIT 2) | |
 | GLO | GLOBAL page (SELECT for MIDI, again for USB) | Lean on a key: its pressure crossfades toward the next scene (push after the key settles; D5 up read no lean: held, the blend climbs to full in 2 s); let go and the blend stays |
-| SEL | LATCH on / off (lit while on) | 1 s: every body let go |
+| SEL | LATCH on / off (lit while on); from TRANSPOSE, LATCH on | 1 s: every body let go; with a key touched: TRANSPOSE |
 | PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD, SCATTER and CYCLE (the chord moves: along the scale, scattered, or through a progression), red ARP (a runner of leads over the bed, on after the bed is let go), orange ECHO (your last notes replayed, fading) and PULSE (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | ORBIT page |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
@@ -36,7 +37,7 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 ## Encoders
 | Encoder | Does |
 | --- | --- |
-| SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, MOTION 2, FX ENSEMBLE, FX DELAY, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI, USB) |
+| SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, MOTION 2, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI, USB) |
 | PRESET | Scroll the scenes (the presets); the one you stop on morphs in over MORPH seconds |
 | ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs |
@@ -54,7 +55,8 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | MOTION | TIDE RATE | WOBBLE | WALK | WIDTH |
 | MOTION 2 | SPREAD (the bodies unlike each other) | CROSS (pairs bend each other) | TIMBRE (each body's MASS walks) | SWAY (each body drifts across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
-| FX DELAY | DLY TIME (ms; from 100 the beat's division 1/16 1/8 1/8D 1/4T 1/4, from the runner's RATE or the MIDI clock) | DLY FDBK | DLY MIX | DIFFUSE (repeats smeared into a cloud) |
+| FX DELAY | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from the runner's RATE or the MIDI clock, halved when too long) | DLY FDBK | DLY MIX | COLOUR (repeats dark and full to bright and thin) |
+| FX DELAY 2 | DIFFUSE (repeats smeared into a cloud) | – | – | – |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
 | ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE: EVERY; ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE; ECHO: DECAY | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS; ECHO: JUMPS; PULSE: ROLL |
 | ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |

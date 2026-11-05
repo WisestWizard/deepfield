@@ -19,6 +19,7 @@
                                           * SPEAKER is AUTO (the USB audio input then gets the render at full level) */
 uint32_t df_gain(uint32_t m);
 int df_ble_off(void);
+int df_shift(void);                      /* TRANSPOSE is on */
 void app_overload(void);
 
 /* the store: the settings, the panel calibration (the platform's), Bluetooth's address and pairing, the scenes;

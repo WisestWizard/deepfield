@@ -2,6 +2,43 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: the last flash (DEEP FIELD, flashed 2026-11-04 evening)
+
+When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order
+below. The unit booted clean on it (FIRST LIGHT, 3 bodies, 30 % CPU, no xruns). Not yet heard by Kyle; the device
+CPU at full load not yet read.
+
+What changed:
+
+- **FX keys work on every scene.** F3 G3 A3 B3 (ensemble, delay, reverb, shimmer): an effect the scene has at zero
+  now comes in at a usable amount, and pressing again switches it off. Before, nine scenes had no delay and G3 did
+  nothing audible.
+- **The delay is longer.** Free DLY TIME 50 to 800 ms (was 418), the right side up to 1.1 s, so the repeats are
+  heard as echoes that bounce left and right. Synced: 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2; too long at the tempo, it
+  halves and stays in time.
+- **COLOUR** (DELAY page, knob 4): the repeats dark and full at 0, bright and thin at 100. DIFFUSE moved to a new
+  DELAY 2 page, one SELECT further.
+- **Black keys play their own note.** The scale used to snap them to the white key below; now it only glows and
+  bounds ORBIT.
+- **TRANSPOSE.** Hold SEL and touch a key: the pill reads SEL TRANS, and every key then moves the latched chord so
+  its lowest note lands there, gliding at GLIDE. Tap SEL for LATCH again; hold SEL a second to let everything go.
+
+How to test (numbered for the unit):
+
+1. F1 FIRST LIGHT: hold FX, press G3. The screen says DELAY ON and the D in the header lights; play a short key
+   with SEL tapped off (LATCH OFF, KEYS PLAY) and listen for echoes left then right. Press G3 again: DELAY OFF.
+2. On the same scene try F3 (ensemble) and B3 (shimmer): each should come on and be heard.
+3. F7 DEEP VOID: tap FX, turn SELECT once to DELAY, turn knob 4 (COLOUR) from 0 to 100 and back. Knob 1 to the
+   top reads 1/2, 1/4D and so on.
+4. Black keys: on any scene, tap F#3. Its own key lights on the strip, not F3.
+5. TRANSPOSE: hold SEL a second to clear, latch C4 E4 G4, hold SEL and touch D4 (pill SEL TRANS, screen
+   TRANSPOSE D4), let go of SEL, then play a bass line on the low keys. Tap SEL to leave. With GLIDE low (ENV page,
+   knob 4) the moves are quick; high, they slide.
+
+Questions to ask after: are the echoes now heard on a drone; is COLOUR's range right; does TRANSPOSE want its own
+anchor (the key touched as the chord's root) rather than the lowest body; next delay steps from the musician (a
+modulation depth knob on DELAY 2, half the wet into the hall).
+
 ## Where it stands
 
 - **The FM-1 runs the review-fix build** (image 279,040 B, identity FM-1_1300, flashed 2026-10-31 evening). It
@@ -388,6 +425,36 @@ flashed, not heard by Kyle. The musician's next steps, in order: a COLOUR in the
 120 Hz to keep the sub out of the loop, the low-pass brighter than 0.35: "probably a quarter of the mud"),
 modulation depth as a knob (the wow from clean to chorus to seasick), half the wet into the hall instead of all of
 it; they would skip ducking, reverse and pitch-shifted repeats on this material.
+
+**Second delay pass, FX keys, black keys, TRANSPOSE (2026-11-04 evening):** Kyle heard the three delay tests and
+found them underwhelming, asked whether the delay needed more time, and reported that FX+G3 no longer switched the
+delay on, that other FX keys did nothing on some scenes, that black keys played the white key beside them, and
+asked for a way to play the keyboard to transpose the latched bodies. Causes confirmed in the simulator: (1) the
+first pass set DLY MIX to 0 in nine scenes and the FX keys only flipped a bypass, so a stage at zero stayed silent
+(FIRST LIGHT: G3 said DELAY OFF, then ON, nothing heard); ensemble and shimmer default to zero, the same; (2) the
+delay topped out at 0.418 s, and past 0.30 s the right leg hit its end so the sides collapsed; (3) the default
+scale (C MAJOR) snapped every key outside it to the scale note below (F#3 played F3). Done: the FX keys bring a
+zero stage in (delay MIX 35, SPACE 45, SHIMMER 30 with the hall unbypassed, ENSEMBLE CHOR I at 40) and switch it off
+when heard; a sweep of all four keys on all 16 scenes passes. The delay legs run at half the rate (two one-poles at
+7 kHz down, a midpoint and a one-pole up), left 0.80 s and right 1.11 s in 42,240 samples, allpasses halved in
+length to keep their milliseconds; DLY TIME free is 50 ms doubling four times to 800 (200 at the middle), the sync
+divisions are seven in order of length (1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, four steps each from 100) and a division
+too long at the tempo halves; COLOUR (P_DLY_COLOUR, 56, INIT 50) sets the loop's low-pass 1.5 to 9 kHz and its
+high-pass 30 to 200 Hz in place of the fixed 0.35 low-pass and DC block; DELAY page TIME FDBK MIX COLOUR, DIFFUSE
+moved to a new DELAY 2 page (page numbers from 10 shift by one). Measured at TIME 99: left repeat 0.84 s, right
++1.06 s, ping-pong, 4 to 5 dB a hop at FDBK 55; COLOUR 0 to 100 thins the repeats' low end by about 8 dB. Factory
+times: NEBULA 92 (0.66 s), PULSAR 105 (1/8), DEEP VOID 0.8 s, DESCENT 0.54 s, TIDE POOL 0.6 s; COLOUR GLASS ORBIT 70,
+PULSAR 65, NEBULA 45, DEEP VOID 30, GAMELAN 75, DESCENT 40, TIDE POOL 55. The engine arena grew to 235 KB and
+drone.c now refuses at compile time an arena too small (the first build crashed the simulator because dr_init
+silently refused). Keys play their own note in every scale; the scale glows and bounds ORBIT. TRANSPOSE: SEL held
+and a key touched enters it (pill SEL TRANS); each key moves every latched body by one step so the lowest lands
+on it (homes move, ORBIT's pending moves dropped, MIDI offs before ons); a SEL tap is LATCH again; SEL held a
+second lets go and ends it. 345 simulator checks under ASan and UBSan (the only report is base's fastmath.h left
+shift of a negative, which predates this), goldens rewritten (renders after a delayed scene catch its longer
+tail), scene RMS -12 to -18, device package built (image 320,604 B, RAM 79,904 of 98,304, pool 329,952 of
+344,064), flashed the same evening (booted clean, 30 % with 3 bodies), not heard by Kyle, device CPU at full load
+not read. Still open from the musician: a modulation depth
+knob (DELAY 2 has three free slots) and half the wet into the hall.
 
 **What's next (agreed order, 2026-11-03 night):**
 

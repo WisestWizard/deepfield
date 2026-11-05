@@ -15,7 +15,7 @@
  * body let go), PLAY runs ORBIT, SEQ freezes the reverb, the page's button lights. FX held: F3 G3 A3 B3 switch the
  * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
  * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
-enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_MOTION2, PG_FX_ENS, PG_FX_DLY, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_MOTION2, PG_FX_ENS, PG_FX_DLY, PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
        PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
@@ -36,7 +36,8 @@ static const page_t PAGES[PG_COUNT] = {
     {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
     {"MOTION 2", "LFO", {P_SPREAD, P_CROSS, P_TWALK, P_SWAY}},   /* the bodies apart from each other */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
-    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, P_DLY_DIFF}},
+    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, P_DLY_COLOUR}},
+    {"DELAY 2", "FX", {P_DLY_DIFF, PID_NONE, PID_NONE, PID_NONE}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
     {"ORBIT", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, PID_NONE, PID_NONE}},
@@ -57,7 +58,7 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"REV SIZE", K_PCT}, [P_REV_DAMP] = {"REV DAMP", K_PCT},
     [P_SHIMMER] = {"SHIMMER", K_PCT},   [P_DLY_MIX] = {"DLY MIX", K_PCT},   [P_DLY_TIME] = {"DLY TIME", K_DLYTIME},
     [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
-    [P_DLY_DIFF] = {"DIFFUSE", K_PCT},
+    [P_DLY_DIFF] = {"DIFFUSE", K_PCT}, [P_DLY_COLOUR] = {"COLOUR", K_PCT},
     [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
     [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
     [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},
@@ -146,6 +147,7 @@ static struct {
     uint8_t glo_amt;                     /* the blend last set (0..127) */
     uint32_t glo_kt;                     /* a key without pressure (the top row) held under GLO: when its climb began */
     uint8_t fx_used, sel_used;
+    uint8_t shift;                       /* TRANSPOSE: SEL held and a key touched; the keys move the latched bodies */
     uint32_t keys_sig;                   /* what the keys strip showed last */
     uint8_t redraw_keys;
     uint8_t oct_lit, oct_mid;            /* the OCT buttons: lit at two octaves, half-lit at one (bit 0 OCT-, 1 OCT+) */
@@ -591,10 +593,9 @@ static void midi_note_out(uint32_t note, uint32_t vel, int on)
     else
         plat_midi_send(0x08u | (0x80u | ch) << 8 | (note & 127u) << 16, TO_USB | TO_BLE);
 }
-static uint32_t key_note(uint32_t k)
+static uint32_t key_note(uint32_t k)     /* the key's own note: the scale glows and bounds ORBIT, it never moves a key */
 {
-    uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
-    return set.scale == SC_CHROMA ? note : dr_snap(note);
+    return (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
 }
 static void key_on(uint32_t k, uint32_t vel)
 {
@@ -659,7 +660,20 @@ static void orbit_toggle(void)
 static void all_let_go(void)
 {
     dr_all_off();
+    ui.shift = 0;
+    ui.redraw_head = 1;
     ui_say("EVERY BODY", "LET GO");
+}
+static void transpose_key(uint32_t k)    /* TRANSPOSE: the lowest latched body to this key, the rest with it */
+{
+    char t[8];
+    if (!dr_latched()) {
+        ui_say("TRANSPOSE", "LATCH FIRST");
+        return;
+    }
+    dr_transpose_to(key_note(k));
+    note_text((int32_t)key_note(k), t);
+    ui_say("TRANSPOSE", t);
 }
 static void latch_set(uint32_t on, int say)   /* SEL: the LATCH mode. On, a key strikes a body that stays; off, the
                                                * keys play leads over the bed, which stays as it is */
@@ -713,18 +727,42 @@ static void fx_key(uint32_t k)
     }
     for (i = 0; i < 4u; i++)
         if (FXKEY[i] == k) {
-            b ^= 1u << i;
+            uint32_t on = dr_fx_active() >> i & 1u;
+            ui.fx_used = 1;
+            if (on) {
+                b |= 1u << i;
+            } else {                     /* a stage the scene has at zero comes in at a usable amount */
+                b &= ~(1u << i);
+                if (i == 0u) {
+                    if (!dr_scene.p[P_ENS])
+                        value_set(P_ENS, ENS_CHORUS1);
+                    if (!dr_scene.p[P_ENS_MIX])
+                        value_set(P_ENS_MIX, 40u);
+                } else if (i == 1u) {
+                    if (!dr_scene.p[P_DLY_MIX])
+                        value_set(P_DLY_MIX, 35u);
+                } else {                 /* the shimmer sounds through the hall, so it brings the hall too */
+                    if (i == 3u) {
+                        b &= ~DR_FX_REV;
+                        if (!dr_scene.p[P_SHIMMER])
+                            value_set(P_SHIMMER, 30u);
+                    }
+                    if (!dr_scene.p[P_SPACE])
+                        value_set(P_SPACE, 45u);
+                }
+            }
             dr_fx_bypass(b);
             dr_scene.fx_off = (uint8_t)b;
             scene_dirty = 1;
-            ui.fx_used = 1;
-            ui_say(FXNAME[i], (b & (1u << i)) ? "OFF" : "ON");
+            ui.redraw_foot = 1;
+            ui_say(FXNAME[i], on ? "OFF" : "ON");
             return;
         }
 }
 
 /* ------------------------------------------------------------------ Bluetooth --- */
 int df_ble_off(void) { return set.ble_off; }
+int df_shift(void) { return ui.shift; }
 static void ble_toggle(void)
 {
     set.ble_off = (uint8_t)!set.ble_off;
@@ -754,7 +792,7 @@ static void ble_device_button(void)
 }
 
 /* ------------------------------------------------------------------ buttons --- */
-static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_ARP, B_ARP,
+static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_FX, B_ARP, B_ARP,
                                            B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
@@ -859,6 +897,15 @@ static void input(void)
         if ((keys & bit) && !(ui.keys & bit)) {
             if (fx_layer || ui.fx_t || now - ui.fx_up < 120u || ui.glo_t)
                 continue;
+            if (ui.sel_down && (btn >> B_SEL & 1u) && !ui.shift) {   /* SEL held, a key: TRANSPOSE */
+                ui.sel_used = 1;
+                ui.shift = 1;
+                ui.redraw_head = 1;
+            }
+            if (ui.shift) {
+                transpose_key(k);
+                continue;
+            }
             key_on(k, touch_vel(k));
         } else if (!(keys & bit) && (ui.keys & bit)) {
             if (ui.keynotes & bit)
@@ -954,8 +1001,14 @@ static void input(void)
                 all_let_go();
             }
         } else {
-            if (!ui.sel_used)
-                latch_set(!set.latch, 1);
+            if (!ui.sel_used) {
+                if (ui.shift) {          /* out of TRANSPOSE: the keys strike bodies again */
+                    ui.shift = 0;
+                    latch_set(1, 1);
+                } else {
+                    latch_set(!set.latch, 1);
+                }
+            }
             ui.sel_down = 0;
         }
     }
@@ -1092,7 +1145,7 @@ static void input(void)
         if ((m == OM_SCATTER && now - ui.orbit_flash_t < 150u) || (m == OM_ARP && now - ui.arp_step_t < 60u))
             play_led = 0;
     }
-    lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u) | play_led
+    lit_btn = btn | (set.latch || ui.shift ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u) | play_led
             | (uint32_t)ui.oct_lit << B_OCTDN;
     if ((now / 150u) & 1u) {             /* a hold under way blinks until it fires, over the mode's light too */
         if (ui.sel_down && !ui.sel_used && now - ui.sel_down >= 300u)
@@ -2141,7 +2194,7 @@ static void draw_header(void)
     x = 237 - text_w(&FONT_T, t);
     cv_rect(x - 5, 0, 240 - x + 5, 17, C_BLACK);   /* a long name ends under it */
     cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
-    x = pill(3, "SEL LATCH", set.latch, 0.0f, 0);
+    x = pill(3, ui.shift ? "SEL TRANS" : "SEL LATCH", set.latch || ui.shift, 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
         static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE",
                                                    "PLAY ECHO", "PLAY PULSE"};
@@ -2316,7 +2369,7 @@ static void ui_frame(void)
         }
     }
     states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2 | dr_orbit_mode() << 10
-           | (uint32_t)usb_recording() << 12 | (uint32_t)dr_clock_ext() << 13
+           | (uint32_t)usb_recording() << 12 | (uint32_t)dr_clock_ext() << 13 | (uint32_t)ui.shift << 14
            | (uint32_t)dr_morphing() << 3 | (uint32_t)overload_seen << 4 | dr_fx_active() << 5
            | (uint32_t)(now - ui.orbit_flash_t < 300u) << 9;
     if (states != last_states || dirty != last_dirty || (dr_morphing() && now - ui.head_t > 100u)) {

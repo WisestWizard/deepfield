@@ -32,22 +32,28 @@ static float ens_ph1, ens_ph2;
 
 /* The delay: two legs on one 16-bit buffer (left, then right), the input into the left, each leg's repeat crossing
  * into the other with the feedback, the right leg 1.382 times the left so the sides never coincide; two allpasses
- * a leg smear the repeats by DIFFUSE; wow and flutter, a dark low-pass and a soft clip in each leg. */
-#define DLY_HALF (DLY_LEN / 2u)          /* a leg: 0.418 s */
+ * a leg smear the repeats by DIFFUSE; wow and flutter, a low-pass and high-pass set by COLOUR and a soft clip in
+ * each leg. The legs run at half the rate: the repeats are filtered well below 11 kHz anyway, and the same memory
+ * holds twice the time. */
+#define FSH (FS * 0.5f)
+#define DLY_LEN_L 17664u                 /* the left leg: 0.80 s at the half rate */
+#define DLY_LEN_R (DLY_LEN - DLY_LEN_L)  /* the right: 1.11 s */
 #define DLY_RATIO 1.382f
 #define DLY_WIDTH 0.7f                   /* the two legs' spread: 0 mono, 1 hard left and right */
-#define DLY_AP0 309u                     /* 7 and 11 ms on the left, 5 and 13 on the right */
-#define DLY_AP1 485u
-#define DLY_AP2 221u
-#define DLY_AP3 573u
-#define DLY_AP_SUM 794u                  /* a leg's allpasses delay it this much: its read is that much shorter */
+#define DLY_AP0 157u                     /* 7 and 11 ms on the left, 5 and 13 on the right */
+#define DLY_AP1 241u
+#define DLY_AP2 113u
+#define DLY_AP3 285u
+#define DLY_AP_SUM 398u                  /* a leg's allpasses delay it this much: its read is that much shorter */
 static const uint32_t DLY_AP[4] = {DLY_AP0, DLY_AP1, DLY_AP2, DLY_AP3};
 typedef char fx_ap_check[DLY_AP0 + DLY_AP1 + DLY_AP2 + DLY_AP3 == FX_DLY_AP
-                         && DLY_AP0 + DLY_AP1 == DLY_AP_SUM && DLY_AP2 + DLY_AP3 == DLY_AP_SUM ? 1 : -1];
+                         && DLY_AP0 + DLY_AP1 == DLY_AP_SUM && DLY_AP2 + DLY_AP3 == DLY_AP_SUM
+                         && DLY_LEN_R > DLY_LEN_L ? 1 : -1];
 static int16_t *dly;
 static line_t dly_ap[4];
-static uint32_t dly_pos;
-static float dly_read, dly_lp[2], dly_dc_x[2], dly_dc_y[2], wow_ph, flut_ph;
+static uint32_t dly_pos_l, dly_pos_r;
+static float dly_read, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
+static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
 
 static line_t rv_pre[2], rv_ap[4], rv_fd[8];
 static float rv_hp_l, rv_hp_r, rv_lp[8], rv_mod_ph;
@@ -174,45 +180,46 @@ void fx_init(void *arena)
         ens_l[i] = ens_r[i] = 0.0f;
     for (i = 0; i < DLY_LEN; i++)
         dly[i] = 0;
-    ens_pos = dly_pos = 0;
+    ens_pos = dly_pos_l = dly_pos_r = 0;
     ens_tail = dly_tail = rev_tail = 0;
     dly_live = rv_live = 0;
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
-    dly_read = 4410.0f;
-    dly_lp[0] = dly_lp[1] = dly_dc_x[0] = dly_dc_x[1] = dly_dc_y[0] = dly_dc_y[1] = rv_hp_l = rv_hp_r = 0.0f;
+    dly_read = 2205.0f;
+    dly_lp[0] = dly_lp[1] = dly_hp_x[0] = dly_hp_x[1] = dly_hp_y[0] = dly_hp_y[1] = rv_hp_l = rv_hp_r = 0.0f;
+    dly_dn1 = dly_dn2 = dly_ol = dly_or = dly_ul = dly_ur = 0.0f;
     lim_gain = lim_tgt = 1.0f;
     for (i = 0; i < LIM_LA; i++)
         lim_dl[i] = lim_dr[i] = 0.0f;
     lim_pos = 0;
 }
 
-static inline float dly_tap(const int16_t *buf, float back, int32_t *live)   /* a leg read a fraction back */
-{
-    uint32_t b = (uint32_t)back, i0 = dly_pos + DLY_HALF - b, i1;
-    if (i0 >= DLY_HALF)
-        i0 -= DLY_HALF;
-    i1 = i0 == 0u ? DLY_HALF - 1u : i0 - 1u;
+static inline float dly_tap(const int16_t *buf, uint32_t len, uint32_t pos, float back, int32_t *live)
+{                                        /* a leg read a fraction back */
+    uint32_t b = (uint32_t)back, i0 = pos + len - b, i1;
+    if (i0 >= len)
+        i0 -= len;
+    i1 = i0 == 0u ? len - 1u : i0 - 1u;
     *live |= buf[i0] | buf[i1];
     return ((float)buf[i0] + ((float)buf[i1] - (float)buf[i0]) * (back - (float)b)) * (1.0f / 32767.0f);
 }
-static inline void dly_put(int16_t *buf, float c, int32_t *live)
+static inline void dly_put(int16_t *buf, uint32_t pos, float c, int32_t *live)
 {
     c *= 32767.0f;
-    buf[dly_pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
-    *live |= buf[dly_pos];
+    buf[pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
+    *live |= buf[pos];
 }
-static inline float dly_leg(uint32_t s, float c, float g, float lpc)   /* what goes into a leg: smeared, darker, softer */
-{
+static inline float dly_leg(uint32_t s, float c, float g, float lpc, float hpa)
+{                                        /* what goes into a leg: smeared, filtered by COLOUR, softer */
     float y;
     c = allpass(&dly_ap[2u * s], c, g);
     c = allpass(&dly_ap[2u * s + 1u], c, g);
-    dly_lp[s] += (c - dly_lp[s]) * lpc;             /* the repeats get darker */
-    c = dly_lp[s] * 1.2f;                           /* and softer: a cubic clip */
+    dly_lp[s] += (c - dly_lp[s]) * lpc;
+    c = dly_lp[s] * 1.2f;                           /* a cubic clip */
     c = c > 1.5f ? 1.5f : c < -1.5f ? -1.5f : c;
     c = (c - c * c * c * (4.0f / 27.0f)) * 0.85f;
-    y = c - dly_dc_x[s] + 0.995f * dly_dc_y[s];     /* no DC build-up */
-    dly_dc_x[s] = c;
-    dly_dc_y[s] = y;
+    y = hpa * (dly_hp_y[s] + c - dly_hp_x[s]);      /* the low end thinned, so the repeats sit off the drone */
+    dly_hp_x[s] = c;
+    dly_hp_y[s] = y;
     return y;
 }
 
@@ -280,16 +287,21 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         }
         pk_ens = 0.0f;
     }
-    /* the delay: mono in, two legs read at a slowly wandering distance, dark and soft in the feedback */
+    /* the delay: mono in, down to the half rate, two legs read at a slowly wandering distance, filtered and soft in
+     * the feedback, back up to the full rate */
     if ((p->dly_send > 0.001f && bus_pk > 0.0f) || dly_live)
-        dly_tail = DLY_LEN / n + 2u;     /* both legs' length: nothing in or out that long, and it is all zeros */
+        dly_tail = 2u * DLY_LEN_R / n + 2u;   /* the longer leg: nothing in or out that long, and it is all zeros */
     else if (dly_tail)
         dly_tail--;
     if (dly_tail && !(p->bypass & FX_BYP_DLY)) {
-        float tgt = p->dly_time_s * FS - (float)DLY_AP_SUM, slew = 0.0004f, fb = 0.95f * fm_sqrtf(p->dly_fdbk),
-              lpc = 0.35f, send = p->dly_send, g = 0.6f * p->dly_diff, maxr = (float)(DLY_HALF - 128u);
+        float tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM, slew = 0.0008f, fb = 0.95f * fm_sqrtf(p->dly_fdbk),
+              send = p->dly_send, g = 0.6f * p->dly_diff, maxl = (float)(DLY_LEN_L - 64u),
+              maxr = (float)(DLY_LEN_R - 64u), col = p->dly_colour,
+              lpc = 1.0f - fm_expf(-TWO_PI * (1500.0f + 7500.0f * col * col) / FSH),   /* 1.5 to 9 kHz */
+              hpa = fm_expf(-TWO_PI * (30.0f + 170.0f * col) / FSH);                   /* 30 to 200 Hz */
                                          /* the feedback as a square root: repeats from the first turn, 0.95 at full */
         float wf0, wf1, dwf;
+        uint32_t h = n / 2u;
         int32_t live = 0;
         wf0 = 1.0f + 0.0015f * fm_sin_turns(wow_ph) + 0.0003f * fm_sin_turns(flut_ph);   /* wow and flutter: the
                                                                               * ends of the block, a line between */
@@ -300,13 +312,20 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         if (flut_ph >= 1.0f)
             flut_ph -= 1.0f;
         wf1 = 1.0f + 0.0015f * fm_sin_turns(wow_ph) + 0.0003f * fm_sin_turns(flut_ph);
-        dwf = (wf1 - wf0) / (float)n;
-        if (tgt > maxr)                  /* wow and flutter read up to 0.18 % further back */
-            tgt = maxr;
-        if (tgt < 64.0f)
-            tgt = 64.0f;
-        for (i = 0; i < n; i++) {
-            float in = (l[i] + r[i]) * 0.5f * send, backl, backr, outl, outr, c, m;
+        dwf = (wf1 - wf0) / (float)h;
+        if (tgt > maxl)                  /* wow and flutter read up to 0.18 % further back */
+            tgt = maxl;
+        if (tgt < 32.0f)
+            tgt = 32.0f;
+        for (i = 0; i < n; i += 2u) {
+            float in, backl, backr, outl, outr, c, m, x0, x1;
+            x0 = (l[i] + r[i]) * 0.5f * send;           /* two one-poles at 7 kHz, then every other sample */
+            dly_dn1 += (x0 - dly_dn1) * 0.63f;
+            dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
+            x1 = (l[i + 1u] + r[i + 1u]) * 0.5f * send;
+            dly_dn1 += (x1 - dly_dn1) * 0.63f;
+            dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
+            in = dly_dn2;
             dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
             wf0 += dwf;
             backl = dly_read * wf0;
@@ -314,32 +333,49 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             if (backr > maxr)
                 backr = maxr;
             backr *= wf0;
-            outl = dly_tap(dly, backl, &live);
-            outr = dly_tap(dly + DLY_HALF, backr, &live);
-            c = dly_leg(0, in + outr * fb, g, lpc);    /* the left leg: the input, and the right's repeat back */
-            dly_put(dly, c, &live);
-            c = dly_leg(1, outl * fb, g, lpc);         /* the right leg: the left's repeat crossing over */
-            dly_put(dly + DLY_HALF, c, &live);
-            dly_pos = dly_pos + 1u == DLY_HALF ? 0u : dly_pos + 1u;
+            outl = dly_tap(dly, DLY_LEN_L, dly_pos_l, backl, &live);
+            outr = dly_tap(dly + DLY_LEN_L, DLY_LEN_R, dly_pos_r, backr, &live);
+            c = dly_leg(0, in + outr * fb, g, lpc, hpa);   /* the left leg: the input, and the right's repeat back */
+            dly_put(dly, dly_pos_l, c, &live);
+            c = dly_leg(1, outl * fb, g, lpc, hpa);        /* the right leg: the left's repeat crossing over */
+            dly_put(dly + DLY_LEN_L, dly_pos_r, c, &live);
+            dly_pos_l = dly_pos_l + 1u == DLY_LEN_L ? 0u : dly_pos_l + 1u;
+            dly_pos_r = dly_pos_r + 1u == DLY_LEN_R ? 0u : dly_pos_r + 1u;
             m = (outl + outr) * 0.5f;
-            l[i] += m + (outl - m) * DLY_WIDTH;
-            r[i] += m + (outr - m) * DLY_WIDTH;
+            outl = m + (outl - m) * DLY_WIDTH;
+            outr = m + (outr - m) * DLY_WIDTH;
+            x0 = (dly_ol + outl) * 0.5f;                /* back up: the midpoint, then the sample, smoothed */
+            dly_ul += (x0 - dly_ul) * 0.75f;
+            l[i] += dly_ul;
+            dly_ul += (outl - dly_ul) * 0.75f;
+            l[i + 1u] += dly_ul;
+            x1 = (dly_or + outr) * 0.5f;
+            dly_ur += (x1 - dly_ur) * 0.75f;
+            r[i] += dly_ur;
+            dly_ur += (outr - dly_ur) * 0.75f;
+            r[i + 1u] += dly_ur;
+            dly_ol = outl;
+            dly_or = outr;
         }
         dly_live = live != 0;
         for (i = 0; i < 2u; i++) {
             dly_lp[i] = fm_flush(dly_lp[i]);
-            dly_dc_x[i] = fm_flush(dly_dc_x[i]);
-            dly_dc_y[i] = fm_flush(dly_dc_y[i]);
+            dly_hp_x[i] = fm_flush(dly_hp_x[i]);
+            dly_hp_y[i] = fm_flush(dly_hp_y[i]);
         }
+        dly_dn1 = fm_flush(dly_dn1);
+        dly_dn2 = fm_flush(dly_dn2);
+        dly_ul = fm_flush(dly_ul);
+        dly_ur = fm_flush(dly_ur);
         pk_dly = block_peak(l, r, n);
         bus_pk = pk_dly;
     } else {
-        float tgt = p->dly_time_s * FS - (float)DLY_AP_SUM, slew = 0.0004f;
-        if (tgt > (float)(DLY_HALF - 128u))
-            tgt = (float)(DLY_HALF - 128u);
-        if (tgt < 64.0f)
-            tgt = 64.0f;
-        for (i = 0; i < n; i++)          /* at rest: the time still settles */
+        float tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM, slew = 0.0008f;
+        if (tgt > (float)(DLY_LEN_L - 64u))
+            tgt = (float)(DLY_LEN_L - 64u);
+        if (tgt < 32.0f)
+            tgt = 32.0f;
+        for (i = 0; i < n; i += 2u)      /* at rest: the time still settles */
             dly_read += (tgt - dly_read) * slew;
         wow_ph += 0.35f * (float)n / FS;   /* wow and flutter keep their phase */
         if (wow_ph >= 1.0f)

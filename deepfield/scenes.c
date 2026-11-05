@@ -111,7 +111,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_ORB_PROG] = 0,
         [P_SPREAD] = 30, [P_CROSS] = 0, [P_TWALK] = 25, [P_SWAY] = 15,
         [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50,
-        [P_DLY_DIFF] = 25,
+        [P_DLY_DIFF] = 25, [P_DLY_COLOUR] = 50,
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
@@ -150,7 +150,7 @@ static void factory_build(void)
     static const change_t GLASS_ORBIT[] = {{P_MODEL, M_GLASS}, {P_MASS, 42}, {P_DRIFT, 45}, {P_SPACE, 62}, {P_TIDE, 40},
                                            {P_SHAPE, 50}, {P_SUB, 20}, {P_SWELL, 30}, {P_FADE, 80}, {P_GLIDE, 75},
                                            {P_WOBBLE, 25}, {P_SHIMMER, 30}, {P_DLY_MIX, 40}, {P_DLY_TIME, 114},
-                                           {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_ORB_PERIOD, 40}, {P_ORB_CHANCE, 90}, END};
+                                           {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70}, {P_ORB_PERIOD, 40}, {P_ORB_CHANCE, 90}, END};
     static const uint8_t GLASS_ORBIT_N[] = {50, 57, 62, 69, 0};
     static const change_t BOWED_SKY[] = {{P_MODEL, M_STRING}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
                                          {P_AIR, 40}, {P_SUB, 25}, {P_SWELL, 30}, {P_FADE, 85}, {P_WOBBLE, 30},
@@ -158,20 +158,20 @@ static void factory_build(void)
     static const uint8_t BOWED_SKY_N[] = {50, 57, 62, 66, 0};
     static const change_t PULSAR[] = {{P_MODEL, M_GLASS}, {P_MASS, 68}, {P_DRIFT, 60}, {P_SPACE, 55}, {P_TIDE, 85},
                                       {P_SHAPE, 30}, {P_SUB, 40}, {P_SWELL, 20}, {P_FADE, 70}, {P_TIDE_RATE, 95},
-                                      {P_WOBBLE, 35}, {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 108},
-                                      {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_CROSS, 35}, END};
+                                      {P_WOBBLE, 35}, {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 105},
+                                      {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 65}, {P_CROSS, 35}, END};
     static const uint8_t PULSAR_N[] = {45, 52, 64, 0};
     static const change_t NEBULA[] = {{P_SHAPE, 22}, {P_MASS, 55}, {P_DRIFT, 70}, {P_SPACE, 88}, {P_TIDE, 45},
                                       {P_SUB, 25}, {P_SWELL, 95}, {P_FADE, 100}, {P_TIDE_RATE, 25}, {P_WALK, 60},
                                       {P_WOBBLE, 15}, {P_WIDTH, 100}, {P_REV_SIZE, 95}, {P_REV_DAMP, 30},
-                                      {P_SHIMMER, 60}, {P_DLY_MIX, 25}, {P_DLY_TIME, 67}, {P_DLY_FDBK, 50},
-                                      {P_DLY_DIFF, 70}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
+                                      {P_SHIMMER, 60}, {P_DLY_MIX, 25}, {P_DLY_TIME, 92}, {P_DLY_FDBK, 50},
+                                      {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
                                       {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, {P_NZ_GUST, 50}, END};
     static const uint8_t NEBULA_N[] = {41, 48, 55, 62, 0};
     static const change_t DEEP_VOID[] = {{P_MODEL, M_VOID}, {P_MASS, 34}, {P_DRIFT, 30}, {P_SPACE, 50}, {P_TIDE, 20},
                                          {P_SHAPE, 35}, {P_SUB, 100}, {P_SWELL, 35}, {P_FADE, 80}, {P_WALK, 20},
                                          {P_WIDTH, 50}, {P_REV_SIZE, 75}, {P_REV_DAMP, 70}, {P_DLY_MIX, 55},
-                                         {P_DLY_TIME, 99}, {P_DLY_FDBK, 75}, {P_DLY_DIFF, 85}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
+                                         {P_DLY_TIME, 99}, {P_DLY_FDBK, 75}, {P_DLY_DIFF, 85}, {P_DLY_COLOUR, 30}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
                                          {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 85}, {P_NZ_GUST, 25}, END};
     static const uint8_t DEEP_VOID_N[] = {40, 47, 0};
     static const change_t STARLIGHT[] = {{P_MODEL, M_STRING}, {P_MASS, 85}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
@@ -202,7 +202,7 @@ static void factory_build(void)
         static const change_t GAMELAN[] = {{P_MODEL, M_BELL}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 60}, {P_TIDE, 55},
                                            {P_SHAPE, 85}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 15}, {P_FADE, 75},
                                            {P_TIDE_RATE, 55}, {P_WOBBLE, 10}, {P_WIDTH, 90}, {P_REV_SIZE, 70},
-                                           {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 102}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 0},
+                                           {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 102}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 0}, {P_DLY_COLOUR, 75},
                                            {P_ORB_PERIOD, 35}, {P_ORB_CHANCE, 85}, {P_ORB_RANGE, 60}, END};
         static const uint8_t GAMELAN_N[] = {55, 62, 67, 74, 0};
         static const change_t ICE_BELLS[] = {{P_MODEL, M_BELL}, {P_MASS, 75}, {P_DRIFT, 30}, {P_SPACE, 70}, {P_TIDE, 40},
@@ -219,7 +219,7 @@ static void factory_build(void)
         static const change_t DESCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 35}, {P_DRIFT, 45}, {P_SPACE, 70}, {P_TIDE, 35},
                                            {P_SHAPE, 30}, {P_SUB, 45}, {P_AIR, 25}, {P_SWELL, 50}, {P_FADE, 90},
                                            {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
-                                           {P_REV_DAMP, 55}, {P_DLY_MIX, 25}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 50}, {P_DLY_DIFF, 70},
+                                           {P_REV_DAMP, 55}, {P_DLY_MIX, 25}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 50}, {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 40},
                                            {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25}, {P_NZ_BAND, 5}, {P_NZ_GUST, 65}, END};
         static const uint8_t DESCENT_N[] = {41, 48, 53, 0};
         static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
@@ -231,7 +231,7 @@ static void factory_build(void)
                                              {P_SHAPE, 30}, {P_SUB, 50}, {P_AIR, 30}, {P_SWELL, 30}, {P_FADE, 85},
                                              {P_TIDE_RATE, 45}, {P_WOBBLE, 25}, {P_WALK, 40}, {P_WIDTH, 90},
                                              {P_REV_SIZE, 80}, {P_REV_DAMP, 50}, {P_DLY_MIX, 45}, {P_DLY_TIME, 89},
-                                             {P_DLY_FDBK, 60}, {P_DLY_DIFF, 60}, END};
+                                             {P_DLY_FDBK, 60}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 55}, END};
         static const uint8_t TIDE_POOL_N[] = {43, 50, 57, 62, 0};
         scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, 84);
         scene_make(&factory[9], "LOW CHOIR", LOW_CHOIR, LOW_CHOIR_N, 115);

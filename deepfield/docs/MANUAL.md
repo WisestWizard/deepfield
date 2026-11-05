@@ -110,6 +110,13 @@ it off.
 
 ![LATCH off: two leads as thin white beams over the bed's beams, their keys white on the keys strip](img/screen-leads.png "Leads over the bed")
 
+**Transposing the bed.** Hold SEL and touch a key: the SEL pill reads SEL TRANS and the keys stop striking bodies.
+Each key you play now moves every latched body together, so the lowest lands on that key and the rest keep their
+intervals above it (the screen says TRANSPOSE and the note). The bodies glide there over GLIDE (ENV page), and
+ORBIT's home notes move with them. Letting go of the key leaves the bed where it is. MIDI out sends the old notes
+off, then the new ones on. Tap SEL to come back to LATCH; hold SEL for a second to let every body go, which also
+ends TRANSPOSE.
+
 A scene's bodies come in latched, and loading one switches LATCH on. The keys in the scale glow.
 
 **VELOCITY** (MIDI page) is off by default, so every body lands at the same weight and a chord is even; on, a key's
@@ -119,8 +126,8 @@ A ninth body steals the oldest one (it fades quickly and the new one swells). **
 SEL for a second (the screen says EVERY BODY LET GO).
 
 **The scale.** SCALE on the GLOBAL page picks a scale (CHROMA, MAJOR, MINOR, DORIAN, PHRYGIA, LYDIAN, MIXO,
-PENTA+, PENTA−, WHOLE, HARM−) and ROOT its root. A key outside the scale plays the scale note just below it, so
-every key is in tune. CHROMA plays the keys as they are. The scale also bounds ORBIT's moves.
+PENTA+, PENTA−, WHOLE, HARM−) and ROOT its root. Every key plays its own note, black keys included; the keys in
+the scale glow on the keys strip, and the scale bounds ORBIT's moves.
 
 **OCT−, OCT+** move the keys by octaves (−2 to +2). The button for the direction half-lights one octave out and
 lights two out, and the header says OCT±N.
@@ -146,7 +153,7 @@ MASTER is the volume.
 
 A button opens its page in the footer; the knobs then set those four values, shown in a row under the knobs. A
 button always lands on the same page, and the page's button lights. SELECT turns to the page before or after, in
-the order of the table, so DELAY and REVERB are a click or two past ENSEMBLE and MIDI one past GLOBAL; the page band shows `<`
+the order of the table, so DELAY, DELAY 2 and REVERB are one to three clicks past ENSEMBLE and MIDI one past GLOBAL; the page band shows `<`
 and `>` where SELECT can go. A page stays until a button or SELECT moves it. Every turn of a knob shows its name
 and value large over the view.
 
@@ -161,15 +168,16 @@ and value large over the view.
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (the random walk of pitch) | WIDTH (stereo spread, by note) |
 | LFO, then SELECT | MOTION 2 | SPREAD (how unlike each other the bodies are: detune, weight, breath, place) | CROSS (bodies in pairs: one's swell bends the other) | TIMBRE (each body's own slow walk of MASS) | SWAY (each body drifts across the stereo field on its own cycle) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II, ENSEMBLE) | ENS MIX | – | – |
-| FX, then SELECT | DELAY | DLY TIME (ms; from 100, a division of the beat) | DLY FDBK | DLY MIX (the delay's level) | DIFFUSE (the repeats smeared into a cloud) |
-| FX, then SELECT twice | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
+| FX, then SELECT | DELAY | DLY TIME (ms; from 100, a division of the beat) | DLY FDBK | DLY MIX (the delay's level) | COLOUR (the repeats dark and full to bright and thin) |
+| FX, then SELECT twice | DELAY 2 | DIFFUSE (the repeats smeared into a cloud) | – | – | – |
+| FX, then SELECT three times | REVERB | REV SIZE (the decay, 0.6 s to 8 s) | REV DAMP (how fast the highs die) | SHIMMER | SPACE (the send, the same knob as on HOME) |
 | ARP, or PLAY held | ORBIT | MODE (WANDER, CHORD, SCATTER, ARP, CYCLE, ECHO, PULSE) | by MODE: EVERY (1 s to 60 s between moves), or RATE (40 to 240 BPM; EXT while MIDI clock comes) | by MODE: CHANCE, BODIES (SCATTER), GATE (ARP), or DECAY (ECHO) | by MODE: STEPS UP TO (1 to 4 scale steps), DISTANCE (CHORD), ORDER (ARP), CHORDS (CYCLE), JUMPS (ECHO), or ROLL (PULSE) |
 | ARP, then SELECT | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
 | GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (0 to 30 s; NOW) |
 | GLO, then SELECT | MIDI | IN CH (OMNI, 1..16) | OUT CH (1..16) | LOCAL | VELOCITY |
 | GLO, then SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (0 to -18 dB, the recording's level) | CLOCK OUT | – |
 
-**The delay** is two legs, left then right: a note comes back on the left after DLY TIME, then on the right 1.382 times later, then left again, each repeat a little further away and a little darker, DLY FDBK saying how many. Below 100 DLY TIME is free, 50 to 418 ms; from 100 it reads a division of the beat (1/16, 1/8, 1/8D, 1/4T, 1/4) timed from the runner's RATE on the ORBIT page, or from the MIDI clock when one is coming in, so the runner and PULSE land their repeats in time. DIFFUSE smears each repeat: at 0 a tape echo, past the middle a short burst, at full a cloud that trails the bed by the delay time instead of repeating it. A change of DLY TIME bends the pitch on its way, like tape.
+**The delay** is two legs, left then right: a note comes back on the left after DLY TIME, then on the right 1.382 times later, then left again, each repeat a little further away, DLY FDBK saying how many. Below 100 DLY TIME is free, 50 to 800 ms on a curve (200 ms at the middle); the right leg goes up to 1.1 s. From 100 it reads a division of the beat (1/16, 1/8, 1/4T, 1/8D, 1/4, 1/4D, 1/2) timed from the runner's RATE on the ORBIT page, or from the MIDI clock when one is coming in, so the runner and PULSE land their repeats in time; a division too long for 800 ms at that tempo plays at half its length, still in time. COLOUR filters the repeats as they go round: low, they darken and keep their body; high, they thin out at the bottom and stay bright, so they stand apart from the drone. DIFFUSE smears each repeat: at 0 a tape echo, past the middle a short burst, at full a cloud that trails the bed by the delay time instead of repeating it. A change of DLY TIME bends the pitch on its way, like tape.
 
 **MOTION 2** (LFO, then SELECT) is what makes eight bodies eight voices instead of one spectrum at eight pitches.
 SPREAD gives each body its own small differences for its life: up to 14 cents of detune, a little more or less
@@ -280,12 +288,12 @@ again to release it. A frozen view is framed in ice.
 **SHIMMER** (the REVERB page) adds the reverb's output an octave up, heard at once and fed back into the reverb: a
 rising cloud. The feedback is held where it cannot run away, whatever the size.
 
-**The effects layer:** hold FX and the four lowest white keys show and switch the effects. F3 ensemble, G3 delay,
+**The effects layer:** hold FX and the four lowest white keys show and switch the effects, on every scene: an effect the scene has at zero comes in at a usable amount (delay MIX 35, SPACE 45, SHIMMER 30 with the hall, ENSEMBLE CHOR I at 40), and pressed again it switches off. F3 ensemble, G3 delay,
 A3 reverb, B3 shimmer, and C4 the noise layer; while FX is held the screen shows the five switches large, ON or
 OFF (the noise with its level), in the order of their keys, and the keys light teal while heard. The switches are part of the scene (SAVE keeps them), and the letters
 E D R S N in the header show what is heard at any time. A key pressed while FX is held starts no body. A tap of FX
-with no key pressed opens the effects pages instead: ENSEMBLE, then SELECT for DELAY and REVERB, one page per
-effect in the same order as the keys.
+with no key pressed opens the effects pages instead: ENSEMBLE, then SELECT for DELAY, DELAY 2 and REVERB, in the
+same order as the keys.
 
 ![FX held: ENS, DLY, REV and SHM large, ON or OFF, over the four lowest white keys](img/screen-fxlayer.png "The effects layer")
 

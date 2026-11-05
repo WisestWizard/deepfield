@@ -103,7 +103,8 @@ static uint32_t ovl_cool, calm_blocks;
 static int32_t newest_note = -1;
 
 static struct { uint8_t note, vel, on, kind; } q[NQ];   /* main loop -> render; kind 1: SEL's latch / release,
-                                                         * 2: a latched strike, 3: unlatch, 4: every body let go */
+                                                         * 2: a latched strike, 3: unlatch, 4: every body let go,
+                                                         * 5: a lead, 6: the latched bodies transposed */
 static volatile uint32_t q_head, q_tail;
 static scene_t load_scene;               /* a scene loaded: its bodies are struck and let go by the render */
 static volatile uint32_t load_pending;
@@ -132,11 +133,11 @@ float dr_dly_time_s(uint32_t p)
     p &= 127u;
     if (p >= 100u)
         p = 99u;
-    return 0.05f + (float)p * ((DR_DLY_MAX_S - 0.05f) / 99.0f);
+    return 0.05f * fm_exp2f((float)p * (4.0f / 99.0f));   /* 50 ms doubling four times to 800 */
 }
-int32_t dr_dly_div(uint32_t p) { p &= 127u; return p < 100u ? -1 : (int32_t)((p - 100u) * 5u / 28u); }
-const char *const DR_DLY_DIV_NAME[5] = {"1/16", "1/8", "1/8D", "1/4T", "1/4"};
-static const float DLY_DIV_BEATS[5] = {0.25f, 0.5f, 0.75f, 2.0f / 3.0f, 1.0f};
+int32_t dr_dly_div(uint32_t p) { p &= 127u; return p < 100u ? -1 : (int32_t)((p - 100u) / 4u); }
+const char *const DR_DLY_DIV_NAME[DR_DLY_NDIV] = {"1/16", "1/8", "1/4T", "1/8D", "1/4", "1/4D", "1/2"};
+static const float DLY_DIV_BEATS[DR_DLY_NDIV] = {0.25f, 0.5f, 2.0f / 3.0f, 0.75f, 1.0f, 1.5f, 2.0f};
 float dr_hz(uint32_t p) { return 60.0f * fm_exp2f((float)(p & 127u) * (7.6f / 127.0f)); }
 static float glide_s(float p) { return 0.02f * fm_exp2f(p * 8.6f); }                                  /* 0.02 .. 7.8 s */
 float dr_attack_s(uint32_t p) { return 0.001f * fm_exp2f((float)(p & 127u) * (11.0f / 127.0f)); }    /* 1 ms .. 2 s */
@@ -417,9 +418,41 @@ void dr_note(uint32_t note, uint32_t vel, int on) { queue_put(note, vel, on != 0
 void dr_latch_hold(void) { queue_put(0, 0, 0, 1); }
 void dr_note_latched(uint32_t note, uint32_t vel) { queue_put(note, vel, 1, 2); }
 void dr_unlatch(uint32_t note) { queue_put(note, 0, 0, 3); }
+void dr_transpose_to(uint32_t note) { queue_put(note, 0, 0, 6); }
 void dr_note_now(uint32_t note, uint32_t vel, int on) { note_event(note, vel, on != 0, 0, 1); }
 void dr_lead(uint32_t note, uint32_t vel, int on) { queue_put(note, vel, on != 0, 5); }
 void dr_lead_now(uint32_t note, uint32_t vel, int on) { lead_event(note, vel, on != 0, 1); }
+static void transpose_to(uint32_t note)  /* every latched body by the same step, gliding there; ORBIT's home moves too */
+{
+    uint32_t i, low = 128u;
+    int32_t d;
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched && vc[i].home < low)
+            low = vc[i].home;
+    if (low > 127u || note == low)
+        return;
+    d = (int32_t)note - (int32_t)low;
+    for (i = 0; i < NV; i++)             /* every note off before any note on: a body moving onto another's old note
+                                          * must not be cut by that one's off */
+        if (vc[i].on && !vc[i].fading && vc[i].latched && vc[i].midi == 0u && note_out
+            && (int32_t)vc[i].home + d >= 0 && (int32_t)vc[i].home + d <= 127)
+            note_out((uint32_t)(vc[i].target + 0.5f), 0, 0);
+    for (i = 0; i < NV; i++) {
+        voice_t *v = &vc[i];
+        int32_t cur, h;
+        if (!v->on || v->fading || !v->latched)
+            continue;
+        h = (int32_t)v->home + d;
+        if (h < 0 || h > 127)
+            continue;
+        cur = (int32_t)(v->target + 0.5f) + d;
+        if (note_out && v->midi == 0u)
+            note_out((uint32_t)(cur < 0 ? 0 : cur > 127 ? 127 : cur), (uint32_t)(v->vel * 127.0f), 1);
+        v->home = (uint8_t)h;
+        v->target += (float)d;
+        pend_to[i] = 0;
+    }
+}
 static void all_off(void);
 static void drain_queue(void)
 {
@@ -437,6 +470,8 @@ static void drain_queue(void)
             all_off();
         else if (q[t].kind == 5u)
             lead_event(q[t].note, q[t].vel, q[t].on, 0);
+        else if (q[t].kind == 6u)
+            transpose_to(q[t].note);
         else
             note_event(q[t].note, q[t].vel, q[t].on, 0, 0);
         q_tail = (t + 1u) % NQ;
@@ -1977,10 +2012,12 @@ void dr_noise(float *level, float *note, float *colour, float *band)
 }
 
 /* ------------------------------------------------------------------ init --- */
+#define DR_NEED (SIN_N * 4u + NV_ALL * LINE_LEN * 2u + MAXBLOCK * 8u * 4u + MAXBLOCK * 2u * 2u + FX_BYTES + 64u)
+typedef char dr_arena_check[DR_NEED <= DR_ARENA_BYTES ? 1 : -1];   /* else dr_init refuses and nothing sounds */
 int dr_init(void *arena, uint32_t bytes)
 {
     uint8_t *a = (uint8_t *)arena;
-    uint32_t i, need = SIN_N * 4u + NV_ALL * LINE_LEN * 2u + MAXBLOCK * 8u * 4u + MAXBLOCK * 2u * 2u + fx_bytes() + 64u;
+    uint32_t i, need = DR_NEED;
     for (i = 0; i < P_COUNT; i++)
         pcur[i] = pstart[i] = ptarget[i] = (float)dr_scene.p[i] * (1.0f / 127.0f);
     for (i = 0; i < NV_ALL; i++)
@@ -2102,13 +2139,16 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             if (bpm <= 0.0f)
                 bpm = dr_arp_bpm(dr_scene.p[P_ARP_RATE]);
             t = DLY_DIV_BEATS[dv] * 60.0f / bpm;
-            fx.dly_time_s = t < 0.05f ? 0.05f : t > DR_DLY_MAX_S ? DR_DLY_MAX_S : t;
+            while (t > DR_DLY_MAX_S)     /* too long for the line at this tempo: half of it, still in time */
+                t *= 0.5f;
+            fx.dly_time_s = t < 0.05f ? 0.05f : t;
         } else {
             fx.dly_time_s = dr_dly_time_s(pt);
         }
     }
     fx.dly_fdbk = p01(P_DLY_FDBK);
     fx.dly_diff = p01(P_DLY_DIFF);
+    fx.dly_colour = p01(P_DLY_COLOUR);
     fx.dly_send = fm_sqrtf(p01(P_DLY_MIX)) * (0.6f + 0.4f * space);   /* DLY MIX is the delay's level; SPACE
                                                                         * only pushes it a little further */
     fx.rev_decay = p01(P_REV_SIZE);

@@ -149,3 +149,6 @@ DIFFUSE	diffuse
 1/8D	dotted eighth
 1/4T	quarter triplet
 1/4	quarter
+1/4D	dotted quarter
+1/2	half
+DELAY 2	delay two

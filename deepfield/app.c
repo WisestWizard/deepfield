@@ -246,6 +246,10 @@ int app_expect(const char *what, int *got)
         *got = (int)dr_fx_bypass_get();
     else if (!strcmp(what, "fxactive"))
         *got = (int)dr_fx_active();
+    else if (!strcmp(what, "shift"))         /* TRANSPOSE: the keys move the latched bodies */
+        *got = df_shift();
+    else if (!strncmp(what, "fxon", 4))      /* one effect heard: fxon0 ensemble .. fxon3 shimmer */
+        *got = (int)(dr_fx_active() >> atoi(what + 4) & 1u);
     else if (!strncmp(what, "sounding", 8))
         *got = dr_sounding((uint32_t)atoi(what + 8));
     else if (!strcmp(what, "leads"))         /* leads sounding (held or releasing) */
