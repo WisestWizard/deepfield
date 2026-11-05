@@ -12,6 +12,8 @@ export JIELI_TOOLCHAIN="${JIELI_TOOLCHAIN:-$HOME/.jieli/toolchain}" AC79_SDK="${
 "$PY" "$ROOT/base/tools/build.py" "$APP" --release "$V"
 "$PY" "$ROOT/base/tools/build.py" "$APP" --web --release "$V"
 "$PY" "$ROOT/base/tools/make_site.py" "$APP" "$APP/build/deepfield-$V.fwsc" "$V" "$APP/build/site"
+mkdir -p "$APP/build/site/cheatsheet"
+sed "s/{{VERSION}}/$V/g" "$APP/site/cheatsheet/index.html" > "$APP/build/site/cheatsheet/index.html"
 printf '%s\n' "$DOMAIN" > "$APP/build/site/CNAME"
 REMOTE="$(git -C "$APP" remote get-url origin)"
 SHA="$(git -C "$APP" rev-parse --short HEAD)"

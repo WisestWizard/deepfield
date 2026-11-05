@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEEP FIELD cheat sheet</title>
+<meta name="description" content="Every control of DEEP FIELD, the ambient drone firmware for the M-VAVE FM-1, on one page.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground: #faf4e8; --card: #fffaf1; --ink: #48392f; --muted: #6e5c4b; --rule: #e6dccb; --accent: #b84a1e;
+  --cap: #efe5d6; --cap-ink: #3a2c22; --cap-rule: #d6c8b3; --key: #ffffff; --key-ink: #3a2c22;
+  --green: #2f8a45; --orange: #c2551f; --red: #b8321f; --focus: #1f6fd1;
+  --font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #1c1814; --card: #26201b; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a;
+    --cap: #3a332d; --cap-ink: #f2e8d8; --cap-rule: #514740; --key: #efe2d0; --key-ink: #2a1d14;
+    --green: #5cc46a; --orange: #f28a5a; --red: #f0614a; --focus: #79adff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #1c1814; --card: #26201b; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a;
+  --cap: #3a332d; --cap-ink: #f2e8d8; --cap-rule: #514740; --key: #efe2d0; --key-ink: #2a1d14;
+  --green: #5cc46a; --orange: #f28a5a; --red: #f0614a; --focus: #79adff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 400 1.02rem/1.4 var(--font); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 56px; }
+a { color: inherit; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+header { margin-bottom: 28px; }
+.eyebrow { margin: 0 0 .4rem; font-weight: 600; font-size: .82rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { text-decoration: none; }
+.eyebrow a:hover { color: var(--accent); }
+h1 { margin: 0; font-weight: 700; font-size: clamp(2.2rem, 6vw, 3.6rem); line-height: 1; letter-spacing: .01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.for { margin: .7rem 0 0; color: var(--muted); font-size: .95rem; }
+.lede { margin: .7rem 0 0; max-width: 46rem; font-size: 1.2rem; line-height: 1.45; text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.2rem; }
+.actions a, .actions button { font: 600 .98rem/1 var(--font); padding: .7em 1em; border-radius: 8px; border: 1px solid var(--rule);
+  background: var(--card); color: var(--ink); text-decoration: none; cursor: pointer; }
+.actions a:hover, .actions button:hover { border-color: var(--accent); }
+.actions .primary { background: var(--accent); border-color: var(--accent); color: var(--ground); }
+.actions .primary:hover { filter: brightness(1.08); }
+
+.sheet { columns: 2 26rem; column-gap: 16px; }
+section { break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 16px; padding: 16px 18px 18px;
+  background: var(--card); border: 1px solid var(--rule); border-top: 3px solid var(--accent); border-radius: 12px; }
+h2 { margin: 0 0 .8rem; font-weight: 700; font-size: .95rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+dl { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: .55rem 1rem; margin: 0; }
+dt { display: flex; flex-wrap: wrap; align-items: center; align-content: start; gap: .3rem; }
+dd { margin: 0; padding-top: .08rem; text-wrap: pretty; }
+.v { font-size: .82rem; color: var(--muted); }
+.p { color: var(--muted); font-size: .85rem; }
+.c { display: inline-block; font: 600 .78rem/1 var(--font); letter-spacing: .05em; padding: .32em .55em .28em; white-space: nowrap;
+  background: var(--cap); color: var(--cap-ink); border: 1px solid var(--cap-rule); border-radius: 5px; box-shadow: 0 1px 0 var(--cap-rule); }
+.c.k { border-radius: 999px; }
+.c.w { background: var(--key); color: var(--key-ink); border-color: var(--cap-rule); }
+.c.pc { font: 600 .76rem/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; margin-right: .1em; }
+.dot.g { background: var(--green); } .dot.o { background: var(--orange); } .dot.r { background: var(--red); }
+.mode { font-weight: 600; font-size: .85rem; letter-spacing: .05em; }
+ul.notes { margin: 0; padding-left: 1.1rem; display: grid; gap: .45rem; }
+ul.notes li::marker { color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; margin: 0 0 18px; color: var(--muted); font-size: .9rem; }
+.nw { white-space: nowrap; }
+.legend span { display: inline-flex; align-items: center; gap: .35rem; }
+footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
+
+@media (max-width: 460px) {
+  dl { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
+  dd { margin-bottom: .55rem; }
+}
+@media print {
+  :root, :root:not([data-theme="light"]) {
+    --ground: #fff; --card: #fff; --ink: #1d1611; --muted: #5a4a3c; --rule: #cfc4b4; --accent: #a8431b;
+    --cap: #f1ebe2; --cap-ink: #1d1611; --cap-rule: #b9ab97; --key: #fff; --key-ink: #1d1611;
+    --green: #2f8a45; --orange: #c2551f; --red: #b8321f; color-scheme: light;
+  }
+  @page { margin: 10mm; }
+  html { font-size: 7.3pt; }
+  body { font-size: 1rem; line-height: 1.22; }
+  .browser { display: none; }
+  .wrap { max-width: none; padding: 0; }
+  header { margin-bottom: 10px; }
+  h1 { font-size: 20pt; }
+  .lede { font-size: 9.5pt; margin-top: .3rem; }
+  .for { margin-top: .3rem; }
+  .actions, .legend { display: none; }
+  .sheet { columns: 2; column-gap: 10px; }
+  section { padding: 6px 9px 7px; margin-bottom: 6px; border-radius: 6px; border-top-width: 2px; }
+  h2 { font-size: 8pt; margin-bottom: .3rem; }
+  dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: .18rem .6rem; }
+  ul.notes { gap: .2rem; }
+  .c { box-shadow: none; }
+  footer { font-size: 8pt; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow"><a href="../">DEEP FIELD</a> · Cheat sheet</p>
+  <h1>DEEP FIELD <span>at a glance</span></h1>
+  <p class="for">For DEEP FIELD {{VERSION}}, checked against its source.</p>
+  <p class="lede">An ambient drone machine for the <span class="nw">M-VAVE FM-1</span>. Each key starts a body, one voice that
+    swells in and keeps sounding. KNOB 1–4 shape every body at once, and PLAY sets them moving.</p>
+  <div class="actions">
+    <a class="primary" href="../emu/">Play it in your browser</a>
+    <a href="../manual/">The full manual</a>
+    <a href="../install/">Install on an FM-1</a>
+    <button type="button" onclick="window.print()">Print</button>
+  </div>
+</header>
+
+<p class="legend">
+  <span><span class="c">FX</span> a button</span>
+  <span><span class="c k">PRESETS</span> a knob</span>
+  <span><span class="c w">white key 1</span> a key, counted from the left</span>
+  <span><span class="c pc">Q</span> your computer's keyboard, in the browser</span>
+</p>
+
+<main class="sheet">
+
+<section>
+  <h2>Getting around</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c">HOME</span></dt>
+    <dd>HOME page: MASS, DRIFT, SPACE, TIDE on KNOB 1–4.</dd>
+    <dt><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>The next or previous page.</dd>
+    <dt><span class="v">tap</span><span class="c">EDIT</span></dt>
+    <dd>BODY: model, shape, sub, air. Turn SELECT for NOISE and NOISE 2.</dd>
+    <dt><span class="v">tap</span><span class="c">ENV</span></dt>
+    <dd>ENVELOPE: swell, fade, press, glide. Turn SELECT for LEAD.</dd>
+    <dt><span class="v">tap</span><span class="c">LFO</span></dt>
+    <dd>MOTION: tide rate, wobble, walk, width. Turn SELECT for MOTION 2.</dd>
+    <dt><span class="v">tap</span><span class="c">FX</span></dt>
+    <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
+    <dt><span class="v">tap</span><span class="c">ARP</span></dt>
+    <dd>ORBIT. Turn SELECT for ORBIT 2.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span></dt>
+    <dd>GLOBAL: scale, root, view, morph. Turn SELECT for MIDI and USB.</dd>
+    <dt><span class="v">turn</span><span class="c k">MASTER</span></dt>
+    <dd>Volume.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Playing</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c w">any key</span></dt>
+    <dd>Start a body: it swells in and keeps sounding (LATCH on, SEL lit).</dd>
+    <dt><span class="v">tap</span><span class="c w">its key again</span></dt>
+    <dd>Stop that body; it fades out. If ORBIT moved it, press the half-lit key it started on.</dd>
+    <dt><span class="v">lean on</span><span class="c w">a key</span></dt>
+    <dd>Brighter, with more wobble, while you lean. The top seven keys can't sense a lean.</dd>
+    <dt><span class="v">tap</span><span class="c">SEL</span></dt>
+    <dd>LATCH off: the bodies keep sounding, and each key plays a lead over them while you hold it. Tap again for LATCH on.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="v">1 s</span></dt>
+    <dd>Stop every body.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">a key</span><span class="v">within 1 s</span></dt>
+    <dd>TRANSPOSE: each key you play then moves the whole latched chord, its lowest note to that key. Tap SEL to leave.</dd>
+    <dt><span class="v">tap</span><span class="c">OCT-</span><span class="c">OCT+</span></dt>
+    <dd>The keys an octave down or up, two each way.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Shaping the sound</h2>
+  <dl>
+    <dt><span class="v">turn</span><span class="c k">KNOB 1</span></dt>
+    <dd>On HOME, MASS: dark to bright.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 2</span></dt>
+    <dd>On HOME, DRIFT: how much each body wanders.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 3</span></dt>
+    <dd>On HOME, SPACE: how much reverb.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 4</span></dt>
+    <dd>On HOME, TIDE: each body slowly fades down and back up.</dd>
+    <dt><span class="v">turn</span><span class="c k">ALGORITHM</span></dt>
+    <dd>The model: SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD.</dd>
+    <dt><span class="v">tap</span><span class="c">LFO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>MOTION 2: SPREAD, CROSS, TIMBRE and SWAY make the bodies sound like separate voices.</dd>
+    <dt><span class="v">tap</span><span class="c">EDIT</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>NOISE: wind, rain or crackle under the bodies.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Orbit: the bodies move</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c">PLAY</span></dt>
+    <dd>ORBIT on or off. PLAY's colour shows the mode.</dd>
+    <dt><span class="v">hold</span><span class="c">PLAY</span></dt>
+    <dd>ORBIT page: KNOB 1 picks the mode, KNOB 2–4 set it.</dd>
+    <dt><span class="mode"><span class="dot g"></span> WANDER</span></dt>
+    <dd>One body at a time moves to a nearby note.</dd>
+    <dt><span class="mode"><span class="dot o"></span> CHORD</span></dt>
+    <dd>The whole chord shifts along the scale.</dd>
+    <dt><span class="mode"><span class="dot o"></span> SCATTER</span></dt>
+    <dd>Several move at once, each its own way.</dd>
+    <dt><span class="mode"><span class="dot r"></span> ARP</span></dt>
+    <dd>An arpeggio through the bodies' notes.</dd>
+    <dt><span class="mode"><span class="dot o"></span> CYCLE</span></dt>
+    <dd>The chord walks a progression (I IV V and seven more).</dd>
+    <dt><span class="mode"><span class="dot o"></span> ECHO</span></dt>
+    <dd>Your last eight leads (LATCH off, over a latched bed) come back, quieter each time.</dd>
+    <dt><span class="mode"><span class="dot o"></span> PULSE</span></dt>
+    <dd>Each body dips and swells back in turn: a slow strum.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Effects</h2>
+  <dl>
+    <dt><span class="v">hold</span><span class="c">FX</span><span class="p">+</span><span class="v">tap</span><span class="c w">white key 1–4</span></dt>
+    <dd>Ensemble, delay, reverb, shimmer on or off, on any scene.</dd>
+    <dt><span class="v">hold</span><span class="c">FX</span><span class="p">+</span><span class="v">tap</span><span class="c w">white key 5</span></dt>
+    <dd>The noise layer on or off.</dd>
+    <dt><span class="v">tap</span><span class="c">SEQ</span></dt>
+    <dd>FREEZE: the reverb holds what it has. Tap again to let it go.</dd>
+    <dt><span class="v">tap</span><span class="c">FX</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>DELAY: time, feedback, mix, colour. DELAY 2: diffuse. REVERB: size, damp, shimmer, space.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Scenes and saving</h2>
+  <dl>
+    <dt><span class="v">turn</span><span class="c k">PRESETS</span></dt>
+    <dd>Change scene; the one you stop on blends in over MORPH (4 s).</dd>
+    <dt><span class="v">hold</span><span class="c">GLO</span><span class="p">+</span><span class="v">lean on</span><span class="c w">a key</span></dt>
+    <dd>Blend toward the next scene: the harder you press, the further. Let go and the blend stays.</dd>
+    <dt><span class="v">tap</span><span class="c">SAVE</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span><span class="p">+</span><span class="v">tap</span><span class="c">SAVE</span></dt>
+    <dd>Save the sound and its bodies to U1–U16. HOME cancels.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>MIDI and Bluetooth</h2>
+  <dl>
+    <dt><span class="v">in over</span><span class="c">USB</span><span class="c">TRS</span><span class="c">Bluetooth</span></dt>
+    <dd>Notes (any channel by default), and clock to time ORBIT.</dd>
+    <dt><span class="v">out over</span><span class="c">USB</span><span class="c">Bluetooth</span></dt>
+    <dd>The keys and ORBIT's moves. The TRS jack is in only.</dd>
+    <dt><span class="v">tap</span><span class="c">REC</span><span class="p">+</span><span class="v">turn</span><span class="c k">ALGORITHM</span><span class="p">+</span><span class="v">tap</span><span class="c">REC</span></dt>
+    <dd>Find a Bluetooth MIDI keyboard and connect to it. REC again disconnects.</dd>
+    <dt><span class="v">hold</span><span class="c">REC</span><span class="v">1 s</span></dt>
+    <dd>Bluetooth on or off.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>MIDI: in and out channels, local, velocity. Turn again for USB: recording and clock out.</dd>
+    <dt><span class="v">send</span><span class="c">CC 16–19</span></dt>
+    <dd>MASS, DRIFT, SPACE, TIDE. CC 20 is the noise level, 64 sustain, 123 stops every body.</dd>
+    <dt><span class="v">send</span><span class="c">program 0–31</span></dt>
+    <dd>Load F1–F16, then U1–U16.</dd>
+  </dl>
+</section>
+
+<section class="browser">
+  <h2>In the browser</h2>
+  <dl>
+    <dt><span class="v">type</span><span class="c pc">Q</span><span class="p">to</span><span class="c pc">I</span><span class="c pc">A</span><span class="p">to</span><span class="c pc">K</span></dt>
+    <dd>White keys 1–8 and 9–16.</dd>
+    <dt><span class="v">type</span><span class="c pc">1</span><span class="p">to</span><span class="c pc">0</span><span class="c pc">-</span></dt>
+    <dd>The black keys.</dd>
+    <dt><span class="v">type</span><span class="c pc">P</span><span class="c pc">O</span><span class="c pc">Esc</span></dt>
+    <dd>PLAY, REC, HOME.</dd>
+    <dt><span class="v">type</span><span class="c pc">Z</span><span class="c pc">X</span></dt>
+    <dd>OCT- and OCT+.</dd>
+    <dt><span class="v">drag</span><span class="c k">a knob</span></dt>
+    <dd>Up or down to turn it.</dd>
+    <dt><span class="v">shift-click</span><span class="c">a button</span><span class="c w">a key</span></dt>
+    <dd>Keep it held (right-click works too); click it again to let go. That's how to do the hold combos, or hold a chord, with a mouse.</dd>
+    <dt><span class="v">click</span><span class="c">the panel</span></dt>
+    <dd>The typed keys work while the panel has focus. The Keyboard shortcuts box under it turns them off.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Good to know</h2>
+  <ul class="notes">
+    <li>A button always opens the same page, and SELECT steps between pages. The four boxes at the bottom of the screen are the four knobs.</li>
+    <li>SEL, PLAY and SEQ are lit while their mode is on: LATCH, ORBIT, FREEZE.</li>
+    <li>F1–F16 are the factory scenes; U1–U16 are yours. F3 GLASS ORBIT and F11 GAMELAN were made for ORBIT.</li>
+    <li>Key lights: bright is what you're playing, half is the machine (a body fading, the key ORBIT moves to next), a glow is the scale.</li>
+    <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a scene. SAVE is lit while something is unsaved.</li>
+    <li>SEL is a button (LATCH) and SELECT is a knob (pages): different controls.</li>
+    <li>Update mode: hold REC while you switch on. Hardware calibration (buttons and knobs): hold OCT- and OCT+ while you switch on.</li>
+    <li>Back to the stock firmware: the installer puts M-VAVE's own back.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <p>When in doubt, <a href="../manual/">the manual</a> is right. M-VAVE and FM-1 are trademarks of their owners; DEEP FIELD is not affiliated with M-VAVE.</p>
+</footer>
+</div>
+</body>
+</html>
