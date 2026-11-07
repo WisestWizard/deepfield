@@ -6,6 +6,9 @@
 #include "drone.h"
 #include "fx.h"                            /* fx_lim_min, for the simulator's limiter check */
 static volatile uint8_t midi_edited;     /* a CC changed a scene parameter: the footer redraws */
+#define MCMD_N 16u                       /* the switches and triggers that came in as CCs, for the main loop (ui.c) */
+static volatile uint8_t mcmd_cc[MCMD_N], mcmd_v[MCMD_N];
+static volatile uint32_t mcmd_w, mcmd_r;
 #define CRUMB(n) (crumb.frame = (n))
 static struct { uint32_t magic, frame, render, frames; } crumb __attribute__((section(".noinit")));
 #include "scenes.c"
@@ -34,49 +37,65 @@ static void crumb_log(void)
 }
 static void t_crumb_init(void) { crumb_log(); }
 
-/* the CC map (render context): 1 wheel, 7 volume, 64 sustain, 16-19 the four forces, 20 NOISE LEVEL, 74 MASS, 71 SHAPE, 72 FADE,
- * 73 SWELL, 91 SPACE, 93 ENS MIX, 94 DLY MIX, 102 DLY TYPE (the 128 values in seven equal parts), 103 WOW, 104 CHOP,
- * 120 all sound off, 121 reset controllers, 123 all notes off; NRPN (99 MSB, 98 LSB, 6 data): a body's own values,
- * MSB 1 LEVEL (0 muted, 1..31 = -24..+6 dB), 2 TONE and 3 TUNE (64 + the value), 4 ORBIT (64 up: pinned), LSB the
- * note the body was struck at */
+/* the CC map (render context): every value has a CC, in and out (ui.c CC_OF; the table in the manual), plus 1
+ * wheel, 7 volume, 64 sustain, 74 and 91 as TIMBRE and REVERB on the way in, 120 all sound off, 121 reset
+ * controllers, 123 all notes off; the switches and triggers (CC_LATCH, CC_GEN, CC_FREEZE, CC_FX_SW.., CC_NOISE_SW,
+ * CC_AS_SAVED, CC_GEN_NOW; SCALE and ROOT) are queued for the main loop (midi_cmd_apply), as the buttons would do
+ * them; NRPN (99 MSB, 98 LSB, 6 data): a body's own values, MSB 1 LEVEL (0 muted, 1..31 = -24..+6 dB), 2 TONE and
+ * 3 TUNE (64 + the value), 4 LOCK (64 up), LSB the note the body was struck at. A CC in is playback, not editing:
+ * it never lights SAVE */
 static uint8_t nrpn_msb, nrpn_lsb;
 static void midi_param(uint32_t id, uint32_t v)
 {
     dr_param(id, v & 127u);
-    scene_dirty = 1;
     midi_edited = 1;
+}
+static void midi_cmd_put(uint32_t cc, uint32_t v)
+{
+    uint32_t w = mcmd_w;
+    if (w - mcmd_r >= MCMD_N)
+        return;
+    mcmd_cc[w % MCMD_N] = (uint8_t)cc;
+    mcmd_v[w % MCMD_N] = (uint8_t)v;
+    mcmd_w = w + 1u;
 }
 static void midi_cc(uint32_t cc, uint32_t v)
 {
+    int32_t id;
     switch (cc) {
-    case 1: dr_wheel(v); break;
-    case 7: dr_volume(v); break;
-    case 64: dr_sustain(v); break;
-    case 16: midi_param(P_MASS, v); break;
-    case 17: midi_param(P_DRIFT, v); break;
-    case 18: midi_param(P_SPACE, v); break;
-    case 19: midi_param(P_TIDE, v); break;
-    case 20: midi_param(P_NZ_LEVEL, v); break;
-    case 74: midi_param(P_MASS, v); break;
-    case 71: midi_param(P_SHAPE, v); break;
-    case 72: midi_param(P_FADE, v); break;
-    case 73: midi_param(P_SWELL, v); break;
-    case 91: midi_param(P_SPACE, v); break;
-    case 93: midi_param(P_ENS_MIX, v); break;
-    case 94: midi_param(P_DLY_MIX, v); break;
-    case 102: midi_param(P_DLY_TYPE, (v & 127u) * DT_COUNT / 128u); break;
-    case 103: midi_param(P_DLY_WOW, v); break;
-    case 104: midi_param(P_DLY_CHOP, v); break;
-    case 99: nrpn_msb = (uint8_t)(v & 127u); break;
-    case 98: nrpn_lsb = (uint8_t)(v & 127u); break;
+    case 1: dr_wheel(v); return;
+    case 7: dr_volume(v); return;
+    case 64: dr_sustain(v); return;
+    case 99: nrpn_msb = (uint8_t)(v & 127u); return;
+    case 98: nrpn_lsb = (uint8_t)(v & 127u); return;
     case 6:
         if (nrpn_msb >= 1u && nrpn_msb <= BE_COUNT) {
             uint32_t w = nrpn_msb - 1u;
             int32_t x = w == BE_LEVEL ? (v ? (int32_t)v - 25 : DR_LVL_MUTE) : w == BE_PIN ? v >= 64u : (int32_t)v - 64;
             dr_body_edit_now(nrpn_lsb, w, x);
-            scene_dirty = 1;
         }
-        break;
+        return;
+    case 2:
+    case 3:
+    case CC_NOISE_SW:
+    case CC_AS_SAVED:
+    case CC_GEN_NOW:
+    case CC_LATCH:
+    case CC_GEN:
+    case CC_FREEZE:
+    case CC_FX_SW:
+    case CC_FX_SW + 1u:
+    case CC_FX_SW + 2u:
+    case CC_FX_SW + 3u:
+        midi_cmd_put(cc, v);
+        return;
+    default: break;
+    }
+    if ((id = cc_param(cc)) >= 0 && id < (int32_t)P_COUNT) {
+        midi_param((uint32_t)id, cc_in_val((uint32_t)id, v));
+        return;
+    }
+    switch (cc) {
     case 120: dr_panic(); break;
     case 121:
         dr_wheel(0);
@@ -135,6 +154,109 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
 }
 
 static void midi_settings_apply(void) {}
+
+/* the bank over SysEx (main loop; the manual's section 10): F0 7D 44 46 cmd .. F7 ("DF").
+ *   01 ss        a request: slot ss (0..15 F1..F16, 16..31 U1..U16) comes back as a 02 frame; 40 every user slot,
+ *                41 every slot, one frame each
+ *   02 ss 05 d.. a preset for slot ss: the scene (118 bytes, SCN5's layout, 05 says so) packed seven bytes to eight
+ *                (the high bits first, then the seven bytes with them stripped). In: written to user slot ss (a
+ *                factory slot is refused) and the bank saved once the frames stop; out: the answer to 01.
+ * A sound heard now is left alone: the slot's next recall plays what came in. A .syx from a computer is the same
+ * frames one after another (tools/fm1_bank.py dumps and loads one). */
+#define DFX_HEAD 6u                       /* 7D 44 46 cmd slot ver */
+#define DFX_GROUPS ((sizeof(scene_t) + 6u) / 7u)
+#define DFX_BODY (DFX_GROUPS * 8u)
+static uint8_t dfx_frame[2u + DFX_HEAD + DFX_BODY];
+static uint32_t dfx_pending;              /* bit s: slot s is to be sent (one a frame, so the panel stays live) */
+static void dfx_pack(const scene_t *s, uint8_t *d)
+{
+    const uint8_t *b = (const uint8_t *)s;
+    uint32_t g, k;
+    for (g = 0; g < DFX_GROUPS; g++) {
+        uint8_t hi = 0;
+        for (k = 0; k < 7u; k++) {
+            uint32_t i = g * 7u + k, v = i < sizeof(scene_t) ? b[i] : 0u;
+            hi |= (uint8_t)((v >> 7) << k);
+            d[1u + k] = (uint8_t)(v & 127u);
+        }
+        d[0] = hi;
+        d += 8;
+    }
+}
+static void dfx_unpack(const uint8_t *d, scene_t *s)
+{
+    uint8_t *b = (uint8_t *)s;
+    uint32_t g, k;
+    for (g = 0; g < DFX_GROUPS; g++) {
+        for (k = 0; k < 7u; k++) {
+            uint32_t i = g * 7u + k;
+            if (i < sizeof(scene_t))
+                b[i] = (uint8_t)(d[1u + k] | (d[0] >> k & 1u) << 7);
+        }
+        d += 8;
+    }
+}
+static uint32_t dfx_build(uint32_t slot)  /* a 02 frame for a slot into dfx_frame: its length */
+{
+    dfx_frame[0] = 0xF0;
+    dfx_frame[1] = 0x7D;
+    dfx_frame[2] = 0x44;
+    dfx_frame[3] = 0x46;
+    dfx_frame[4] = 0x02;
+    dfx_frame[5] = (uint8_t)(slot % NSLOTS);
+    dfx_frame[6] = 5;
+    dfx_pack(slot_scene(slot % NSLOTS), dfx_frame + 1u + DFX_HEAD);
+    dfx_frame[1u + DFX_HEAD + DFX_BODY] = 0xF7;
+    return 2u + DFX_HEAD + DFX_BODY;
+}
+static int dfx_take(const uint8_t *p, uint32_t n)   /* a 02 frame in: the preset into its user slot; 1 taken */
+{
+    uint32_t slot = p[4];
+    scene_t sc;
+    if (n < DFX_HEAD + DFX_BODY || p[5] != 5u || slot < NFACTORY || slot >= NSLOTS)
+        return 0;
+    dfx_unpack(p + DFX_HEAD, &sc);
+    sc.name[SCENE_NAME - 1u] = 0;
+    bank.u[slot - NFACTORY] = sc;
+    bank_check(slot - NFACTORY);
+    ui.bank_save_t = plat_ms();
+    {
+        char t[24];
+        slot_title(slot, t);
+        ui_say("PRESET IN", t);
+    }
+    return 1;
+}
+int app_sysex(const uint8_t *p, uint32_t n)
+{
+    if (n < 5u || p[0] != 0x7Du || p[1] != 0x44u || p[2] != 0x46u)
+        return 0;
+    if (p[3] == 0x01u) {
+        uint32_t s = p[4];
+        if (s < NSLOTS)
+            dfx_pending |= 1u << s;
+        else if (s == 0x40u)
+            dfx_pending |= 0xFFFF0000u;
+        else if (s == 0x41u)
+            dfx_pending = 0xFFFFFFFFu;
+        return 1;
+    }
+    if (p[3] == 0x02u)
+        return dfx_take(p, n);
+    return 0;
+}
+static void dfx_step(void)                /* main loop: one pending slot out a frame */
+{
+    uint32_t s;
+    if (!dfx_pending)
+        return;
+    for (s = 0; s < NSLOTS; s++)
+        if (dfx_pending >> s & 1u) {
+            dfx_pending &= ~(1u << s);
+            plat_sysex_send(dfx_frame, dfx_build(s));
+            return;
+        }
+}
 
 /* the USB audio input: whether a computer records now. usb.c keeps the stream's state in this unity unit (alt 1
  * and the host reading); plat.h has no word for it yet, so it is read here. The host simulator: a script flag. */
@@ -210,6 +332,8 @@ void app_frame(void)
 {
     CRUMB(1);
     ui_frame();
+    CRUMB(9);
+    dfx_step();
     CRUMB(0);
 }
 void app_input_only(void) { ui_input_only(); }
@@ -394,9 +518,15 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
 {
     (void)c;
     (void)d;
-    if (!strcmp(cmd, "land")) {          /* "land N": scene N lands as PRESET lands it, this millisecond (the renders) */
-        scene_go((uint32_t)atoi(a) % NSLOTS, 1, !dr_latched());
+    if (!strcmp(cmd, "land")) {          /* "land N": scene N lands with its chord, this millisecond (the renders) */
+        scene_go((uint32_t)atoi(a) % NSLOTS, 1, 1);
         return 1;
+    }
+    if (!strcmp(cmd, "sxloop")) {        /* "sxloop A B": slot A as a SysEx frame, taken into user slot B (the bank's
+                                          * dump and load, round trip) */
+        uint32_t n = dfx_build((uint32_t)atoi(a));
+        dfx_frame[5] = (uint8_t)atoi(b);
+        return app_sysex(dfx_frame + 1, n - 2u);
     }
     if (strcmp(cmd, "param") || atoi(a) < 0 || atoi(a) >= (int)P_COUNT)
         return 0;

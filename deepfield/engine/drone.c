@@ -113,6 +113,7 @@ static uint32_t clk_hist[25], clk_hn, clk_hw;   /* the last 25 clocks' arrivals:
 static int32_t clk_src = -1;             /* the input the clock is followed from: the same clock on a second one is
                                           * not counted again */
 static volatile uint32_t orbit_reper;    /* EVERY turned: the countdown under way shortened to it (orbit_tick) */
+static uint32_t orbit_force;             /* orbit_now with nothing planned: the next plan skips CHANCE */
 static float clk_acc;
 static void (*rt_out)(uint32_t);
 static int32_t arp_held = -1;            /* the step's lead sounding, its note */
@@ -134,7 +135,7 @@ static struct { uint8_t note, vel, on, kind; } q[NQ];   /* main loop -> render; 
                                                          * 2: a latched strike, 3: unlatch, 4: every body let go,
                                                          * 5: a lead, 6: the latched bodies transposed, 7: a body's
                                                          * own value (on: which, vel: the value), 8: a latched body
-                                                         * let go by its note */
+                                                         * let go by its note, 9: ORBIT's next move now */
 static volatile uint32_t q_head, q_tail;
 static scene_t load_scene;               /* a scene loaded with its chord: its bodies are struck and let go by the render */
 static volatile uint32_t load_pending;
@@ -480,6 +481,7 @@ void dr_note_latched(uint32_t note, uint32_t vel) { queue_put(note, vel, 1, 2); 
 void dr_unlatch(uint32_t note) { queue_put(note, 0, 0, 3); }
 void dr_transpose_to(uint32_t note) { queue_put(note, 0, 0, 6); }
 void dr_let_go(uint32_t home) { queue_put(home, 0, 0, 8); }
+void dr_orbit_now(void) { queue_put(0, 0, 0, 9); }
 int32_t dr_body_at(uint32_t note)
 {
     uint32_t i;
@@ -560,6 +562,7 @@ static void transpose_to(uint32_t note)  /* every latched body by the same step,
     }
 }
 static void all_off(void);
+static void orbit_now(void);
 static void drain_queue(void)
 {
     while (q_tail != q_head) {
@@ -584,7 +587,8 @@ static void drain_queue(void)
             voice_t *v = find_body(q[t].note, 0);
             if (v && v->latched)
                 let_go(v);
-        }
+        } else if (q[t].kind == 9u)
+            orbit_now();
         else
             note_event(q[t].note, q[t].vel, q[t].on, 0, 0);
         q_tail = (t + 1u) % NQ;
@@ -2009,8 +2013,9 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
     for (i = 0; i < NV; i++)
         pend_to[i] = 0;
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
-    if ((orbit_rng >> 8) % 100u >= chance)
+    if (!orbit_force && (orbit_rng >> 8) % 100u >= chance)
         return;
+    orbit_force = 0;
     for (i = 0; i < NV; i++)             /* a pinned body is a pedal: never moved, never dipped */
         if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned)
             cand[cnt++] = &vc[i];
@@ -2277,6 +2282,41 @@ static void arp_tick(uint32_t n)
         /* GATE: the lead let go that far through the step; at the top, legato, at the next step */
         arp_gate_left = gate >= 125u ? 0u : (uint32_t)((float)arp_step * (0.05f + 0.95f * (float)gate / 127.0f));
     }
+}
+static float orbit_period_s(void);
+static uint32_t orbit_clocks(void);
+static void orbit_now(void)              /* SEL + PLAY: the move coming comes now; ARP: the next step now. Nothing
+                                          * planned (CHANCE said no, or the countdown just began): a move is chosen
+                                          * now, whatever CHANCE says. STRUM and LOOP plan and play over the period, so
+                                          * for them the period starts over now. Then the countdown runs again */
+{
+    uint32_t i, mode = dr_orbit_mode(), planned = 0;
+    if (!orbit_on)
+        return;
+    if (mode == OM_ARP) {
+        if (clk_ext)
+            arp_due = 1;
+        else
+            arp_left = 0;
+        return;
+    }
+    if (clk_ext)
+        orbit_clk_left = orbit_clk_per = orbit_clocks();
+    else
+        orbit_left = orbit_per = (uint32_t)(orbit_period_s() * FS);
+    if (mode == OM_PULSE || mode == OM_ECHO) {
+        orbit_force = 1;
+        orbit_plan();
+        return;
+    }
+    for (i = 0; i < NV; i++)
+        planned |= pend_to[i] != 0u;
+    if (!planned) {
+        orbit_force = 1;
+        orbit_plan();
+    }
+    orbit_apply();
+    orbit_plan();
 }
 static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memory dropped, its lead let go */
 {

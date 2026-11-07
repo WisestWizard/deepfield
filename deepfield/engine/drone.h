@@ -115,6 +115,9 @@ void dr_panic(void);                                /* silence now */
 void dr_scale(uint32_t mask12, uint32_t root);      /* the scale ORBIT moves within (bit n: semitone n from root) */
 uint32_t dr_snap(uint32_t note);                    /* the scale note at or below (the keys use it) */
 void dr_orbit(int on);
+void dr_orbit_now(void);                            /* SEL + PLAY (or CC 14): the move coming comes now (none planned:
+                                                     * one is chosen, whatever CHANCE says); ARP: the next step now;
+                                                     * then the countdown starts over */
 int dr_orbit_on(void);
 float dr_orbit_next(void);                          /* how far to the next move, 0..1 (0 while off); ARP: through
                                                      * its bar of eight steps */

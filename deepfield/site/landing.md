@@ -4,7 +4,8 @@ DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Each key you pre
 swells in, keeps sounding, slowly breathes and drifts, and fades out when you stop it. Up to eight play at once.
 Four knobs shape every voice at the same time, a held key sets one voice apart, GEN moves them to nearby notes or
 runs an arpeggio over them, thirteen models range from breathing harmonics to wavetables and FM, and the reverb can
-freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth.
+freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth; every
+knob has a CC, and the presets travel as SysEx.
 
 ## Play it in your browser
 
@@ -19,8 +20,8 @@ work; on a phone, turn it sideways.
    every note at once.
 5. Press PLAY (or the P key): the notes start moving to nearby notes on their own.
 6. Turn PRESETS to change the preset: its sound blends in over a few seconds under the notes you are playing.
-   Shift-click SEL to hold it while you turn, and the preset brings its own chord when you let SEL go.
-7. Hold SEL for a second to stop every note.
+   Shift-click SEL to hold it while you turn, and the preset brings its own chord in place of yours.
+7. Hold SEL (shift-click it) and press HOME to stop every note.
 
 The [cheat sheet](cheatsheet/) has every control on one page, and the [manual](manual/) has the rest.
 

@@ -146,109 +146,168 @@ static void scene_make(scene_t *s, const char *name, const change_t *c, const ui
 
 static void factory_build(void)
 {
+    /* F1 FIRST LIGHT: ADDITIVE, a warm major triad; the unit boots into it. WALK. */
     static const change_t FIRST_LIGHT[] = {{P_MASS, 48}, {P_DRIFT, 38}, {P_SPACE, 58}, {P_TIDE, 35}, {P_SUB, 35},
-                                           {P_SWELL, 20}, {P_FADE, 82}, {P_WIDTH, 80}, END};
+                                           {P_SWELL, 20}, {P_FADE, 82}, {P_WIDTH, 80}, {P_SPREAD, 45}, {P_CROSS, 10},
+                                           {P_TWALK, 35}, {P_SWAY, 25}, END};
     static const uint8_t FIRST_LIGHT_N[] = {48, 55, 64, 0};
+    /* F2 VOID TIDE: SUPERSAW, an octave-fifth with a ninth, low and breathing under a brown wind. WALK, slow. */
     static const change_t VOID_TIDE[] = {{P_MODEL, M_VOID}, {P_MASS, 48}, {P_DRIFT, 50}, {P_SPACE, 70}, {P_TIDE, 60},
                                          {P_SHAPE, 60}, {P_SUB, 70}, {P_SWELL, 25}, {P_FADE, 85}, {P_TIDE_RATE, 30},
                                          {P_WALK, 45}, {P_REV_SIZE, 85}, {P_REV_DAMP, 55}, {P_ENS, ENS_ENSEMBLE},
-                                         {P_ENS_MIX, 55}, END};
+                                         {P_ENS_MIX, 55}, {P_ORB_PERIOD, 91}, {P_ORB_CHANCE, 60}, {P_ORB_RANGE, 30},
+                                         {P_SPREAD, 55}, {P_TWALK, 40}, {P_SWAY, 30}, {P_NZ_LEVEL, 14}, {P_NZ_COLOUR, 20},
+                                         {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 10}, {P_NZ_GUST, 40},
+                                         {P_NZ_DUCK, 50}, {P_NZ_WIDTH, 110}, END};
     static const uint8_t VOID_TIDE_N[] = {36, 43, 48, 62, 0};
+    /* F3 GLASS ORBIT: FM, octave-fifths; WALK every 3.5 s and OCT UP echoes climbing out of it. Made for GEN. */
     static const change_t GLASS_ORBIT[] = {{P_MODEL, M_GLASS}, {P_MASS, 42}, {P_DRIFT, 45}, {P_SPACE, 62}, {P_TIDE, 40},
                                            {P_SHAPE, 50}, {P_SUB, 20}, {P_SWELL, 30}, {P_FADE, 80}, {P_GLIDE, 50},
-                                           {P_WOBBLE, 25}, {P_SHIMMER, 30}, {P_DLY_MIX, 40}, {P_DLY_TIME, 114},
-                                           {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70}, {P_ORB_PERIOD, 71}, {P_ORB_CHANCE, 90}, END};
+                                           {P_WOBBLE, 25}, {P_SHIMMER, 30}, {P_DLY_TYPE, DT_RISE}, {P_DLY_MIX, 40},
+                                           {P_DLY_TIME, 114}, {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70},
+                                           {P_ORB_PERIOD, 71}, {P_ORB_CHANCE, 90}, {P_SPREAD, 50}, {P_TWALK, 30},
+                                           {P_SWAY, 40}, END};
     static const uint8_t GLASS_ORBIT_N[] = {48, 55, 60, 67, 0};
+    /* F4 BOWED SKY: BOWED, a Lydian voicing, wide; SHIFT moves the whole chord; REVERSE echoes breathe in. */
     static const change_t BOWED_SKY[] = {{P_MODEL, M_STRING}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
                                          {P_AIR, 40}, {P_SUB, 25}, {P_SWELL, 30}, {P_FADE, 85}, {P_WOBBLE, 30},
-                                         {P_WIDTH, 90}, {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35}, END};
-    static const uint8_t BOWED_SKY_N[] = {48, 55, 60, 64, 0};
-    static const change_t PULSAR[] = {{P_MODEL, M_GLASS}, {P_MASS, 68}, {P_DRIFT, 60}, {P_SPACE, 55}, {P_TIDE, 85},
-                                      {P_SHAPE, 30}, {P_SUB, 40}, {P_SWELL, 20}, {P_FADE, 70}, {P_TIDE_RATE, 95},
-                                      {P_WOBBLE, 35}, {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 105},
-                                      {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 65}, {P_CROSS, 35}, END};
-    static const uint8_t PULSAR_N[] = {48, 55, 67, 0};
+                                         {P_WIDTH, 90}, {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35},
+                                         {P_DLY_TYPE, DT_REVERSE}, {P_DLY_MIX, 40}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 40},
+                                         {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 55}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 87},
+                                         {P_ORB_CHANCE, 80}, {P_ORB_DIST, 50}, {P_GRAVITY, 40}, {P_TWALK, 30}, END};
+    static const uint8_t BOWED_SKY_N[] = {48, 55, 66, 71, 0};
+    /* F5 PULSAR: SYNC at X2.0 with ring mod, a 7sus4 stack, fast tremolo, dry; ARP 5/8 at 120 BPM over it, a
+     * gated PING PONG in 1/8D. */
+    static const change_t PULSAR[] = {{P_MODEL, M_TEAR}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 25}, {P_TIDE, 70},
+                                      {P_SHAPE, 48}, {P_SUB, 30}, {P_AIR, 30}, {P_SWELL, 20}, {P_FADE, 70},
+                                      {P_TIDE_RATE, 90}, {P_WOBBLE, 20}, {P_WIDTH, 80}, {P_REV_SIZE, 55},
+                                      {P_DLY_TYPE, DT_PING}, {P_DLY_MIX, 45}, {P_DLY_TIME, 114}, {P_DLY_FDBK, 50},
+                                      {P_DLY_DIFF, 10}, {P_DLY_COLOUR, 70}, {P_DLY_CHOP, 60}, {P_ORB_MODE, OM_ARP},
+                                      {P_ARP_RATE, 51}, {P_ARP_GATE, 40}, {P_ARP_ORDER, AO_UPDOWN}, {P_ARP_OCT, 1},
+                                      {P_ARP_RHYTHM, 1}, {P_ARP_DIV, 2}, {P_LD_ATTACK, 10}, {P_LD_RELEASE, 50},
+                                      {P_LD_LEVEL, 90}, {P_SPREAD, 50}, {P_CROSS, 20}, {P_TWALK, 20}, {P_SWAY, 20}, END};
+    static const uint8_t PULSAR_N[] = {48, 55, 58, 65, 0};
+    /* F6 NEBULA: ADDITIVE, hollow, a five-note cluster in very slow swells, drowned in reverb and shimmer, a
+     * GRANULAR cloud and a wind bed; RANDOM scatters the voices every 10 s. */
     static const change_t NEBULA[] = {{P_SHAPE, 22}, {P_MASS, 55}, {P_DRIFT, 70}, {P_SPACE, 88}, {P_TIDE, 45},
                                       {P_SUB, 25}, {P_SWELL, 95}, {P_FADE, 100}, {P_TIDE_RATE, 25}, {P_WALK, 60},
                                       {P_WOBBLE, 15}, {P_WIDTH, 100}, {P_REV_SIZE, 95}, {P_REV_DAMP, 30},
-                                      {P_SHIMMER, 60}, {P_DLY_MIX, 25}, {P_DLY_TIME, 92}, {P_DLY_FDBK, 50},
-                                      {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
-                                      {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, {P_NZ_GUST, 50}, END};
-    static const uint8_t NEBULA_N[] = {48, 55, 62, 69, 0};   /* on C up (not down): its beams stay on the strip */
-    static const change_t DEEP_VOID[] = {{P_MODEL, M_VOID}, {P_MASS, 34}, {P_DRIFT, 30}, {P_SPACE, 50}, {P_TIDE, 20},
-                                         {P_SHAPE, 35}, {P_SUB, 100}, {P_SWELL, 35}, {P_FADE, 80}, {P_WALK, 20},
-                                         {P_WIDTH, 50}, {P_REV_SIZE, 75}, {P_REV_DAMP, 70}, {P_DLY_MIX, 55},
-                                         {P_DLY_TIME, 99}, {P_DLY_FDBK, 75}, {P_DLY_DIFF, 85}, {P_DLY_COLOUR, 30}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
-                                         {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 85}, {P_NZ_GUST, 25}, END};
-    static const uint8_t DEEP_VOID_N[] = {36, 43, 0};
-    static const change_t STARLIGHT[] = {{P_MODEL, M_STRING}, {P_MASS, 85}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
-                                         {P_AIR, 70}, {P_SUB, 10}, {P_SWELL, 25}, {P_FADE, 78}, {P_TIDE_RATE, 50},
-                                         {P_WIDTH, 100}, {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 40}, {P_SHIMMER, 20},
-                                         {P_REV_SIZE, 72}, {P_REV_DAMP, 25}, END};
-    static const uint8_t STARLIGHT_N[] = {60, 64, 67, 71, 0};
+                                      {P_SHIMMER, 45}, {P_DLY_TYPE, DT_GRAINS}, {P_DLY_MIX, 35}, {P_DLY_TIME, 70},
+                                      {P_DLY_FDBK, 50}, {P_DLY_DIFF, 50}, {P_DLY_COLOUR, 45}, {P_ORB_MODE, OM_SCATTER},
+                                      {P_ORB_PERIOD, 91}, {P_ORB_BODIES, 70}, {P_ORB_RANGE, 50}, {P_SPREAD, 70},
+                                      {P_TWALK, 50}, {P_SWAY, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
+                                      {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, {P_NZ_TEXTURE, 10}, {P_NZ_GUST, 50},
+                                      {P_NZ_DUCK, 20}, {P_NZ_WIDTH, 110}, END};
+    static const uint8_t NEBULA_N[] = {60, 62, 64, 65, 67, 0};
+    /* F7 DEEP VOID: TAPE, one low C on a worn organ loop with sub and hiss, a TAPE echo and a quiet crackle; LOOP
+     * brings the leads back an octave up. */
+    static const change_t DEEP_VOID[] = {{P_MODEL, M_TAPE}, {P_MASS, 45}, {P_DRIFT, 60}, {P_SPACE, 50}, {P_TIDE, 20},
+                                         {P_SHAPE, 15}, {P_SUB, 100}, {P_AIR, 35}, {P_SWELL, 35}, {P_FADE, 80},
+                                         {P_WALK, 20}, {P_WIDTH, 50}, {P_REV_SIZE, 75}, {P_REV_DAMP, 70},
+                                         {P_DLY_TYPE, DT_TAPE}, {P_DLY_MIX, 50}, {P_DLY_TIME, 99}, {P_DLY_FDBK, 70},
+                                         {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 30}, {P_DLY_WOW, 70}, {P_ORB_MODE, OM_ECHO},
+                                         {P_ORB_PERIOD, 68}, {P_ECHO_DECAY, 40}, {P_ECHO_JUMP, 50}, {P_LD_ATTACK, 40},
+                                         {P_LD_RELEASE, 90}, {P_LD_LIFT, 61}, {P_LD_LEVEL, 80}, {P_SPREAD, 20},
+                                         {P_TWALK, 40}, {P_SWAY, 10}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
+                                         {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 90}, {P_NZ_GUST, 25},
+                                         {P_NZ_DUCK, 30}, {P_NZ_WIDTH, 80}, END};
+    static const uint8_t DEEP_VOID_N[] = {36, 0};
+    /* F8 STARLIGHT: WAVETABLE in the GLASS table with unison, a high sus2, wide; STRUM every 5 s; PING PONG in 1/4. */
+    static const change_t STARLIGHT[] = {{P_MODEL, M_SCAN}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
+                                         {P_SHAPE, 96}, {P_SUB, 10}, {P_AIR, 45}, {P_SWELL, 25}, {P_FADE, 78},
+                                         {P_TIDE_RATE, 50}, {P_WIDTH, 100}, {P_REV_SIZE, 72}, {P_REV_DAMP, 25},
+                                         {P_ENS, ENS_CHORUS1}, {P_ENS_MIX, 30}, {P_DLY_TYPE, DT_PING}, {P_DLY_MIX, 35},
+                                         {P_DLY_TIME, 116}, {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 75},
+                                         {P_ORB_MODE, OM_PULSE}, {P_ORB_PERIOD, 78}, {P_ORB_CHANCE, 80}, {P_ORB_ROLL, 60},
+                                         {P_SPREAD, 70}, {P_TWALK, 40}, {P_SWAY, 50}, END};
+    static const uint8_t STARLIGHT_N[] = {60, 67, 74, 79, 0};
+    /* F9 CATHEDRAL: FORMANT, a quartal stack on an open vowel in a big hall; PROG walks I VI IV V every 8 s. */
+    static const change_t CATHEDRAL[] = {{P_MODEL, M_CHOIR}, {P_MASS, 32}, {P_DRIFT, 35}, {P_SPACE, 60}, {P_TIDE, 30},
+                                         {P_SHAPE, 20}, {P_SUB, 20}, {P_AIR, 25}, {P_SWELL, 45}, {P_FADE, 90},
+                                         {P_TIDE_RATE, 30}, {P_WOBBLE, 15}, {P_WIDTH, 85}, {P_REV_SIZE, 88},
+                                         {P_REV_DAMP, 35}, {P_ORB_MODE, OM_CYCLE}, {P_ORB_PERIOD, 87}, {P_ORB_CHANCE, 127},
+                                         {P_ORB_PROG, 1}, {P_SPREAD, 55}, {P_CROSS, 10}, {P_TWALK, 35}, {P_SWAY, 30}, END};
+    static const uint8_t CATHEDRAL_N[] = {48, 53, 58, 63, 0};
+    /* F10 RAIN CLOCK: FM 4-OP E.PIANO, a minor ninth, dry; ARP 5/8 at 92 BPM in a random order, a gated MULTI TAP
+     * in 1/4, under rain. */
+    static const change_t RAIN_CLOCK[] = {{P_MODEL, M_DX}, {P_MASS, 55}, {P_DRIFT, 35}, {P_SPACE, 22}, {P_TIDE, 25},
+                                          {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 25}, {P_SWELL, 30}, {P_FADE, 80},
+                                          {P_WIDTH, 80}, {P_REV_SIZE, 60}, {P_REV_DAMP, 50}, {P_DLY_TYPE, DT_HEADS},
+                                          {P_DLY_MIX, 45}, {P_DLY_TIME, 116}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 10},
+                                          {P_DLY_COLOUR, 65}, {P_DLY_CHOP, 50}, {P_ORB_MODE, OM_ARP}, {P_ARP_RATE, 33},
+                                          {P_ARP_GATE, 50}, {P_ARP_ORDER, AO_RANDOM}, {P_ARP_OCT, 1}, {P_ARP_RHYTHM, 1},
+                                          {P_ARP_DIV, 2}, {P_LD_ATTACK, 5}, {P_LD_RELEASE, 70}, {P_LD_LEVEL, 90},
+                                          {P_SPREAD, 45}, {P_TWALK, 20}, {P_SWAY, 25}, {P_NZ_LEVEL, 15}, {P_NZ_COLOUR, 70},
+                                          {P_NZ_WIND, 50}, {P_NZ_BAND, 20}, {P_NZ_TEXTURE, 45}, {P_NZ_GUST, 30},
+                                          {P_NZ_DUCK, 60}, {P_NZ_WIDTH, 100}, END};
+    static const uint8_t RAIN_CLOCK_N[] = {48, 58, 63, 67, 74, 0};
+    /* F11 GAMELAN: BELL at bell ratios, a pentatonic voicing, dry; RANDOM every 2 s; a gated PING PONG in 1/8. */
+    static const change_t GAMELAN[] = {{P_MODEL, M_BELL}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 28}, {P_TIDE, 55},
+                                       {P_SHAPE, 85}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 15}, {P_FADE, 75},
+                                       {P_TIDE_RATE, 55}, {P_WOBBLE, 10}, {P_WIDTH, 90}, {P_REV_SIZE, 70},
+                                       {P_DLY_TYPE, DT_PING}, {P_DLY_MIX, 40}, {P_DLY_TIME, 104}, {P_DLY_FDBK, 40},
+                                       {P_DLY_DIFF, 0}, {P_DLY_COLOUR, 75}, {P_DLY_CHOP, 70}, {P_ORB_MODE, OM_SCATTER},
+                                       {P_ORB_PERIOD, 60}, {P_ORB_BODIES, 50}, {P_ORB_RANGE, 60}, {P_SPREAD, 65},
+                                       {P_TWALK, 15}, {P_SWAY, 20}, END};
+    static const uint8_t GAMELAN_N[] = {60, 62, 67, 69, 72, 0};
+    /* F12 BRONZE BOWL: RESONATOR between BOWL and BRONZE, stacked fifths, slow swells and shimmer; STRUM every 4 s
+     * dips each voice in turn; a GRANULAR glitter. */
+    static const change_t BRONZE_BOWL[] = {{P_MODEL, M_RESON}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
+                                           {P_SHAPE, 100}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 50}, {P_FADE, 90},
+                                           {P_TIDE_RATE, 35}, {P_WOBBLE, 8}, {P_WIDTH, 90}, {P_REV_SIZE, 85},
+                                           {P_REV_DAMP, 20}, {P_SHIMMER, 20}, {P_DLY_TYPE, DT_GRAINS}, {P_DLY_MIX, 40},
+                                           {P_DLY_TIME, 60}, {P_DLY_FDBK, 45}, {P_DLY_DIFF, 40}, {P_DLY_COLOUR, 70},
+                                           {P_ORB_MODE, OM_PULSE}, {P_ORB_PERIOD, 73}, {P_ORB_CHANCE, 90}, {P_ORB_ROLL, 70},
+                                           {P_SPREAD, 60}, {P_TWALK, 30}, {P_SWAY, 35}, END};
+    static const uint8_t BRONZE_BOWL_N[] = {48, 55, 62, 69, 0};
+    /* F13 ASCENT: SHEPARD rising over an octave-fifth; SHIFT every 10 s; OCT UP echoes climb with it. */
+    static const change_t ASCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 50}, {P_DRIFT, 30}, {P_SPACE, 65}, {P_TIDE, 20},
+                                      {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 15}, {P_SWELL, 40}, {P_FADE, 85},
+                                      {P_WOBBLE, 10}, {P_WIDTH, 80}, {P_REV_SIZE, 85}, {P_REV_DAMP, 40},
+                                      {P_DLY_TYPE, DT_RISE}, {P_DLY_MIX, 35}, {P_DLY_TIME, 90}, {P_DLY_FDBK, 45},
+                                      {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 70}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 91},
+                                      {P_ORB_CHANCE, 70}, {P_ORB_DIST, 40}, {P_GRAVITY, 30}, {P_SPREAD, 40},
+                                      {P_TWALK, 25}, {P_SWAY, 50}, END};
+    static const uint8_t ASCENT_N[] = {48, 55, 60, 0};
+    /* F14 DESCENT: SHEPARD falling over a low open fifth, dark; PROG walks I VII IV every 13 s; OCT DOWN echoes sink
+     * under it, a low wind. */
+    static const change_t DESCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 35}, {P_DRIFT, 45}, {P_SPACE, 70}, {P_TIDE, 35},
+                                       {P_SHAPE, 30}, {P_SUB, 45}, {P_AIR, 25}, {P_SWELL, 50}, {P_FADE, 90},
+                                       {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
+                                       {P_REV_DAMP, 55}, {P_DLY_TYPE, DT_FALL}, {P_DLY_MIX, 45}, {P_DLY_TIME, 99},
+                                       {P_DLY_FDBK, 55}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 35}, {P_ORB_MODE, OM_CYCLE},
+                                       {P_ORB_PERIOD, 95}, {P_ORB_CHANCE, 127}, {P_ORB_PROG, 7}, {P_SPREAD, 35},
+                                       {P_TWALK, 30}, {P_SWAY, 20}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25},
+                                       {P_NZ_BAND, 5}, {P_NZ_TEXTURE, 5}, {P_NZ_GUST, 65}, {P_NZ_DUCK, 30},
+                                       {P_NZ_WIDTH, 90}, END};
+    static const uint8_t DESCENT_N[] = {36, 43, 55, 0};
+    /* F15 FOLDED SUN: WAVEFOLD, a 6/9 chord with ensemble, bright; LOOP brings the leads back every 3 s; a TAPE echo
+     * in 1/4. */
+    static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
+                                          {P_SHAPE, 55}, {P_SUB, 35}, {P_AIR, 10}, {P_SWELL, 25}, {P_FADE, 80},
+                                          {P_TIDE_RATE, 40}, {P_WOBBLE, 20}, {P_WIDTH, 80}, {P_REV_SIZE, 75},
+                                          {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 45}, {P_DLY_TYPE, DT_TAPE}, {P_DLY_MIX, 35},
+                                          {P_DLY_TIME, 116}, {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 60},
+                                          {P_DLY_WOW, 55}, {P_ORB_MODE, OM_ECHO}, {P_ORB_PERIOD, 68}, {P_ECHO_DECAY, 50},
+                                          {P_ECHO_JUMP, 35}, {P_LD_ATTACK, 20}, {P_LD_RELEASE, 70}, {P_LD_LEVEL, 85},
+                                          {P_CROSS, 30}, {P_SPREAD, 50}, {P_TWALK, 30}, {P_SWAY, 30}, END};
+    static const uint8_t FOLDED_SUN_N[] = {48, 55, 64, 69, 74, 0};
     scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, 100);
-    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 127);   /* on C: as loud as on A */
+    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 127);
     scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, 96);
     scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, 84);
     scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, 100);
-    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, 77);   /* up on C3: as loud as before */
+    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, 64);
     scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 127);
     scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, 92);
-    {                                    /* F9 .. F16: the four later models, two scenes each */
-        static const change_t CATHEDRAL[] = {{P_MODEL, M_CHOIR}, {P_MASS, 32}, {P_DRIFT, 35}, {P_SPACE, 60}, {P_TIDE, 30},
-                                             {P_SHAPE, 20}, {P_SUB, 20}, {P_AIR, 25}, {P_SWELL, 45}, {P_FADE, 90},
-                                             {P_TIDE_RATE, 30}, {P_WOBBLE, 15}, {P_WIDTH, 85}, {P_REV_SIZE, 88},
-                                             {P_REV_DAMP, 35}, END};
-        static const uint8_t CATHEDRAL_N[] = {48, 55, 60, 64, 0};
-        static const change_t LOW_CHOIR[] = {{P_MODEL, M_CHOIR}, {P_MASS, 60}, {P_DRIFT, 40}, {P_SPACE, 55}, {P_TIDE, 35},
-                                             {P_SHAPE, 95}, {P_SUB, 80}, {P_AIR, 45}, {P_SWELL, 35}, {P_FADE, 85},
-                                             {P_TIDE_RATE, 25}, {P_WOBBLE, 20}, {P_WALK, 35}, {P_WIDTH, 70},
-                                             {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35}, {P_NZ_LEVEL, 20},
-                                             {P_NZ_COLOUR, 25}, {P_NZ_WIND, 35}, {P_NZ_BAND, 80}, END};
-        static const uint8_t LOW_CHOIR_N[] = {36, 43, 50, 0};
-        static const change_t GAMELAN[] = {{P_MODEL, M_BELL}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 60}, {P_TIDE, 55},
-                                           {P_SHAPE, 85}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 15}, {P_FADE, 75},
-                                           {P_TIDE_RATE, 55}, {P_WOBBLE, 10}, {P_WIDTH, 90}, {P_REV_SIZE, 70},
-                                           {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 102}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 0}, {P_DLY_COLOUR, 75},
-                                           {P_ORB_PERIOD, 68}, {P_ORB_CHANCE, 85}, {P_ORB_RANGE, 60}, END};
-        static const uint8_t GAMELAN_N[] = {60, 67, 72, 79, 0};
-        static const change_t ICE_BELLS[] = {{P_MODEL, M_BELL}, {P_MASS, 75}, {P_DRIFT, 30}, {P_SPACE, 70}, {P_TIDE, 40},
-                                             {P_SHAPE, 50}, {P_SUB, 5}, {P_AIR, 35}, {P_SWELL, 20}, {P_FADE, 85},
-                                             {P_TIDE_RATE, 35}, {P_WOBBLE, 8}, {P_WIDTH, 100}, {P_REV_SIZE, 90},
-                                             {P_REV_DAMP, 15}, {P_SHIMMER, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 95},
-                                             {P_NZ_WIND, 50}, {P_NZ_BAND, 25}, {P_NZ_TEXTURE, 55}, {P_NZ_GUST, 35}, END};
-        static const uint8_t ICE_BELLS_N[] = {72, 79, 84, 91, 0};
-        static const change_t ASCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 50}, {P_DRIFT, 30}, {P_SPACE, 65}, {P_TIDE, 20},
-                                          {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 15}, {P_SWELL, 40}, {P_FADE, 85},
-                                          {P_WOBBLE, 10}, {P_WIDTH, 80}, {P_REV_SIZE, 85}, {P_REV_DAMP, 40},
-                                          END};
-        static const uint8_t ASCENT_N[] = {48, 55, 60, 0};
-        static const change_t DESCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 35}, {P_DRIFT, 45}, {P_SPACE, 70}, {P_TIDE, 35},
-                                           {P_SHAPE, 30}, {P_SUB, 45}, {P_AIR, 25}, {P_SWELL, 50}, {P_FADE, 90},
-                                           {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
-                                           {P_REV_DAMP, 55}, {P_DLY_MIX, 25}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 50}, {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 40},
-                                           {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25}, {P_NZ_BAND, 5}, {P_NZ_GUST, 65}, END};
-        static const uint8_t DESCENT_N[] = {48, 55, 60, 0};   /* on C up, as NEBULA */
-        static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
-                                              {P_SHAPE, 55}, {P_SUB, 35}, {P_AIR, 10}, {P_SWELL, 25}, {P_FADE, 80},
-                                              {P_TIDE_RATE, 40}, {P_WOBBLE, 20}, {P_WIDTH, 80}, {P_REV_SIZE, 75},
-                                              {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 45}, {P_CROSS, 30}, {P_SPREAD, 50}, END};
-        static const uint8_t FOLDED_SUN_N[] = {48, 55, 64, 67, 0};
-        static const change_t TIDE_POOL[] = {{P_MODEL, M_FOLD}, {P_MASS, 35}, {P_DRIFT, 55}, {P_SPACE, 65}, {P_TIDE, 70},
-                                             {P_SHAPE, 30}, {P_SUB, 50}, {P_AIR, 30}, {P_SWELL, 30}, {P_FADE, 85},
-                                             {P_TIDE_RATE, 45}, {P_WOBBLE, 25}, {P_WALK, 40}, {P_WIDTH, 90},
-                                             {P_REV_SIZE, 80}, {P_REV_DAMP, 50}, {P_DLY_MIX, 45}, {P_DLY_TIME, 89},
-                                             {P_DLY_FDBK, 60}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 55}, END};
-        static const uint8_t TIDE_POOL_N[] = {48, 55, 62, 67, 0};
-        scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, 84);
-        scene_make(&factory[9], "LOW CHOIR", LOW_CHOIR, LOW_CHOIR_N, 115);
-        scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, 76);
-        scene_make(&factory[11], "ICE BELLS", ICE_BELLS, ICE_BELLS_N, 92);
-        scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, 100);
-        scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, 100);
-        scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, 100);
-        scene_make(&factory[15], "TIDE POOL", TIDE_POOL, TIDE_POOL_N, 100);
-    }
+    scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, 84);
+    scene_make(&factory[9], "RAIN CLOCK", RAIN_CLOCK, RAIN_CLOCK_N, 86);
+    scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, 100);
+    scene_make(&factory[11], "BRONZE BOWL", BRONZE_BOWL, BRONZE_BOWL_N, 84);
+    scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, 100);
+    scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, 100);
+    scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, 100);
+    scene_init(&factory[15], "INIT");    /* F16: the INIT scene as it is, no chord */
 }
 
 static void settings_defaults(void)
@@ -310,6 +369,7 @@ static void slot_name(uint32_t slot, char *t)   /* "F3", "U12" */
     }
 }
 
+static void bank_check(uint32_t i);
 static void project_load(void)
 {
     uint32_t i;
@@ -371,39 +431,42 @@ static void project_load(void)
         if (got != (int)sizeof bank || bank.magic != BANK_MAGIC || bank.count != NUSER || bank.ssize != sizeof(scene_t))
             bank_defaults();
     }
-    for (i = 0; i < NUSER; i++) {        /* a scene's values within range, whatever the flash held */
-        uint32_t k;
-        bank.u[i].name[SCENE_NAME - 1u] = 0;
-        for (k = 0; k < P_COUNT; k++)
-            bank.u[i].p[k] &= 127u;
-        if (bank.u[i].p[P_MODEL] >= M_COUNT)
-            bank.u[i].p[P_MODEL] = 0;
-        if (bank.u[i].p[P_ORB_MODE] >= OM_COUNT)
-            bank.u[i].p[P_ORB_MODE] = 0;
-        if (bank.u[i].p[P_ARP_ORDER] >= AO_COUNT)
-            bank.u[i].p[P_ARP_ORDER] = 0;
-        if (bank.u[i].p[P_ARP_OCT] >= 3u)
-            bank.u[i].p[P_ARP_OCT] = 0;
-        if (bank.u[i].p[P_ORB_PROG] >= DR_PROGS)
-            bank.u[i].p[P_ORB_PROG] = 0;
-        if (bank.u[i].p[P_DLY_TYPE] >= DT_COUNT)
-            bank.u[i].p[P_DLY_TYPE] = DT_PING;
-        if (bank.u[i].p[P_ARP_RHYTHM] >= DR_RHYTHMS)
-            bank.u[i].p[P_ARP_RHYTHM] = 0;
-        if (bank.u[i].p[P_ARP_DIV] >= DR_DIVS)
-            bank.u[i].p[P_ARP_DIV] = 2;
-        for (k = 0; k < DR_NV; k++) {
-            bank.u[i].note[k] &= 127u;
-            bank.u[i].vel[k] &= 127u;
-            bank.u[i].lvl[k] = (int8_t)clamp(bank.u[i].lvl[k], DR_LVL_MUTE, 6);
-            bank.u[i].tone[k] = (int8_t)clamp(bank.u[i].tone[k], -50, 50);
-            bank.u[i].tune[k] = (int8_t)clamp(bank.u[i].tune[k], -50, 50);
-        }
-        bank.u[i].fx_off &= 15u;
-        if (bank.u[i].root > 12u)
-            bank.u[i].root = 0;
-    }
+    for (i = 0; i < NUSER; i++)
+        bank_check(i);
     set_dirty = scene_dirty = 0;
+}
+static void bank_check(uint32_t i)       /* user scene i's values within range, whatever the flash (or a SysEx frame) held */
+{
+    uint32_t k;
+    bank.u[i].name[SCENE_NAME - 1u] = 0;
+    for (k = 0; k < P_COUNT; k++)
+        bank.u[i].p[k] &= 127u;
+    if (bank.u[i].p[P_MODEL] >= M_COUNT)
+        bank.u[i].p[P_MODEL] = 0;
+    if (bank.u[i].p[P_ORB_MODE] >= OM_COUNT)
+        bank.u[i].p[P_ORB_MODE] = 0;
+    if (bank.u[i].p[P_ARP_ORDER] >= AO_COUNT)
+        bank.u[i].p[P_ARP_ORDER] = 0;
+    if (bank.u[i].p[P_ARP_OCT] >= 3u)
+        bank.u[i].p[P_ARP_OCT] = 0;
+    if (bank.u[i].p[P_ORB_PROG] >= DR_PROGS)
+        bank.u[i].p[P_ORB_PROG] = 0;
+    if (bank.u[i].p[P_DLY_TYPE] >= DT_COUNT)
+        bank.u[i].p[P_DLY_TYPE] = DT_PING;
+    if (bank.u[i].p[P_ARP_RHYTHM] >= DR_RHYTHMS)
+        bank.u[i].p[P_ARP_RHYTHM] = 0;
+    if (bank.u[i].p[P_ARP_DIV] >= DR_DIVS)
+        bank.u[i].p[P_ARP_DIV] = 2;
+    for (k = 0; k < DR_NV; k++) {
+        bank.u[i].note[k] &= 127u;
+        bank.u[i].vel[k] &= 127u;
+        bank.u[i].lvl[k] = (int8_t)clamp(bank.u[i].lvl[k], DR_LVL_MUTE, 6);
+        bank.u[i].tone[k] = (int8_t)clamp(bank.u[i].tone[k], -50, 50);
+        bank.u[i].tune[k] = (int8_t)clamp(bank.u[i].tune[k], -50, 50);
+    }
+    bank.u[i].fx_off &= 15u;
+    if (bank.u[i].root > 12u)
+        bank.u[i].root = 0;
 }
 
 static int project_save(void)            /* the settings and the bank: 0 = ok */

@@ -138,11 +138,11 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>The next or previous page.</dd>
     <dt><span class="v">tap</span><span class="c">EDIT</span></dt>
-    <dd>OSC: model, shape, sub, noise (shape and noise named for the model). Turn SELECT for NOISE.</dd>
+    <dd>OSC: model, shape, sub, noise (shape and noise named for the model). Turn SELECT for NOISE, again for NOISE 2 (type, gust, duck, width).</dd>
     <dt><span class="v">tap</span><span class="c">ENV</span></dt>
     <dd>ENVELOPE: attack, release, aftertouch, glide. Turn SELECT for LEAD.</dd>
     <dt><span class="v">tap</span><span class="c">LFO</span></dt>
-    <dd>LFO: tremolo rate, vibrato, random, width.</dd>
+    <dd>LFO: tremolo rate, vibrato, random, width. Turn SELECT for VOICES: spread, cross mod, timbre drift, pan drift (what makes eight voices sound like eight).</dd>
     <dt><span class="v">tap</span><span class="c">FX</span></dt>
     <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
@@ -169,8 +169,8 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dd>LATCH off: the voices keep sounding, and each key plays a lead over them while you hold it. Tap again for LATCH on.</dd>
     <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">keys</span></dt>
     <dd>Move the chord: each key moves the whole latched chord there, its lowest note to that key. Let go of SEL and the keys play as before.</dd>
-    <dt><span class="v">hold</span><span class="c">SEL</span><span class="v">1 s</span></dt>
-    <dd>Stop every voice.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c">HOME</span></dt>
+    <dd>Stop every voice. SEL held is the chord's button and has no timer: held with nothing touched, it does nothing.</dd>
     <dt><span class="v">tap</span><span class="c">OCT-</span><span class="c">OCT+</span></dt>
     <dd>The keys an octave down or up, two each way.</dd>
   </dl>
@@ -198,9 +198,9 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>GEN: the voices move</h2>
   <dl>
     <dt><span class="v">tap</span><span class="c">PLAY</span></dt>
-    <dd>GEN on or off. PLAY's colour shows the mode.</dd>
-    <dt><span class="v">hold</span><span class="c">PLAY</span></dt>
-    <dd>GEN page: KNOB 1 picks the mode, KNOB 2–4 set it.</dd>
+    <dd>GEN on or off. PLAY's colour shows the mode. Turning it on opens the GEN page (KNOB 1 the mode, KNOB 2–4 set it; GEN 2 stays if open); turning it off leaves the page be. ARP opens the page any time.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c">PLAY</span></dt>
+    <dd>The next move now (ARP: the next step), and the countdown starts over.</dd>
     <dt><span class="mode"><span class="dot g"></span> WALK</span></dt>
     <dd>One voice at a time moves to a nearby note.</dd>
     <dt><span class="mode"><span class="dot o"></span> SHIFT</span></dt>
@@ -238,7 +238,9 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>Presets and saving</h2>
   <dl>
     <dt><span class="v">turn</span><span class="c k">PRESETS</span></dt>
-    <dd>Change the sound: the screen lists the presets and a line fills; then it blends in over MORPH (4 s) under your chord. LATCH, GEN and FREEZE stay. With nothing latched, the preset's own chord comes too (factory chords stand on C and play in ROOT).</dd>
+    <dd>Change the sound: the screen lists the presets and a line fills; then it blends in over MORPH (4 s) under your chord. LATCH, GEN and FREEZE stay. PRESETS alone never brings a chord.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span></dt>
+    <dd>The preset's chord comes too, in place of yours: the old voices release as the new swell (factory chords stand on C and play in ROOT).</dd>
     <dt><span class="v">hold</span><span class="c">HOME</span><span class="v">1 s</span></dt>
     <dd>The preset back as saved: its sound, effect switches and GEN values blend back in; your chord keeps playing.</dd>
     <dt><span class="v">tap</span><span class="c">SAVE</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span><span class="p">+</span><span class="v">tap</span><span class="c">SAVE</span></dt>
@@ -253,16 +255,20 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dd>Notes (any channel by default), and clock to time GEN.</dd>
     <dt><span class="v">out over</span><span class="c">USB</span><span class="c">Bluetooth</span></dt>
     <dd>The keys and GEN's moves. The TRS jack is in only.</dd>
-    <dt><span class="v">tap</span><span class="c">REC</span><span class="p">+</span><span class="v">turn</span><span class="c k">ALGORITHM</span><span class="p">+</span><span class="v">tap</span><span class="c">REC</span></dt>
-    <dd>Find a Bluetooth MIDI keyboard and connect to it. REC again disconnects.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span><span class="p">+</span><span class="v">turn</span><span class="c k">ALGORITHM</span><span class="p">+</span><span class="v">tap</span><span class="c">REC</span></dt>
+    <dd>Connect a Bluetooth MIDI keyboard: the MIDI page shows CONNECTED or NOT CONNECTED and lists the devices it finds; ALGORITHM picks one, REC connects it, REC again disconnects. On other pages REC searches first.</dd>
     <dt><span class="v">hold</span><span class="c">REC</span><span class="v">1 s</span></dt>
     <dd>Bluetooth on or off.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>MIDI: in and out channels, local, velocity. Turn again for USB: recording and clock out.</dd>
-    <dt><span class="v">send</span><span class="c">CC 16–19</span></dt>
-    <dd>TIMBRE, DRIFT, REVERB, TREMOLO. CC 20 is the noise level, 64 sustain, 123 stops every voice.</dd>
+    <dt><span class="v">send</span><span class="c">a CC</span></dt>
+    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
+    <dt><span class="v">send</span><span class="c">CC 57–63</span></dt>
+    <dd>Switches: 57 LATCH, 58 GEN, 59 FREEZE, 60–63 ensemble, delay, reverb, shimmer (64 up is on); 12 the noise layer. Triggers: 13 the preset as saved, 14 GEN's next move now.</dd>
+    <dt><span class="v">send</span><span class="c">SysEx</span></dt>
+    <dd>F0 7D 44 46 01 64 F7 asks for every user preset; each comes back as a frame you can keep, share, and send back into a U slot. tools/fm1_bank.py dumps and loads a bank.</dd>
     <dt><span class="v">send</span><span class="c">program 0–31</span></dt>
-    <dd>Load the sound of F1–F16, then U1–U16.</dd>
+    <dd>Load the sound of F1–F16, then U1–U16 (never a chord).</dd>
     <dt><span class="v">send</span><span class="c">NRPN</span></dt>
     <dd>A voice's own values, in and out: CC 99 = 1 LEVEL, 2 TONE, 3 TUNE, 4 LOCK; CC 98 = its note; CC 6 = the value.</dd>
   </dl>
@@ -293,13 +299,14 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <ul class="notes">
     <li>A button always opens the same page, and SELECT steps between pages. The four boxes at the bottom of the screen are the four knobs.</li>
     <li>SEL, PLAY and SEQ are lit while their mode is on: LATCH, GEN, FREEZE.</li>
-    <li>F1–F16 are the factory presets; U1–U16 are yours. F3 GLASS ORBIT and F11 GAMELAN were made for GEN.</li>
+    <li>F1–F16 are the factory presets, every model once and every GEN mode on two (press PLAY to hear it); F16 INIT is every value at its start. U1–U16 are yours.</li>
     <li>Switching on, the name falls into a vortex for three seconds (press anything to skip). Then it is silent: the last preset's sound is ready, and nothing plays until you press a key.</li>
     <li>Knobs: turned slowly, small steps; turned fast, big ones. A knob with a few values moves one a click.</li>
     <li>Key lights: bright is a voice sounding there (tap to stop it), half is sound going (a voice fading, the held chord while LATCH is off), a glow is the scale.</li>
     <li>On the screen only sound gives off light. Sun means latched, white your hand (a lead, an open voice), cyan where you are, teal an effect on, orange something to look at.</li>
     <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a preset. SAVE is lit while a sound or a setting is unsaved.</li>
     <li>SEL is a button (LATCH) and SELECT is a knob (pages): different controls.</li>
+    <li>The keys send the velocity you struck them at over MIDI, whatever VELOCITY says; that switch only decides whether DEEP FIELD itself listens.</li>
     <li>Update mode: hold REC while you switch on. Hardware calibration (buttons and knobs): hold OCT- and OCT+ while you switch on.</li>
     <li>Back to the stock firmware: the installer puts M-VAVE's own back.</li>
   </ul>

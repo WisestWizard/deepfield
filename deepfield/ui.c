@@ -12,13 +12,14 @@
  * and a page stays until a button or SELECT moves it. A lit button is a mode: SEL is LATCH (on: a key strikes a
  * body that stays, and pressed again where it sounds lets it go; off: the keys play leads over the bed), PLAY runs
  * ORBIT, SEQ freezes the reverb, the page's button lights. Held buttons are layers, gone when let go: FX held, F3
- * G3 A3 B3 C4 switch the effects and the noise (saved with the scene); SEL held, the keys move the latched chord,
- * and a second with no key lets every body go. PRESET scrolls the scenes and the one it stops on morphs in (with
- * nothing latched, it brings its chord); ALGO picks the model; SAVE saves a scene (PRESET picks the slot, SAVE again
- * saves, HOME cancels); REC is Bluetooth. */
+ * G3 A3 B3 C4 switch the effects and the noise (saved with the scene); SEL held is the chord's button, nothing on a
+ * timer: a key moves the latched chord there, PRESETS brings the preset's chord in over it (the old voices release
+ * as the new swell), PLAY makes ORBIT's next move now, HOME lets every body go. PRESET alone scrolls the scenes and
+ * the one it stops on morphs in, the sound only; ALGO picks the model; SAVE saves a scene (PRESET picks the slot,
+ * SAVE again saves, HOME cancels); REC is Bluetooth. Every knob sends its CC and takes it (CC_OF). */
 #include "art.h"                         /* the model glyphs and the page icons */
-enum { PG_HOME, PG_BODY, PG_NOISE, PG_ENV, PG_LEAD, PG_MOTION, PG_FX_ENS, PG_FX_DLY, PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
-       PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY, PG_FX_DLY2,
+       PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_MORPH, K_CHIN, K_CHOUT,
@@ -31,10 +32,12 @@ typedef struct {
 static const page_t PAGES[PG_COUNT] = {
     {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
     {"OSC", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
-    {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},   /* TEXTURE, GUST, DUCK, WIDTH: the scene's */
+    {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
+    {"NOISE 2", "EDIT", {P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH}},   /* its kind, weather, ducking, width */
     {"ENVELOPE", "ENV", {P_SWELL, P_FADE, P_PRESS, P_GLIDE}},
     {"LEAD", "ENV", {P_LD_ATTACK, P_LD_RELEASE, P_LD_LIFT, P_LD_LEVEL}},   /* the keys with LATCH off */
-    {"LFO", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},   /* SPREAD, CROSS, TIMBRE, SWAY: the scene's */
+    {"LFO", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
+    {"VOICES", "LFO", {P_SPREAD, P_CROSS, P_TWALK, P_SWAY}},   /* the voices apart: spread, coupled, drifting, swaying */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
     {"DELAY", "FX", {P_DLY_TYPE, P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX}},
     {"DELAY 2", "FX", {P_DLY_COLOUR, P_DLY_DIFF, P_DLY_WOW, P_DLY_CHOP}},
@@ -78,6 +81,35 @@ static const pmeta_t PM[PID_COUNT] = {
     [PID_SPEAKER] = {"SPEAKER", K_SPEAKER}, [PID_USB_LEVEL] = {"USB LEVEL", K_USBLVL}, [PID_CLOCK_OUT] = {"CLOCK OUT", K_ONOFF},
     [PID_NONE] = {"", K_NONE},
 };
+/* MIDI CC for every value (0: none), in and out: a knob turned sends its CC, a CC in sets the value (app.c midi_cc;
+ * a few-valued knob is spread over 0..127 in equal parts: cc_in_val, cc_out_val). 74 and 91 also set TIMBRE and
+ * REVERB on the way in (the usual numbers), out they go as 16 and 18. The switches and triggers: CC_* below */
+static const uint8_t CC_OF[PID_COUNT] = {
+    [P_MODEL] = 9, [P_MASS] = 16, [P_DRIFT] = 17, [P_SPACE] = 18, [P_TIDE] = 19,
+    [P_SHAPE] = 71, [P_SUB] = 21, [P_AIR] = 22,
+    [P_SWELL] = 73, [P_FADE] = 72, [P_PRESS] = 30, [P_GLIDE] = 5,
+    [P_LD_ATTACK] = 75, [P_LD_RELEASE] = 76, [P_LD_LIFT] = 77, [P_LD_LEVEL] = 78,
+    [P_TIDE_RATE] = 79, [P_WOBBLE] = 80, [P_WALK] = 81, [P_WIDTH] = 82,
+    [P_SPREAD] = 83, [P_CROSS] = 84, [P_TWALK] = 85, [P_SWAY] = 86,
+    [P_NZ_LEVEL] = 20, [P_NZ_COLOUR] = 23, [P_NZ_WIND] = 24, [P_NZ_BAND] = 25,
+    [P_NZ_TEXTURE] = 26, [P_NZ_GUST] = 27, [P_NZ_DUCK] = 28, [P_NZ_WIDTH] = 29,
+    [P_ENS] = 87, [P_ENS_MIX] = 93,
+    [P_DLY_TYPE] = 102, [P_DLY_TIME] = 88, [P_DLY_FDBK] = 89, [P_DLY_MIX] = 94,
+    [P_DLY_COLOUR] = 90, [P_DLY_DIFF] = 105, [P_DLY_WOW] = 103, [P_DLY_CHOP] = 104,
+    [P_REV_SIZE] = 106, [P_REV_DAMP] = 107, [P_SHIMMER] = 108,
+    [P_ORB_MODE] = 109, [P_ORB_PERIOD] = 110, [P_ORB_CHANCE] = 111, [P_ORB_RANGE] = 112, [P_GRAVITY] = 113,
+    [P_ORB_DIST] = 114, [P_ORB_BODIES] = 115, [P_ARP_RATE] = 116, [P_ARP_GATE] = 117, [P_ARP_ORDER] = 118,
+    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53, [P_ORB_ROLL] = 54,
+    [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
+    [PID_SCALE] = 2, [PID_ROOT] = 3,
+};
+#define CC_NOISE_SW 12u                  /* the switches (64 up: on) and the triggers (64 up: now) */
+#define CC_AS_SAVED 13u
+#define CC_GEN_NOW 14u
+#define CC_LATCH 57u
+#define CC_GEN 58u
+#define CC_FREEZE 59u
+#define CC_FX_SW 60u                     /* 60 ensemble, 61 delay, 62 reverb, 63 shimmer */
 static const char *const ENS_NAME[ENS_COUNT] = {"OFF", "CHOR I", "CHOR II", "ENSEMBLE"};
 static const char *const NOTE_NAME[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 static const char *const BTN_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ",
@@ -167,7 +199,9 @@ static struct {
     uint8_t home_used;
     uint8_t fx_used, sel_used;
     uint8_t sel_keyed;                   /* SEL held and a key touched: the keys move the latched chord until SEL is let go */
-    uint8_t sel_cleared;                 /* SEL held a second let every body go: the keys strike again, SEL still down */
+    uint8_t sel_cleared;                 /* SEL + HOME let every body go: the keys strike again, SEL still down */
+    uint8_t sel_chord;                   /* PRESETS turned while SEL was held: the scene lands with its chord */
+    uint32_t bank_save_t;                /* a preset came in over SysEx: the bank is saved once they stop coming */
     uint8_t cfg_dirty;                   /* a GLOBAL, MIDI or USB setting changed since the last save (SAVE lights) */
     uint8_t boot;                        /* the vortex is playing (boot_frame); boot_t: since when */
     uint32_t boot_t;
@@ -282,6 +316,7 @@ static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI I
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
 static const char *const DTYPE_NAME[DT_COUNT] = {"PING PONG", "TAPE", "MULTI TAP", "REVERSE", "OCT UP", "OCT DOWN", "GRANULAR"};
 static const char *param_label(uint32_t id);
+static void cc_send(uint32_t id);
 static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the mode's; a knob the model
                                                      * doesn't use is empty */
 {
@@ -338,6 +373,43 @@ static uint32_t value_max(uint32_t id)
     case K_ONOFF: return 1u;
     default: return 127u;
     }
+}
+/* a value over MIDI: a 0..127 knob as it is; a knob with a few values spread over 0..127 in equal parts, sent from
+ * the middle of its part, so what comes back is what went out */
+static uint32_t cc_out_val(uint32_t id, uint32_t v)
+{
+    uint32_t mx = value_max(id);
+    return mx < 127u ? (v * 128u + 64u) / (mx + 1u) : v & 127u;
+}
+static uint32_t cc_in_val(uint32_t id, uint32_t v)
+{
+    uint32_t mx = value_max(id);
+    return mx < 127u ? (v & 127u) * (mx + 1u) / 128u : v & 127u;
+}
+static int32_t cc_param(uint32_t cc)     /* the value a CC sets, -1 none */
+{
+    uint32_t id;
+    if (cc == 74u)
+        return P_MASS;
+    if (cc == 91u)
+        return P_SPACE;
+    for (id = 0; id < PID_COUNT; id++)
+        if (CC_OF[id] == cc && cc)
+            return (int32_t)id;
+    return -1;
+}
+static uint8_t cc_quiet;                 /* a CC coming in is being applied: nothing goes back out */
+static void midi_cc_out(uint32_t cc, uint32_t v)
+{
+    if (cc_quiet)
+        return;
+    plat_midi_send(0x0Bu | (0xB0u | ((uint32_t)set.midi_out - 1u)) << 8 | (cc & 127u) << 16 | (v & 127u) << 24,
+                   TO_USB | TO_BLE);
+}
+static void cc_send(uint32_t id)         /* a knob turned: its value out */
+{
+    if (id < PID_COUNT && CC_OF[id])
+        midi_cc_out(CC_OF[id], cc_out_val(id, value_of(id)));
 }
 static void ms_text(float s, char *b)   /* below a second in ms, else seconds to a tenth */
 {
@@ -698,6 +770,7 @@ static void knob(uint32_t id, int32_t e, int fast)
         scene_dirty = 1;
     }
     value_set(id, (uint32_t)v);
+    cc_send(id);
     value_text(id, t);
     ui_say(param_label(id), t);
     ui.hud_id = (uint16_t)id;
@@ -766,6 +839,7 @@ static void scene_reset(void)
     scene_dirty = 0;
     slot_title(set.scene, t);
     ui_say(t, "AS SAVED");
+    midi_cc_out(CC_AS_SAVED, 127);
     ui.redraw_head = ui.redraw_foot = 1;
 }
 
@@ -811,25 +885,21 @@ static uint32_t key_note(uint32_t k)     /* the key's own note: the scale glows 
 }
 static void key_on(uint32_t k, uint32_t vel)
 {
-    uint32_t note = key_note(k);
-    if (!set.vel)
-        vel = 100;
+    uint32_t note = key_note(k), evel = set.vel ? vel : 100u;   /* VELOCITY off: the engine hears every key the
+                                                                  * same; MIDI out carries the key as struck */
     ui.keynote[k] = (uint8_t)note;
     ui.keynotes |= 1u << k;
     ui.prs[k] = 0;
-    ui.vel[k] = (uint8_t)vel;
+    ui.vel[k] = (uint8_t)evel;
+    midi_note_out(note, vel, 1);
     if (set.local) {                     /* LATCH on: a body that stays (a key where one sounds lets it go: input());
                                           * off: a lead over the bed, whatever is latched */
-        if (set.latch) {
-            midi_note_out(note, vel, 1);
-            dr_note_latched(note, vel);
-        } else {
-            midi_note_out(note, vel, 1);
-            dr_lead(note, vel, 1);
+        if (set.latch)
+            dr_note_latched(note, evel);
+        else {
+            dr_lead(note, evel, 1);
             ui.keylead |= 1u << k;
         }
-    } else {
-        midi_note_out(note, vel, 1);
     }
 }
 static void key_off(uint32_t k)
@@ -884,11 +954,6 @@ static uint32_t body_code(uint32_t what, int32_t x)   /* a value as NRPN data */
     case BE_TUNE: return (uint32_t)(x + 64);
     default: return x ? 127u : 0u;
     }
-}
-static void midi_cc_out(uint32_t cc, uint32_t v)
-{
-    plat_midi_send(0x0Bu | (0xB0u | ((uint32_t)set.midi_out - 1u)) << 8 | (cc & 127u) << 16 | (v & 127u) << 24,
-                   TO_USB | TO_BLE);
 }
 static void body_open(uint32_t bits)     /* the keys' bodies open: their values read once, the knobs move them on */
 {
@@ -957,6 +1022,23 @@ static void orbit_toggle(void)
         ui_say("GEN ON", t);
     } else
         ui_say("GEN", "OFF");
+    midi_cc_out(CC_GEN, dr_orbit_on() ? 127u : 0u);
+    ui.redraw_head = 1;
+}
+static void orbit_now(void)              /* SEL + PLAY (or CC 14): the next move now */
+{
+    if (dr_orbit_on()) {
+        dr_orbit_now();
+        ui_say("GEN", "NOW");
+        midi_cc_out(CC_GEN_NOW, 127);
+    } else
+        ui_say("GEN", "OFF");
+}
+static void freeze_set(uint32_t on)
+{
+    dr_freeze((int)on);
+    ui_say("FREEZE", dr_frozen() ? "ON" : "OFF");
+    midi_cc_out(CC_FREEZE, dr_frozen() ? 127u : 0u);
     ui.redraw_head = 1;
 }
 static void all_let_go(void)
@@ -982,6 +1064,7 @@ static void latch_set(uint32_t on, int say)   /* SEL: the LATCH mode. On, a key 
     if (set.latch != on) {
         set.latch = (uint8_t)on;
         set_dirty = 1;
+        midi_cc_out(CC_LATCH, on ? 127u : 0u);
     }
     if (say) {
         if (on)
@@ -1006,58 +1089,68 @@ static uint32_t fx_keys_lit(void)
             m |= 1u << FXKEY[i];
     return m;
 }
-static void fx_key(uint32_t k)
+/* switch i (0 ensemble .. 3 shimmer, 4 the noise layer) on or off, from the FX key (fx_key: the other way) or a CC */
+static void fx_set(uint32_t i, uint32_t on)
 {
-    uint32_t i, b = dr_fx_bypass_get();
-    if (k == FXKEY[4]) {                 /* the noise layer: its LEVEL is its switch; from zero, a third */
+    uint32_t b = dr_fx_bypass_get();
+    if (i == 4u) {                       /* the noise layer: its LEVEL is its switch; from zero, a third */
         uint32_t lv = dr_scene.p[P_NZ_LEVEL];
         char t[16];
-        ui.fx_used = 1;
-        if (lv) {
+        if (!on && lv) {
             ui.nz_last = (uint8_t)lv;
             value_set(P_NZ_LEVEL, 0);
             ui_say("NOISE", "OFF");
-        } else {
+        } else if (on && !lv) {
             uint32_t saved = slot_scene(set.scene)->p[P_NZ_LEVEL];
             value_set(P_NZ_LEVEL, ui.nz_last ? ui.nz_last : saved ? saved : 44u);
             value_text(P_NZ_LEVEL, t);
             ui_say("NOISE", t);
-        }
+        } else
+            return;
+        midi_cc_out(CC_NOISE_SW, on ? 127u : 0u);
         ui.redraw_foot = 1;
         return;
     }
-    for (i = 0; i < 4u; i++)
-        if (FXKEY[i] == k) {
-            uint32_t on = dr_fx_active() >> i & 1u;
-            ui.fx_used = 1;
-            if (on) {
-                b |= 1u << i;
-            } else {                     /* a stage the scene has at zero comes in at a usable amount */
-                b &= ~(1u << i);
-                if (i == 0u) {
-                    if (!dr_scene.p[P_ENS])
-                        value_set(P_ENS, ENS_CHORUS1);
-                    if (!dr_scene.p[P_ENS_MIX])
-                        value_set(P_ENS_MIX, 40u);
-                } else if (i == 1u) {
-                    if (!dr_scene.p[P_DLY_MIX])
-                        value_set(P_DLY_MIX, 35u);
-                } else {                 /* the shimmer sounds through the hall, so it brings the hall too */
-                    if (i == 3u) {
-                        b &= ~DR_FX_REV;
-                        if (!dr_scene.p[P_SHIMMER])
-                            value_set(P_SHIMMER, 30u);
-                    }
-                    if (!dr_scene.p[P_SPACE])
-                        value_set(P_SPACE, 45u);
-                }
-            }
-            dr_fx_bypass(b);
-            dr_scene.fx_off = (uint8_t)b;
-            scene_dirty = 1;
-            ui.redraw_foot = 1;
-            ui_say(FXNAME[i], on ? "OFF" : "ON");
+    if (i < 4u) {
+        if (on == (dr_fx_active() >> i & 1u))
             return;
+        if (!on) {
+            b |= 1u << i;
+        } else {                     /* a stage the scene has at zero comes in at a usable amount */
+            b &= ~(1u << i);
+            if (i == 0u) {
+                if (!dr_scene.p[P_ENS])
+                    value_set(P_ENS, ENS_CHORUS1);
+                if (!dr_scene.p[P_ENS_MIX])
+                    value_set(P_ENS_MIX, 40u);
+            } else if (i == 1u) {
+                if (!dr_scene.p[P_DLY_MIX])
+                    value_set(P_DLY_MIX, 35u);
+            } else {                 /* the shimmer sounds through the hall, so it brings the hall too */
+                if (i == 3u) {
+                    b &= ~DR_FX_REV;
+                    if (!dr_scene.p[P_SHIMMER])
+                        value_set(P_SHIMMER, 30u);
+                }
+                if (!dr_scene.p[P_SPACE])
+                    value_set(P_SPACE, 45u);
+            }
+        }
+        dr_fx_bypass(b);
+        dr_scene.fx_off = (uint8_t)b;
+        scene_dirty = 1;
+        ui.redraw_foot = 1;
+        ui_say(FXNAME[i], on ? "ON" : "OFF");
+        midi_cc_out(CC_FX_SW + i, on ? 127u : 0u);
+    }
+}
+static void fx_key(uint32_t k)           /* FX held, one of the five keys: its switch the other way */
+{
+    uint32_t i;
+    for (i = 0; i < NFXK; i++)
+        if (FXKEY[i] == k) {
+            ui.fx_used = 1;
+            fx_set(i, !(dr_fx_active() >> i & 1u));
         }
 }
 
@@ -1065,38 +1158,54 @@ static void fx_key(uint32_t k)
 int df_ble_off(void) { return set.ble_off; }
 static int transposing(void) { return ui.sel_down && ui.sel_keyed && (ui.btn >> B_SEL & 1u); }
 int df_shift(void) { return transposing(); }
+static int ble_panel_up(void) { return FM1B_BLE_CENTRAL && ui.page == PG_MIDI; }
+static void bt_say(const char *a, const char *b)   /* on the MIDI page its panel shows it: only the reader hears it */
+{
+    char t[48];
+    if (!ble_panel_up()) {
+        ui_say(a, b);
+        return;
+    }
+    if (ann_on()) {
+        t[0] = 0;
+        text_cat(t, a);
+        text_cat(t, " ");
+        text_cat(t, b);
+        ann_say(t, 0, ANN_NOW);
+    }
+}
 static void ble_toggle(void)
 {
     set.ble_off = (uint8_t)!set.ble_off;
     set_dirty = 1;
     ui.cfg_dirty = 1;
     plat_ble_enable(!set.ble_off);
-    ui_say("BLUETOOTH", set.ble_off ? "OFF" : "ON");
+    bt_say("BLUETOOTH", set.ble_off ? "OFF" : "ON");
 }
 static void ble_device_say(void)
 {
     char name[21];
     if (btdev_found(btdev_pick(), name, 0))
-        ui_say("DEVICE", name);
+        bt_say("DEVICE", name);
     else
-        ui_say("BLE", "SCANNING");
+        bt_say("BLE", "SCANNING");
 }
-static void ble_device_button(void)
+static void ble_device_button(void)  /* the MIDI page lists the devices already: REC connects at once */
 {
     int ev;
-    if (!btdev_busy() && !ui.looking) {
+    if (!btdev_busy() && !ui.looking && !ble_panel_up()) {
         ui.looking = 1;
         ui_say("BLE", "SCANNING");
         return;
     }
     ev = btdev_save();
     ui.looking = 0;
-    ui_say(ev == BTDEV_CONNECTING ? btdev_word(ev) : "BLE", ev == BTDEV_CONNECTING ? btdev_name() : btdev_word(ev));
+    bt_say(ev == BTDEV_CONNECTING ? btdev_word(ev) : "BLE", ev == BTDEV_CONNECTING ? btdev_name() : btdev_word(ev));
 }
 
 /* ------------------------------------------------------------------ buttons --- */
-static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_FX, B_FX, B_FX, B_FX, B_ARP, B_ARP,
-                                           B_GLO, B_GLO, B_GLO};
+static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_FX,
+                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -1116,8 +1225,9 @@ static void octave_step(int32_t d)
     ui_say("OCTAVE", t);
     ui.redraw_head = 1;
 }
-static void button(uint32_t k, uint32_t now)
+static void button(uint32_t k, uint32_t now, uint32_t btn)
 {
+    int sel_mod = ui.sel_down && (btn >> B_SEL & 1u) && !ui.sel_cleared;   /* SEL held: the chord's button */
     if (ui.dialog) {                     /* the save dialog: SAVE saves, anything else backs out */
         if (k == B_SAVE)
             save_confirm();
@@ -1132,6 +1242,11 @@ static void button(uint32_t k, uint32_t now)
     }
     switch (k) {
     case B_HOME:
+        if (sel_mod) {                   /* SEL + HOME: every body let go; the keys strike again, SEL still down */
+            ui.sel_used = ui.sel_cleared = 1;
+            all_let_go();
+            break;
+        }
         page_to(PG_HOME);
         ui.home_t = now;
         ui.home_used = 0;
@@ -1148,13 +1263,23 @@ static void button(uint32_t k, uint32_t now)
     case B_SEL:
         ui.sel_down = now;
         ui.sel_used = ui.sel_keyed = ui.sel_cleared = 0;
+        if (btn >> B_HOME & 1u) {        /* HOME already down: the same as SEL then HOME */
+            ui.sel_used = ui.sel_cleared = ui.home_used = 1;
+            all_let_go();
+        }
         break;
-    case B_PLAY: orbit_toggle(); break;
-    case B_SEQ:
-        dr_freeze(!dr_frozen());
-        ui_say("FREEZE", dr_frozen() ? "ON" : "OFF");
-        ui.redraw_head = 1;
+    case B_PLAY:
+        if (sel_mod) {                   /* SEL + PLAY: ORBIT's next move now */
+            ui.sel_used = 1;
+            orbit_now();
+        } else {
+            orbit_toggle();
+            if (dr_orbit_on() && ui.page != PG_ORBIT && ui.page != PG_ORBIT2)   /* on: the GEN page, its knobs the
+                                          * ones you want next (GEN 2 open stays open); off: the page stays */
+                page_to(PG_ORBIT);
+        }
         break;
+    case B_SEQ: freeze_set(!dr_frozen()); break;
     case B_SAVE:
         ui.dialog = 1;
         ui.save_to = (uint8_t)(set.scene >= NFACTORY ? set.scene - NFACTORY : 0u);
@@ -1235,7 +1360,7 @@ static void input(void)
     for (k = 0; k < NB; k++) {
         uint32_t bit = 1u << k;
         if ((btn & bit) && !(ui.btn & bit))
-            button(k, now);
+            button(k, now, btn);
     }
     if (ui.fx_t) {                       /* FX: a tap opens the effects pages; held, the keys switched effects */
         if (btn >> B_FX & 1u) {
@@ -1248,21 +1373,15 @@ static void input(void)
             ui.fx_up = now;
         }
     }
-    if (ui.sel_down) {                   /* SEL: a tap switches LATCH; held, a layer: a key moves the chord there, and a
-                                          * second with no key lets every body go (the keys then strike again) */
-        if (btn >> B_SEL & 1u) {
-            if (now - ui.sel_down >= 1000u && !ui.sel_used) {
-                ui.sel_used = ui.sel_cleared = 1;
-                all_let_go();
-            }
-        } else {
-            if (!ui.sel_used)
-                latch_set(!set.latch, 1);
-            if (ui.sel_keyed)
-                ui.redraw_head = 1;
-            ui.sel_down = 0;
-            ui.sel_keyed = ui.sel_cleared = 0;
-        }
+    if (ui.sel_down && !(btn >> B_SEL & 1u)) {   /* SEL let go: a tap (under 0.6 s, nothing done while it was held)
+                                                  * switches LATCH; held, it was the chord's button (a key, PRESETS,
+                                                  * PLAY, HOME), and held long with nothing done it was nothing */
+        if (!ui.sel_used && now - ui.sel_down < 600u)
+            latch_set(!set.latch, 1);
+        if (ui.sel_keyed)
+            ui.redraw_head = 1;
+        ui.sel_down = 0;
+        ui.sel_keyed = ui.sel_cleared = 0;
     }
     if (ui.home_t) {
         if (btn >> B_HOME & 1u) {
@@ -1305,17 +1424,21 @@ static void input(void)
             }
             continue;
         }
-        if (k == EN_ALGO && FM1B_BLE_CENTRAL && ui.looking) {
-            btdev_choose(btdev_pick() + e);
-            ble_device_say();
+        if (k == EN_ALGO && FM1B_BLE_CENTRAL && (ui.looking || ble_panel_up())) {   /* the device list, not the model */
+            if (!btdev_busy()) {
+                btdev_choose(btdev_pick() + e);
+                ble_device_say();
+            }
         } else if (k == EN_PRESET) {     /* scroll: the candidate shows, a bar filling under it; it loads once PRESET
-                                          * rests 0.7 s (with nothing latched, with its chord) */
+                                          * rests 0.7 s: the sound; with SEL held, its chord too, over the chord playing */
             char t[24];
             int32_t from = ui.sel_slot >= 0 ? ui.sel_slot : (int32_t)set.scene;
+            if (ui.sel_down && (btn >> B_SEL & 1u) && !ui.sel_cleared)
+                ui.sel_used = ui.sel_chord = 1;
             ui.sel_slot = clamp(from + e, 0, (int32_t)NSLOTS - 1);
             ui.sel_t = now;
             slot_title((uint32_t)ui.sel_slot, t);
-            ui_say(!dr_latched() && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "PRESET + CHORD" : "PRESET", t);
+            ui_say(ui.sel_chord && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "PRESET + CHORD" : "PRESET", t);
         } else if (k == EN_ALGO) {
             knob(P_MODEL, e, 0);
         } else if (k == EN_SELECT) {     /* the page before or after */
@@ -1333,10 +1456,11 @@ static void input(void)
     }
     if (ui.sel_slot >= 0 && now - ui.sel_t >= 700u) {
         int32_t slot = ui.sel_slot;
-        int bare = !dr_latched();        /* nothing latched: the scene comes with its chord, so browsing is heard */
+        int chord = ui.sel_chord;        /* SEL was held: the scene's chord comes in over the chord playing */
         ui.sel_slot = -1;
-        if (slot != (int32_t)set.scene || bare)
-            scene_go((uint32_t)slot, 1, bare);
+        ui.sel_chord = 0;
+        if (slot != (int32_t)set.scene || chord)
+            scene_go((uint32_t)slot, 1, chord);
     }
     ui.keys = keys;
     ui.btn = btn;
@@ -1402,12 +1526,8 @@ static void input(void)
     }
     lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u) | play_led
             | (uint32_t)ui.oct_lit << B_OCTDN;
-    if ((now / 150u) & 1u) {             /* a hold under way blinks until it fires, over the mode's light too */
-        if (ui.sel_down && !ui.sel_used && now - ui.sel_down >= 300u)
-            lit_btn &= ~(1u << B_SEL);
-        if (ui.rec_t && now - ui.rec_t >= 300u)
-            lit_btn &= ~(1u << B_REC);
-    }
+    if ((now / 150u) & 1u && ui.rec_t && now - ui.rec_t >= 300u)   /* a hold under way blinks until it fires */
+        lit_btn &= ~(1u << B_REC);
     if (ui.dialog)
         lit_btn |= ((now / 250u) & 1u) ? 1u << B_SAVE : 0u;
     else {
@@ -1883,7 +2003,7 @@ static void browse_draw(uint32_t now)    /* PRESET turning: the scene's neighbou
     slot_title((uint32_t)s, t);
     f = text_w(&FONT_L, t) <= 232 ? &FONT_L : &FONT_M;
     cv_text((SKY_W - text_w(f, t)) / 2, f == &FONT_L ? 20 : 24, f, t, C_BRIGHT);
-    if (!dr_latched() && slot_scene((uint32_t)s)->vel[0])
+    if (ui.sel_chord && slot_scene((uint32_t)s)->vel[0])
         cv_text((SKY_W - text_w(&FONT_XS, "+ CHORD")) / 2, 52, &FONT_XS, "+ CHORD", C_LATCH);
     for (i = 0; i < (int32_t)NSLOTS; i++) {
         int32_t x = 25 + i * 6 + (i >= (int32_t)NFACTORY ? 4 : 0);
@@ -1901,6 +2021,51 @@ static void browse_draw(uint32_t now)    /* PRESET turning: the scene's neighbou
         cv_rect(20, SKY_H - 2, 200, 2, C_RULE);
         cv_rect(20, SKY_H - 2, (int32_t)((el > 700u ? 700u : el) * 200u / 700u), 2, C_TEXT);
     }
+}
+
+/* the MIDI page's Bluetooth panel: the device connected and how to let it go, or the devices around (the MIDI page
+ * searches while it is up and nothing is connected), the one ALGO picks, and how to connect it */
+static void ble_panel(uint32_t now)
+{
+    char name[21], t[24];
+    int32_t i, n, pick, top, y;
+    cv_rect(0, 0, SKY_W, SKY_H, C_SKY);
+    cv_text(4, 2, &FONT_T, "BLUETOOTH DEVICE", C_LABEL);
+    if (set.ble_off) {
+        cv_text(4, 18, &FONT_M, "BLUETOOTH OFF", C_OFF);
+        cv_text(4, 66, &FONT_XS, "HOLD REC A SECOND TO TURN IT ON", C_LABEL);
+        return;
+    }
+    if (btdev_busy()) {
+        int ok = btdev_ready();
+        cv_text(4, 18, &FONT_M, ok ? "CONNECTED" : "CONNECTING", ok ? C_FX_ON : C_BRIGHT);
+        cv_text(4, 45, &FONT_S, btdev_name(), C_BRIGHT);
+        cv_text(4, 66, &FONT_XS, ok ? "REC DISCONNECTS" : "REC CANCELS", C_LABEL);
+        return;
+    }
+    cv_text(236 - text_w(&FONT_T, "NOT CONNECTED"), 2, &FONT_T, "NOT CONNECTED", C_WARN);
+    n = btdev_count();
+    if (!n) {
+        t[0] = 0;
+        text_cat(t, "SEARCHING");
+        for (i = 0; i < (int32_t)(now / 400u % 4u); i++)
+            text_cat(t, ".");
+        cv_text(4, 18, &FONT_M, t, C_LABEL);
+        cv_text(4, 66, &FONT_XS, "TURN ON BLUETOOTH ON THE KEYBOARD", C_LABEL);
+        return;
+    }
+    pick = btdev_pick();
+    top = clamp(pick - 1, 0, n > 3 ? n - 3 : 0);
+    for (i = top, y = 16; i < n && i < top + 3; i++, y += 16)
+        if (btdev_found((int)i, name, 0)) {
+            if (i == pick)
+                cv_rect(0, y + 1, 3, 14, C_TEXT);
+            cv_text(10, y, &FONT_S, name, i == pick ? C_BRIGHT : C_LABEL);
+        }
+    cv_text(4, 66, &FONT_XS, "ALGO PICKS   REC CONNECTS", C_BRIGHT);
+    int_text(n, t);
+    text_cat(t, " FOUND");
+    cv_text(236 - text_w(&FONT_T, t), 69, &FONT_T, t, C_LABEL);
 }
 
 static void sky_draw(void)
@@ -1929,6 +2094,9 @@ static void sky_draw(void)
             cv_rect(x, 68, 44, 3, on ? C_FX_ON : C_RULE);
         }
         hud = 0;
+    } else if (ble_panel_up() && !hud) {   /* the MIDI page: the Bluetooth device in place of the view (a knob's value
+                                            * or a message still shows over it for a moment) */
+        ble_panel(now);
     }
     CRUMB(12);
     if (hud) {                           /* the HUD: the name small, the value as large as fits, a knob's bar under it */
@@ -2133,9 +2301,14 @@ static void draw_header(void)
     text_cat(t, "%");
     if (overload_seen)
         text_cat(t, " LOAD");
+    if (usb_underruns()) {               /* the USB audio ring ran dry: a crackle in a recording, counted */
+        text_cat(t, " U");
+        int_text((int32_t)(usb_underruns() > 999u ? 999u : usb_underruns()), c);
+        text_cat(t, c);
+    }
     x = 237 - text_w(&FONT_T, t);
     cv_rect(x - 5, 0, 240 - x + 5, 18, C_BLACK);   /* a long name ends under it */
-    cv_text(x, 4, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
+    cv_text(x, 4, &FONT_T, t, overload_seen || usb_underruns() ? C_WARN : C_LABEL);
     pill(3, 54, transposing() ? "SEL TRANS" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
         static const char *const PILL[OM_COUNT] = {"PLAY GEN", "PLAY SHIFT", "PLAY RANDOM", "PLAY ARP", "PLAY PROG",
@@ -2259,7 +2432,7 @@ static void draw_footer(void)
 /* a screen reader that has just started listening (or asks) hears the page */
 static void speak(void)
 {
-    char t[120], v[16];
+    char t[200], v[24];
     uint32_t i;
     if (ann_on() && ann_where()) {
         t[0] = 0;
@@ -2277,6 +2450,19 @@ static void speak(void)
             value_text(id, v);
             text_cat(t, v);
         }
+        if (ble_panel_up()) {            /* the panel, as it reads */
+            text_cat(t, ". BLUETOOTH ");
+            if (set.ble_off)
+                text_cat(t, "OFF");
+            else if (btdev_busy()) {
+                text_cat(t, btdev_ready() ? "CONNECTED " : "CONNECTING ");
+                text_cat(t, btdev_name());
+            } else if (btdev_found(btdev_pick(), v, 0)) {
+                text_cat(t, "NOT CONNECTED. ALGO PICKS, REC CONNECTS: ");
+                text_cat(t, v);
+            } else
+                text_cat(t, "NOT CONNECTED. SEARCHING");
+        }
         text_cat(t, ". VOICES ");          /* the status too: what the header shows */
         int_text((int32_t)dr_bodies(), v);
         text_cat(t, v);
@@ -2290,6 +2476,54 @@ static void speak(void)
 }
 
 static void ui_overload(void) { overload_seen = 1; }
+
+/* a switch or trigger that came in as a CC (app.c queues them from the render): 64 up is on, or now */
+static void midi_cmd_apply(uint32_t cc, uint32_t v)
+{
+    uint32_t on = v >= 64u;
+    char t[16];
+    switch (cc) {
+    case 2u:
+    case 3u: {
+        uint32_t id = cc == 2u ? PID_SCALE : PID_ROOT, nv = cc_in_val(id, v);
+        if (nv != value_of(id)) {
+            uint8_t sd = set_dirty, cd = ui.cfg_dirty;   /* playback, not editing: SAVE stays as it was */
+            value_set(id, nv);
+            set_dirty = sd;
+            ui.cfg_dirty = cd;
+            value_text(id, t);
+            ui_say(param_label(id), t);
+            ui.redraw_foot = 1;
+        }
+        break;
+    }
+    case CC_NOISE_SW: fx_set(4u, on); break;
+    case CC_AS_SAVED:
+        if (on)
+            scene_reset();
+        break;
+    case CC_GEN_NOW:
+        if (on)
+            orbit_now();
+        break;
+    case CC_LATCH:
+        if (on != set.latch)
+            latch_set(on, 1);
+        break;
+    case CC_GEN:
+        if (on != (uint32_t)dr_orbit_on())
+            orbit_toggle();
+        break;
+    case CC_FREEZE:
+        if (on != (uint32_t)dr_frozen())
+            freeze_set(on);
+        break;
+    default:
+        if (cc >= CC_FX_SW && cc < CC_FX_SW + 4u)
+            fx_set(cc - CC_FX_SW, on);
+        break;
+    }
+}
 
 /* ------------------------------------------------------------------ the boot: the vortex --- */
 /* The name over a vortex in the tube's colours: violet arms, cyan nearer in, a white-hot ring round a dark eye. The
@@ -2486,14 +2720,14 @@ static void ui_frame(void)
     CRUMB(4);
     if (FM1B_BLE_CENTRAL) {
         static int found;
-        int n = ui.looking ? btdev_count() : 0, ev;
-        btdev_page(ui.looking && !set.ble_off);
+        int up = ui.looking || ble_panel_up(), n = up ? btdev_count() : 0, ev;   /* the MIDI page looks by itself */
+        btdev_page(up && !set.ble_off);
         if (n > found && btdev_pick() < n)
             ble_device_say();
         found = n;
         while ((ev = btdev_event()) != BTDEV_NONE)
             if (ev == BTDEV_CONNECTED || ev == BTDEV_NO_ANSWER || ev == BTDEV_LOST)
-                ui_say("DEVICE", btdev_word(ev));
+                bt_say("DEVICE", btdev_word(ev));
     }
     CRUMB(5);
     if (pc_pending >= 0) {
@@ -2504,6 +2738,19 @@ static void ui_frame(void)
     if (midi_edited) {
         midi_edited = 0;
         ui.redraw_foot = 1;
+    }
+    while (mcmd_r != mcmd_w) {           /* the switches and triggers that came in as CCs (app.c): applied here, as
+                                          * the buttons would, and nothing sent back */
+        uint32_t i = mcmd_r % MCMD_N;
+        cc_quiet = 1;
+        midi_cmd_apply(mcmd_cc[i], mcmd_v[i]);
+        cc_quiet = 0;
+        mcmd_r++;
+    }
+    if (ui.bank_save_t && now - ui.bank_save_t >= 800u) {   /* presets came in over SysEx: the bank saved once */
+        ui.bank_save_t = 0;
+        ui_say("BANK", project_save() == 0 ? "SAVED" : "SAVE FAILED");
+        ui.redraw_head = 1;
     }
     moves = dr_orbit_moved(&from, &to);
     if (moves != ui.orbit_moves) {       /* ORBIT moved a body: the pill flashes (the beam slides, the light walks) */

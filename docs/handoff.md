@@ -2,7 +2,170 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash, DEEP FIELD's output backed off (flashed; not committed, site still 0.9)
+## Start here: the MIDI page's Bluetooth panel, and pairing when a keyboard refuses its notes (flashed 2026-11-07; not committed; site still 0.11)
+
+Flashed on Kyle's "Flash it" (`scratchpad/deepfield-btpanel.fwsc`, sha1 05be0139..., no source newer); the installer
+said `done: the FM-1 runs FM-1_1400`; booted clean: `no crash recorded`, `BT ready: advertising as FM-1 F9FC`,
+`cpu 5% b0 ADDITIVE s0 x0`, the screen FIRST LIGHT on HOME. The piano test (below) not yet run.
+
+Kyle wanted to play DEEP FIELD from his Roland FP-30X over Bluetooth MIDI. Found: the FM-1 found it (a first "no
+device" was the piano not yet advertising), connected and said CONNECTED, but nothing played. The log
+(`fm1_remote.py log`) showed `central: MIDI ready` twice and the voice count staying at 0, no pairing lines. In
+`base/ble/midi/le_midi.c` the central wrote the MIDI characteristic's CCC (value handle + 1) and declared READY at
+once, never reading the answer, and it never pairs (`sm_set_master_request_pair(0)`, kept for the OXI E16).
+
+A logging build was flashed on Kyle's "Flash it" (the 15:06 package, kept apart as
+`scratchpad/deepfield-blelog.fwsc`; booted clean, no crash). With the piano connected and played it logged the
+MIDI characteristic at value 0x0c (properties 1e) and one answer through `user_client_report_data_callback`:
+packet type 0xA0 (GATT_EVENT_QUERY_COMPLETE) on handle 0x0d, length 1, and no notes after it. Its status byte was
+cut off: **the radio log keeps 32 lines of 39 characters and folds consecutive lines whose first five characters
+match** (radio.c `shim_log`), so log lines need short, distinct starts. Root cause NOT confirmed: the guess is that
+the FP-30X refuses the CCC write with insufficient authentication/encryption until the link is paired (as Roland
+pianos ask iPads to pair). Kyle picked "fix and log together".
+
+Built (Kyle took every default of three questions: the panel on the MIDI page, searching by itself there, fix and
+log together):
+
+1. **Pairing on refusal** (le_midi.c, in the base submodule, uncommitted there; it reaches every firmware's next
+   build): the CCC write's answer is read (`blob[0]` of the 0xA0 report on value + 1). 0x05, 0x08 or 0x0F, once a
+   link: `sm_api_request_pairing(mc_handle)` (Just Works, the master's IO caps already NO_INPUT_NO_OUTPUT), and on
+   `HCI_EVENT_ENCRYPTION_CHANGE` for that link the CCC is written again (`mc_notes_on`). Any other error, a second
+   refusal, a failed encryption, or no encryption within 10 s (`ble_midi_poll`) lets the link go, so the screen
+   never says CONNECTED over a link without notes for long. Devices that accept the write (the OXI E16) never pair.
+   Log lines: `ccc S pair P` (the answer), `paired: S`, `paired: no answer`, `ccc refused, let go`, `notes N: ...`
+   (the first two notifications and every 200th).
+2. **The MIDI page's Bluetooth panel** (ui.c `ble_panel`, drawn by `sky_draw` in place of the view on PG_MIDI
+   while no HUD is up): BLUETOOTH DEVICE; CONNECTED in green with the name and REC DISCONNECTS; CONNECTING and REC
+   CANCELS; NOT CONNECTED in orange with up to three devices found (the pick marked, `N FOUND`) and ALGO PICKS
+   REC CONNECTS, or SEARCHING... and TURN ON BLUETOOTH ON THE KEYBOARD; BLUETOOTH OFF and how to turn it on. The
+   page searches by itself while it is up and nothing is connected (`btdev_page(ui.looking || ble_panel_up())`);
+   ALGO picks the device there, not the model; REC there connects at once (no first search press); REC elsewhere
+   as before. Bluetooth messages on the MIDI page are only spoken (`bt_say`), not drawn over the panel; the
+   reader's page text gains BLUETOOTH CONNECTED X / NOT CONNECTED ... (speak's buffer 200).
+
+Checks: 666 (14 new at the end of basic.txt: the search starts on the page and stops off it, the stand-in found
+and said, ALGO leaves MODEL alone, REC connects and lets go, a BLE-DEV note plays, the spoken panel); two new
+screenshots, screen-midi-found.png and screen-midi-connected.png (the others regenerated: only the header's
+CPU figure and the later shots' timing moved). Renders not rerun (no sound code touched). Device image 406,596 B
+(+1.9 KB), RAM 77,612 B as before. The package is kept apart as `scratchpad/deepfield-btpanel.fwsc` too, because
+the "Sound polish and dynamics" session was running in this folder (it had changed no file when this was built).
+Docs: manual (the page table, section 10's Bluetooth steps and pictures, two troubleshooting rows), both cheat
+sheets, README, BUDGET. Not committed: the work of the sessions below is still uncommitted too, and was not
+committed apart while another session was running.
+
+How to test (numbered for the unit):
+
+1. On the FP-30X: Bluetooth on, no phone or tablet app connected to it. Turn its volume down.
+2. On the FM-1: GLO, then SELECT once. The panel reads NOT CONNECTED and lists FP-30X MIDI within a few seconds.
+3. ALGO to it, press REC: CONNECTING, then CONNECTED in green. DEV lights in the header.
+4. Play: DEEP FIELD should sound. Then read `fm1_remote.py log`: `ccc 5 pair 0` (or f) then `paired: 0` then
+   `ccc 0 pair 2` and `notes 2: ...` confirms the pairing cause; `ccc 0 pair 0` with no notes means it is not
+   pairing and the cause is still open.
+5. Press REC on the MIDI page: back to NOT CONNECTED and searching. HOME: the search stops.
+
+## The flash before: PLAY lands on the GEN page (flashed 2026-11-08; not committed; site 0.11)
+
+Kyle: "when you hit play I think it should go to the arp page - what do you think?", then "build it now and then
+flash and update". Built: PLAY turning GEN on opens the GEN page (`button()` B_PLAY: `page_to(PG_ORBIT)` after
+`orbit_toggle` when it came on), unless GEN or GEN 2 is already open (GEN 2 stays, so its EUCLID and DIV are not lost
+under the hand); PLAY turning GEN off leaves the page as it is (no auto-return: rule 1). CC 58 turning GEN on changes
+no page (a sequencer must not flip pages). The site cheat sheet's stale "hold PLAY: GEN page" line (nothing ever did
+it) is replaced. Checks: the PLAY block expects page 12 on and after, and HOME back to 0; screens.txt taps HOME after
+PLAY before the FREEZE shot. 647 checks, renders match, screenshots regenerated, image 404,676 B (+16 B), RAM and
+pool as the panel build. Manual (sections 2 and 7), both cheat sheets, this handoff. Flashed on his word (the 13:58
+package); see the log line below. Site 0.11 published. Not committed (the panel build below is not either).
+
+How to test (numbered for the unit):
+
+1. On HOME, latch a chord, press PLAY: the band reads ARP GEN, the knobs MODE RATE CHANCE RANGE. Press PLAY again:
+   GEN stops, the page stays GEN. Tap HOME.
+2. Tap ARP, turn SELECT once (GEN 2), press PLAY: GEN 2 stays under the knobs.
+3. From Live, send CC 58 at 127 on HOME: GEN starts, the page stays HOME.
+
+## The flash before: the panel's six (flashed 2026-11-08; not committed; site 0.10)
+
+Flashed on Kyle's "build and fix all six then flash and update" (`/usr/bin/python3 base/tools/fm1_install.py
+deepfield/build/deepfield.fwsc --yes`, the 13:33 package); the installer said `done: the FM-1 runs FM-1_1400`, the
+log `no crash recorded` and `cpu 5% b0 ADDITIVE s0 x0`: booted clean on F1. Not yet heard by Kyle. Every factory
+preset was dumped back from the unit over SysEx after the flash (`tools/fm1_bank.py dump --all`): 32 frames, the
+names as built (the tool first asked before CoreMIDI's input was ready and heard nothing: it now waits 0.3 s and
+asks up to three times). `fm1_remote.py screen` printed nothing this session while `log` answered; not chased. Site
+0.10 published (`deepfield/tools/publish_site.sh 0.10`, from the uncommitted tree). Committed: no (Kyle did not
+ask); the level work of the other session was committed apart first as 7234746, so this build sits on it.
+
+Where it came from: a four-musician panel (a laptop-free live performer, an Ableton studio musician, a score
+artist, a generative patcher who sells preset packs) reviewed 0.9 in two rounds; the synthesis is the artifact
+"DEEP FIELD Panel Review" (claude.ai/artifact/UBdjYdTRiq3ndNbuVQFGLk). Kyle: "build and fix all six", the top six of
+its ranked list. All six are in this build:
+
+1. **A real MIDI implementation.** Every value has a CC, in and out (`CC_OF` in ui.c; the manual's table in
+   section 10): a knob turned sends its CC (`cc_send` from `knob`), a CC in sets the value (`midi_cc` in app.c looks
+   the CC up in the same table). Few-valued knobs are spread over 0..127 in equal parts and sent from the middle of
+   their part (`cc_out_val` / `cc_in_val`), so what comes back is what went out. Switches and triggers (57 LATCH, 58
+   GEN, 59 FREEZE, 60-63 the FX keys, 12 the noise layer, 13 AS SAVED, 14 GEN NOW, and 2 SCALE / 3 ROOT) are queued
+   from the render for the main loop (`mcmd_*`, `midi_cmd_apply`), applied as the buttons would with nothing sent
+   back (`cc_quiet`). A CC in is playback: it no longer lights SAVE (`midi_param` and the NRPN path drop
+   `scene_dirty`). The keys send the struck velocity whatever VELOCITY says (`key_on`: `evel` for the engine, `vel`
+   for MIDI). The presets travel as SysEx: `F0 7D 44 46 01 ss F7` asks (64 every U, 65 every slot), `02 ss 05 data`
+   answers and loads (user slots only; 118 bytes packed 7-to-8; the bank saved 0.8 s after the last frame:
+   `ui.bank_save_t`); `app_sysex` via APP_SYSEX, `dfx_*` in app.c (named away from fm1-base's own `sx_frame`);
+   `tools/fm1_bank.py dump / load / show`; the host's `sxloop A B` round-trips a frame for the checks.
+2. **`FM1B_UAC_DEEP`** set in app.h (unity.c includes app.h first, so the define reaches it): the USB audio
+   input's ring 4 KB in the pool (pool spare 14.1 -> 10.0 KB, RAM -1.8 KB as the ring left it). The header shows
+   ` U<n>` in orange after the CPU figure while `uac.underruns` is nonzero (capped at 999); the log already had `uN`.
+   Not yet measured on the unit under a recording: that is the test below.
+3. **ALL NOTES OFF off the SEL timer.** SEL + HOME (either order) lets every voice go; SEL held with nothing done
+   does nothing, however long (a tap under 0.6 s switches LATCH); the keys strike again at once with SEL still down
+   (`sel_cleared`). SEL blinks no more. HOME tapped with SEL held opens no page and starts no reset count.
+4. **SEL is the chord's button.** SEL + PRESETS: the preset lands with its chord over the chord playing
+   (`ui.sel_chord`, `scene_go(.., chord 1)`: `load_bodies` lets the voices not in it go and strikes the new, as it
+   always did for an empty latch), + CHORD shown in the list and said. PRESETS alone never brings a chord now (the
+   "+ CHORD when nothing is latched" rule is gone; a program change never did). SEL + PLAY: GEN's next move now
+   (`dr_orbit_now`, queue kind 9 -> `orbit_now`: the pending plan applied, or one forced past CHANCE
+   (`orbit_force`); ARP the next step; LOOP and STRUM the period over; the countdown restarts), CC 14 the same.
+5. **The factory bank rebuilt** (an agent in a worktree, merged; scenes.c): every model once (ADDITIVE and SHEPARD
+   twice), every GEN mode the MODE of two presets, every delay type on one, chords beyond triads (a cluster, quartal,
+   open fifths, a minor ninth, a 6/9, one low note under TAPE), the hidden eight set on most, five noise beds, F16
+   INIT (`scene_init` exactly, no chord). F1 keeps its sound and its 3-note chord. Names: RAIN CLOCK (F10), BRONZE
+   BOWL (F12) and INIT replace LOW CHOIR, ICE BELLS and TIDE POOL. Level-matched by the per-preset velocity: chord
+   RMS within +-2.4 dB of the median (-18.9 dBFS), peaks -2.0 to -11.1. The manual's table has every row.
+6. **The hidden eight on two pages:** NOISE 2 (EDIT, SELECT twice: TYPE GUST DUCK WIDTH) and VOICES (LFO, SELECT
+   once: SPREAD CROSS MOD TIMBRE DRIFT PAN DRIFT). These are the MOTION 2 / NOISE 2 pages the 2026-11-07 cut pass
+   took off the panel, back under standard names because without them no user preset library can exist (the
+   panel's case; Kyle said build all six). Pages are now 17; the simulator's page numbers moved (ENV 4, LEAD 5,
+   LFO 6, VOICES 7, FX 8-11, GEN 12-13, GLOBAL 14, MIDI 15, USB 16).
+
+Measured: 647 checks (was 598: the SEL gestures, the CC map in and out, the switches as CCs, AS SAVED by CC, the
+SysEx round trip, the bank's test re-pointed to F3's OCT UP), 16 renders rewritten as golden (the bank changed; the
+renders are the bank), sanitizer clean but fastmath.h:58, screenshots regenerated (screens.txt now brings the F6
+chord with SEL held), device image 404,660 B (+2.3 KB), RAM 77,612 B, pool 334,032 B (10.0 KB spare). Docs: manual
+(sections 1-4, 6, 7, 9, 10, 12), both cheat sheets, README, BUDGET, landing page, words.tsv, this handoff.
+
+Not in this build (the panel's 7-10, Kyle's call): settings saved without a user slot (hold SAVE), MIDI NOTES
+HOLD/LATCH, Stop pausing GEN and CLOCK OUT in every mode, JITTER and CHANCE on ARP, LOW CUT on the hall, effects
+fading in from zero, preset names on the save dialog, the three-way PRESET CHORD setting the Ableton panelist
+wanted instead of the SEL gesture (program change still never brings a chord).
+
+How to test (numbered for the unit):
+
+1. Switch on: F1 FIRST LIGHT, silent. Hold SEL and turn PRESETS one click forward and back: the list says + CHORD
+   under the name, and C3 G3 E4 come in latched. Turn PRESETS alone to F2: the sound morphs, the chord stays.
+2. Hold SEL and turn PRESETS to F5 PULSAR: its four notes come in as yours let go. Press PLAY: a hard-sync
+   arpeggio in 5/8 over a gated ping-pong echo. Hold SEL and press PLAY: the next step comes at once.
+3. Hold SEL for three seconds and let go: nothing changes, LATCH stays lit. Hold SEL and tap HOME: ALL NOTES OFF,
+   every beam sinks; the page does not change.
+4. Tap EDIT, turn SELECT twice: NOISE 2 (TYPE GUST DUCK WIDTH). Tap LFO, SELECT once: VOICES (SPREAD CROSS MOD
+   TIMBRE DRIFT PAN DRIFT); on F6 NEBULA turn SPREAD from 0 to full and hear the cluster open up.
+5. Turn PRESETS through the bank: sixteen names end in INIT; press PLAY on each to hear its GEN mode (PLAY's colour
+   changes with it); F7 DEEP VOID is one low note on tape, F10 RAIN CLOCK an electric piano under rain.
+6. USB to the Mac, Live open, a MIDI track on DEEP FIELD FM-1 armed: turn any knob and a CC lane records; play it
+   back and the knob's value on the screen follows, SAVE stays dark. Send CC 59 at 127 from a clip: FREEZE lights.
+7. Arm an audio track on LOW CHOIR's heir, F10 RAIN CLOCK, with eight voices and GEN on, record a minute: no
+   crackle, and no U in the header; `fm1_remote.py log` has no `u` figure on its cpu line.
+8. In a terminal: `/usr/bin/python3 deepfield/tools/fm1_bank.py dump bank.syx` lists U1..U16 and writes the file;
+   save a sound to U1 on the unit, dump again, `show bank.syx` names it.
+
+## The flash before: DEEP FIELD's output backed off (flashed 2026-11-08; committed 7234746)
 
 Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`,
 the 12:34 package, newer than every source, carrying the 4.35 M constant and not 8.7 M); booted clean: the unit

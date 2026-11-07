@@ -10,26 +10,25 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | Hold a lit key and turn a knob | VOICE opens: KNOB 1–4 = its own LEVEL (−24..+6 dB, MUTE) · TONE (its TIMBRE ±50 %) · TUNE (±50 cents) · LOCK (OFF / ON: never moved by GEN, out of the arp, a pedal). Several keys: all of them. Let go: back to the page, the voice kept; saved with the preset; out as NRPN |
 | LATCH off (SEL dark, the screen says KEYS PLAY) | The held chord stays; a key plays a lead over it: the preset's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its voice (an accent). |
 | Aftertouch (press harder on a held key) | Brighter, more vibrato, while you press. |
-| Hold SEL, touch keys (pill SEL TRANS) | Each key moves the latched chord there, the lowest note to it, gliding over GLIDE. Let go of SEL: the keys strike again, LATCH as it was. |
-| Hold SEL a second, no key | ALL NOTES OFF: every voice let go; the keys strike again at once. |
+| Hold SEL (the chord's button, no timer) | + a key (pill SEL TRANS): the latched chord moves there, the lowest note to it, gliding over GLIDE · + PRESETS: the preset's chord comes in over yours (the old release, the new swell) · + PLAY: GEN's next move now · + HOME: ALL NOTES OFF, every voice let go, the keys strike again at once. Let go of SEL: the keys strike again, LATCH as it was. Held with nothing done: nothing. |
 | Keys light | One meaning a level: LIT = a voice sounds here (tap: let go; hold + knob: its values), a lead while held; MID = a voice fading, the held chord under LATCH off, a lead releasing; GLOW = the scale. The light moves with a moved voice. A lead's strike winks its key off. The screen's keys strip shows the same. |
 
 ## Buttons
 | Button | Tap | Hold |
 | --- | --- | --- |
-| HOME | HOME page (the four macros) | 1 s: the preset back as saved (its sound, effect switches and GEN values, over MORPH); the chord, LATCH, GEN on/off and FREEZE stay; SAVE goes dark |
-| EDIT | OSC page (SELECT for NOISE) | |
+| HOME | HOME page (the four macros); with SEL held: every voice let go | 1 s: the preset back as saved (its sound, effect switches and GEN values, over MORPH); the chord, LATCH, GEN on/off and FREEZE stay; SAVE goes dark |
+| EDIT | OSC page (SELECT for NOISE, again for NOISE 2) | |
 | ENV | ENVELOPE page (SELECT for LEAD) | |
-| LFO | LFO page | |
+| LFO | LFO page (SELECT for VOICES) | |
 | FX | The effects pages: ENSEMBLE, then SELECT for DELAY, DELAY 2 and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off on every preset (one at zero comes in at a usable amount), C4 = the noise layer, shown large (saved with the preset) |
 | ARP | GEN page (SELECT for GEN 2) | |
 | GLO | GLOBAL page (SELECT for MIDI, again for USB) | |
-| SEL | LATCH on / off (lit while on) | A key touched: the chord moves there (while held); 1 s with no key: every voice let go |
-| PLAY | GEN on / off (as it goes down); its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go), orange LOOP (your last notes replayed, fading) and STRUM (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
+| SEL | LATCH on / off (lit while on) | The chord's button: + key moves the chord, + PRESETS brings the preset's chord, + PLAY GEN's next move now, + HOME every voice let go |
+| PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go), orange LOOP (your last notes replayed, fading) and STRUM (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
-| REC | Scan for a Bluetooth MIDI device, ALGO picks, REC again connects | 1 s: Bluetooth on / off |
+| REC | On the MIDI page: connect the device ALGO picks, or disconnect it. Elsewhere: scan, ALGO picks, REC again connects | 1 s: Bluetooth on / off |
 
 The page's button lights (mid while FX is held). A page stays until a button or SELECT moves it. SEL and REC held
 blink from a third of a second until their hold fires. PLAY's colour while GEN runs: green WALK, orange SHIFT,
@@ -39,10 +38,10 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 ## Encoders
 | Encoder | Does |
 | --- | --- |
-| SELECT | The page before or after (HOME, OSC, NOISE, ENVELOPE, LEAD, LFO, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, GEN, GEN 2, GLOBAL, MIDI, USB) |
-| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. Nothing latched: + CHORD, its chord comes too |
+| SELECT | The page before or after (HOME, OSC, NOISE, NOISE 2, ENVELOPE, LEAD, LFO, VOICES, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, GEN, GEN 2, GLOBAL, MIDI, USB) |
+| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too) |
 | ALGO | Model (the algorithm): ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC, TAPE, RESONATOR (each voice crosses over in 0.8 s) |
-| KNOB 1–4 | The page's four values (below), shown in a row under the knobs. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click |
+| KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click |
 | MASTER | Volume |
 
 ## Pages (KNOB 1 · 2 · 3 · 4)
@@ -51,9 +50,11 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | HOME | TIMBRE (bright) | DRIFT (wander) | REVERB (the hall) | TREMOLO (ebb and swell) |
 | OSC | MODEL | SHAPE (named for the model) | SUB | NOISE (named for the model) |
 | NOISE | LEVEL (0 = off) | COLOR (brown → white) | RATE (how fast the band wanders; how often a gust) | BANDPASS (wide → narrow on the newest note → past half, breath on every voice) |
+| NOISE 2 | TYPE (hiss → rain → crackle) | GUST (the swells now and then) | DUCK (under a chord) | WIDTH (its own) |
 | ENVELOPE | ATTACK (ms below 1 s) | RELEASE | AFTERTOUCH | GLIDE |
 | LEAD | ATTACK | RELEASE | TRANSPOSE (semitones up) | LEVEL |
 | LFO | TREM RATE | VIBRATO | RANDOM | WIDTH |
+| VOICES | SPREAD (the voices unlike each other) | CROSS MOD (pairs bending pitch) | TIMBRE DRIFT (each wandering) | PAN DRIFT (each across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
 | FX DELAY | TYPE: PING PONG (left, right), TAPE (centre, worn, wavering), MULTI TAP (three a time; a held chord pulses in triplets), REVERSE (swells; a held chord breathes in), OCT UP (octaves up), OCT DOWN (octaves down), GRANULAR (pieces scattered, at the note, an octave either way or a fifth up) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from ARP's TEMPO or the MIDI clock, halved when too long; GRANULAR: how often a piece) | DLY FDBK | DLY MIX (full: the first echo about as loud as the note) |
 | FX DELAY 2 | TONE (repeats dark and full to bright and thin) | DIFFUSION (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | GATE (only a slice of each DLY TIME goes in: a held chord pulses) |
@@ -61,11 +62,9 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP, STRUM: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS; LOOP: OCT JUMP; STRUM: SPEED |
 | GEN 2 | RETURN | OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
 | GLOBAL | SCALE | ROOT | MORPH | – |
-| MIDI | IN CH | OUT CH | LOCAL | VELOCITY |
+| MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY |
 | USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
 
-With no page, set by each preset: the noise's TYPE, GUST, DUCK and WIDTH; the voices' SPREAD, CROSS MOD, TIMBRE DRIFT and
-PAN DRIFT. A preset you save keeps those of the preset it came from.
 
 ## Models
 TIMBRE, SHAPE and NOISE are named on the screen for what they do on the model (shown here in caps); an empty cell is
@@ -111,14 +110,29 @@ amount, a cell per choice, two cells for on/off, hits and rests for EUCLID). TIM
 model (see Models). A voice open: VOICE and its note, its four values.
 
 ## Factory presets
-F1 FIRST LIGHT · F2 VOID TIDE · F3 GLASS ORBIT (made for GEN) · F4 BOWED SKY · F5 PULSAR · F6 NEBULA ·
-F7 DEEP VOID · F8 STARLIGHT · F9 CATHEDRAL · F10 LOW CHOIR · F11 GAMELAN (made for GEN) · F12 ICE BELLS ·
-F13 ASCENT · F14 DESCENT · F15 FOLDED SUN · F16 TIDE POOL. U1..U16 are yours. Every factory chord stands on C and
-plays in ROOT. Switching on: the name falls into a vortex (3.4 s; any key, button or knob skips it, and does what it
-does), then the last preset's sound in silence, no chord.
+Every model once, every GEN mode on two, every delay type on one; chords on C, in ROOT; SEL held + PRESETS brings the chord.
+F1 FIRST LIGHT (ADDITIVE, WALK) · F2 VOID TIDE (SUPERSAW, WALK, wind) · F3 GLASS ORBIT (FM, WALK, OCT UP; made for GEN) ·
+F4 BOWED SKY (BOWED, SHIFT, REVERSE) · F5 PULSAR (SYNC, ARP 5/8, gated PING PONG) · F6 NEBULA (ADDITIVE cluster, RANDOM,
+GRANULAR, wind) · F7 DEEP VOID (TAPE, one low note, LOOP, TAPE delay, crackle) · F8 STARLIGHT (WAVETABLE, STRUM) ·
+F9 CATHEDRAL (FORMANT, PROG) · F10 RAIN CLOCK (FM 4-OP, ARP, MULTI TAP, rain) · F11 GAMELAN (BELL, RANDOM, gated
+PING PONG) · F12 BRONZE BOWL (RESONATOR, STRUM, GRANULAR) · F13 ASCENT (SHEPARD, SHIFT, OCT UP) · F14 DESCENT (SHEPARD,
+PROG, OCT DOWN, wind) · F15 FOLDED SUN (WAVEFOLD, LOOP, TAPE delay) · F16 INIT (every value at its start, no chord).
+U1..U16 are yours. Switching on: the name falls into a vortex (3.4 s; any key, button or knob skips it, and does what
+it does), then the last preset's sound in silence, no chord.
 
 ## MIDI
-In: notes hold while on (CC 64 keeps them), any channel by default. Out: key down = note on, let go = note off (later if latched), GEN moves too.
-CC 16–19 TIMBRE DRIFT REVERB TREMOLO · 20 NOISE LEVEL · 74 TIMBRE · 71 SHAPE · 72 RELEASE · 73 ATTACK · 91 REVERB · 93 ENS MIX · 94 DLY MIX · 102 DLY TYPE · 103 WOW · 104 GATE · 1 vibrato · 7 volume · 123 all off.
+In: notes hold while on (CC 64 keeps them), any channel by default; clock times GEN. Out: key down = note on at the
+struck velocity (VELOCITY only decides whether the engine listens), let go = note off (later if latched), GEN moves too.
+Every knob sends its CC as it turns and takes it (a CC in never lights SAVE); few-valued knobs spread over 0..127:
+2 SCALE · 3 ROOT · 5 GLIDE · 9 MODEL · 15 CHORDS · 16–19 TIMBRE DRIFT REVERB TREMOLO (74, 91 in) · 20 NOISE LEVEL ·
+21 SUB · 22 NOISE (OSC) · 23–25 COLOR RATE BANDPASS · 26–29 TYPE GUST DUCK WIDTH · 30 AFTERTOUCH · 52–54 LOOP DECAY, OCT
+JUMP, STRUM SPEED · 55 EUCLID · 56 DIV · 71 SHAPE · 72 RELEASE · 73 ATTACK · 75–78 LEAD ATTACK RELEASE TRANSPOSE LEVEL ·
+79–82 TREM RATE VIBRATO RANDOM WIDTH · 83–86 SPREAD CROSS MOD TIMBRE DRIFT PAN DRIFT · 87 ENSEMBLE · 93 ENS MIX · 88 DLY
+TIME · 89 DLY FDBK · 94 DLY MIX · 102 DLY TYPE · 90 TONE · 105 DIFFUSION · 103 WOW · 104 GATE · 106 DECAY · 107 DAMPING ·
+108 SHIMMER · 109–113 MODE RATE CHANCE RANGE RETURN · 114 SHIFT RANGE · 115 VOICES · 116–119 TEMPO GATE PATTERN OCTAVES.
+Switches (64 up = on): 57 LATCH · 58 GEN · 59 FREEZE · 60–63 ensemble, delay, reverb, shimmer · 12 the noise layer.
+Triggers (64 up): 13 the preset as saved (HOME held) · 14 GEN's next move now (SEL + PLAY). 1 vibrato · 7 volume · 123 all off.
 NRPN (99 · 98 = the voice's note · 6), in and out: 1 LEVEL (0 MUTE, 1–31 = −24..+6 dB) · 2 TONE (64 ± 50) · 3 TUNE (64 ± 50 cents) · 4 LOCK (64 up ON).
-Program change 0–15 = F1–F16, 16–31 = U1–U16: the sound, as PRESET.
+Program change 0–15 = F1–F16, 16–31 = U1–U16: the sound, as PRESET (never a chord).
+SysEx (USB): F0 7D 44 46 01 ss F7 asks for slot ss (64 every U, 65 every slot); each comes as F0 7D 44 46 02 ss 05 data F7
+(118 bytes packed 7-to-8); send one back to load user slot ss (the bank saves a second after the last). tools/fm1_bank.py dump / load / show.

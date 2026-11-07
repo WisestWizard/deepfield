@@ -17,14 +17,16 @@ HOST = ROOT / "deepfield/build/host/deepfield_host"
 OUT = ROOT / "deepfield/build/renders"
 GOLDEN = ROOT / "deepfield/tests/golden.txt"
 SCENES = ["FIRST LIGHT", "VOID TIDE", "GLASS ORBIT", "BOWED SKY", "PULSAR", "NEBULA", "DEEP VOID", "STARLIGHT",
-          "CATHEDRAL", "LOW CHOIR", "GAMELAN", "ICE BELLS", "ASCENT", "DESCENT", "FOLDED SUN", "TIDE POOL"]
+          "CATHEDRAL", "RAIN CLOCK", "GAMELAN", "BRONZE BOWL", "ASCENT", "DESCENT", "FOLDED SUN", "INIT"]
+NO_CHORD = {"INIT": ["90 30 64", "90 37 64", "90 40 64"]}   # a scene with no chord of its own: C3 G3 E4 held over MIDI
 
 def script():
     s = ["wait 300", "master 4096", "turn SELECT -1", "wait 200"]
     for i, name in enumerate(SCENES):
         fn = f"{i + 1:02d}-{name.replace(' ', '_')}.wav"
-        s += ["wait 60", f"land {i}", "wait 300", f"wav {fn}", "wait 14000", "midi B0 7B 00", "wait 6000", "wavstop",
-              "wait 200"]
+        s += ["wait 60", f"land {i}", "wait 300", f"wav {fn}"]
+        s += [f"midi {m}" for m in NO_CHORD.get(name, [])]
+        s += ["wait 14000", "midi B0 7B 00", "wait 6000", "wavstop", "wait 200"]
     return "\n".join(s) + "\n"
 
 def levels(path):

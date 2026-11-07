@@ -6,12 +6,15 @@ shot screen-boot.png
 wait 300
 midi C0 05
 wait 300
+press SEL
 spin PRESET 1
 spin PRESET -1
+release SEL
 wait 9700
 shot screen-home.png
 wait 2500
 tap PLAY
+tap HOME
 tap SEQ
 wait 1500
 shot screen-frozen.png
@@ -53,6 +56,16 @@ wait 30
 tap GLO
 wait 1500
 shot screen-global.png
+spin SELECT 1
+wait 1500
+shot screen-midi-found.png
+tap REC
+wait 1500
+shot screen-midi-connected.png
+tap REC
+wait 30
+spin SELECT -1
+wait 30
 tap SAVE
 wait 1500
 shot screen-save.png
@@ -103,8 +116,10 @@ release SEL
 wait 7000
 midi C0 02
 wait 300
+press SEL
 spin PRESET 1
 spin PRESET -1
+release SEL
 wait 5700
 tap ARP
 wait 30

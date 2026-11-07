@@ -15,6 +15,11 @@
 #define APP_BTDEV                        /* Bluetooth MIDI devices (lib/btdev.h) */
 #define APP_BLE_AT_BOOT (!df_ble_off())  /* Bluetooth at power-on: as the player left it (REC held) */
 #define APP_OVERLOAD                     /* the render over 90 % of its time: the engine sheds a body */
+#define APP_SYSEX                        /* the bank over SysEx: F0 7D 44 46 cmd .. F7 (app.c) */
+int app_sysex(const uint8_t *p, uint32_t n);
+#define FM1B_UAC_DEEP 1                  /* the USB audio input keeps a half more in hand (4 KB of pool): the heavy
+                                          * presets render past 40 % of their time, where the plain ring ran dry and
+                                          * a recording crackled */
 #define APP_SPLASH                       /* the boot vortex's first frame, the name whole (ui.c) */
 void app_splash(void);
 #define APP_GAIN(m) df_gain(m)           /* the speaker's gain from MASTER: none while a computer records over USB and
