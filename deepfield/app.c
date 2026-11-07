@@ -150,11 +150,13 @@ static uint32_t usb_underruns(void) { return uac.underruns; }   /* the ring ran 
 static int usb_recording(void) { return 0; }
 static uint32_t usb_underruns(void) { return 0; }
 #endif
-uint32_t df_gain(uint32_t m)             /* the speaker and headphones (audio interrupt): MASTER squared, or nothing */
+uint32_t df_gain(uint32_t m)             /* the speaker and headphones (audio interrupt): MASTER cubed, or nothing;
+                                          * cubed, a third of the way up is -29 dB (squared it was -19, loud on
+                                          * headphones) and the top end still reaches full */
 {
     if (set.speaker == SPK_OFF || (set.speaker == SPK_AUTO && usb_recording()))
         return 0;
-    return m * m >> 12;
+    return (m * m >> 12) * m >> 12;
 }
 
 /* the keys' note offs and ORBIT's moves, out over MIDI (render context) */

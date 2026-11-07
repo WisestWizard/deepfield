@@ -2,7 +2,43 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash, standard names for every DEEP FIELD setting (flashed 2026-11-08; committed 0b55c1b, site 0.9)
+## Start here: the last flash, DEEP FIELD's output backed off (flashed; not committed, site still 0.9)
+
+Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`,
+the 12:34 package, newer than every source, carrying the 4.35 M constant and not 8.7 M); booted clean: the unit
+says DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%; the log
+records no crash. Not yet heard by Kyle.
+
+Kyle: "levels are way too hot in general on the device even turned up only 1/3 it can be redlining in ableton";
+he records over the USB cable into Live on the Mac, and wants the headphones fixed too.
+
+Measured before the change (host renders, MASTER full): a factory preset alone peaks -2 to -10 dBFS (RMS about
+-18); four MIDI notes at velocity 127 on top reach the limiter at -0.1 dBFS. Neither the bus soft-clipper (under
+1 dB) nor the limiter (at most 1 dB, CATHEDRAL and LOW CHOIR) was squashing anything: the output simply sat at the
+top of the scale. The FM-1 has no headphone detect and the codec has no gain register, so speaker and headphones
+are one signal and the firmware's own gain is the only lever.
+
+What changed:
+- `dr_render` (engine/drone.c): the output's full scale 8.7 M -> 4.35 M, so the limiter's ceiling is -6.1 dBFS on
+  every output (speaker, headphones, USB). The sound is untouched: all 16 renders are the old ones halved to within
+  1 LSB, goldens rewritten.
+- `df_gain` (app.c): MASTER cubed instead of squared. A third of the way up -29 dB (was -19), halfway -18 (was -12),
+  full unchanged. With the trim, a third of the way up is 16 dB quieter than before.
+- USB LEVEL keeps its -6 dB default: the hardest playing now peaks at -12 dBFS in the recording; 0 dB reaches -6.
+- Cost: the speaker at MASTER full is 6 dB quieter than on 0.9.
+- basic.txt's 8-voice chord at MASTER half: bound -18 -> -30 dBFS (it measures -28.3; the same 1.7 dB margin as
+  before). 598 checks pass. Manual: MASTER's law and USB LEVEL's levels.
+
+How to test (numbered for the unit):
+
+1. Headphones in, MASTER a third of the way up, latch a chord on F1 FIRST LIGHT: quiet but clear, no longer loud.
+2. Sweep MASTER to full: the climb is gradual through the middle and the top quarter brings it up to full.
+3. USB to the Mac, arm an audio track in Live on DEEP FIELD FM-1 (the header says USB MUTE): latch a chord and play
+   hard over it on CATHEDRAL (F9). Live's meter peaks around -12 dB and never clips.
+4. GLO, SELECT twice, USB LEVEL to 0 dB, repeat: peaks around -6 dB, still no clip.
+5. Unplug the headphones: the speaker at MASTER full is quieter than before; say if it's now too quiet.
+
+## The flash before: standard names for every DEEP FIELD setting (flashed 2026-11-08; committed 0b55c1b, site 0.9)
 
 Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`, the
 11:49 package, newer than every source); booted clean: the unit says DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%.

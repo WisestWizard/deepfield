@@ -2740,7 +2740,9 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     blk_t *b = &g_blk;
     fx_params_t fx;
     uint32_t i;
-    float gain = (float)master_q12 * (1.0f / 4096.0f) * 8700000.0f * volume, space;
+    float gain = (float)master_q12 * (1.0f / 4096.0f) * 4350000.0f * volume, space;   /* the limiter's ceiling
+                                          * at -6 dBFS, not -0.1: Kyle's USB recordings redlined in Live, and the
+                                          * headphones were loud a third of the way up */
     int on_two = 0;
     if (n > MAXBLOCK)
         n = MAXBLOCK;

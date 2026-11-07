@@ -217,7 +217,9 @@ at once.
 | KNOB 3 | REVERB | How much reverb, and a little delay. The dry sound stays as it is. |
 | KNOB 4 | TREMOLO | How much each voice fades down and back up on its own slow cycle. At full, each voice goes all the way to silence and back. TREM RATE (LFO page) sets how fast. |
 
-MASTER is the volume.
+MASTER is the volume of the speaker and headphones. It is gentle at the bottom so headphones stay usable: a third
+of the way up is about 29 dB under full, halfway about 18 dB under, three quarters about 7 dB under. At full, the
+loudest playing still stops 6 dB short of the top of the output, so nothing clips.
 
 ---
 
@@ -592,8 +594,9 @@ while you record:
 - **OFF**: the speaker stays silent, and the recording is set by USB LEVEL.
 
 The header says USB while a computer is recording. **USB LEVEL** sets the recording's level with AUTO and OFF,
-without touching the speaker. It is -6 dB by default, so a full chord peaks about 9 dB below the loudest the
-recording can go.
+without touching the speaker. It is -6 dB by default: a held chord peaks between -14 and -22 dB in the recording,
+and even eight voices played hard on top stop at -12 dB, which leaves room in Live's meters. At 0 dB the loudest
+playing reaches -6 dB, so no setting clips the recording.
 
 **Bluetooth.** Bluetooth MIDI starts when the FM-1 does. A computer, phone or tablet can connect to it as DEEP FIELD
 FM-1. To connect the FM-1 to a Bluetooth MIDI keyboard or controller:
