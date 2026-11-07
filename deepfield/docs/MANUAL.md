@@ -67,7 +67,7 @@ SELECT is a knob: they are different controls.
 5. Press PLAY. ORBIT starts and PLAY lights green. Every few seconds one body slides to a nearby note in the
    scale: watch its beam move.
 6. Press SEQ. FREEZE turns on (FRZ lights): the reverb holds what it has. Press SEQ again to let it go.
-7. Turn PRESETS. The scene names scroll past with a bar filling under them. Stop, and when the bar is full the
+7. Turn PRESETS. The scene names scroll past with a line filling under them. Stop, and when the line is full the
    scene's sound blends in over four seconds, under the chord you are playing. Hold SEL while you turn PRESETS to
    bring in the scene's own chord as well (section 9).
 8. Hold SEL for a second: every body stops. Then tap SEL: LATCH turns off, and a key now sounds only while you
@@ -78,7 +78,17 @@ SELECT is a knob: they are different controls.
 ## 3. The screen and the lights
 
 The screen is laid out like the panel. The strip of keys on the screen matches your keys, and the four boxes at
-the bottom match the four knobs.
+the bottom match the four knobs. Only sound gives off light: the bodies glow, and everything around them stays
+dark. Each colour has one meaning:
+
+| Colour | Means |
+| --- | --- |
+| A body's own colour | That body (by its note): its beam, its key on the strip, its band when open |
+| Sun (warm gold) | Latched: a spark over the beam, a cap on the key, a bar under a pinned body |
+| White | Your hand: a lead, the body you have open |
+| Cyan | Where you are: the page band, the bars, the morph line |
+| Teal | An effect that is on |
+| Orange | Something to look at: unsaved changes, LOAD, a failed save |
 
 **Key lights** have three levels:
 
@@ -109,10 +119,10 @@ accent on a key that is already lit. While FX is held, the keys show the effect 
 
 | Part | What it shows |
 | --- | --- |
-| Header | The scene's slot (F1–F16, U1–U16) and name, in orange while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 11); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many bodies are sounding; and how busy the processor is (LOAD in orange: see Troubleshooting). Below that, three pills named for their buttons, SEL LATCH, PLAY ORBIT and SEQ FRZ, filled while on; the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise); and a bar along the bottom edge while a scene blends in. |
-| The view | The bodies: as beams over their keys, or in one of the other views (section 10). Turning a knob shows its name and value large here for a moment, and messages such as LATCH OFF, ORBIT ON or SAVED appear here too. While FX is held, the five effect switches are shown here in a row. |
-| The keys strip | All 27 keys, lit like the real ones: a sounding body in its colour, dim while it fades, lighter for notes in the scale, a yellow frame on a latched key, white for a lead (grey as it fades), and the body's dim colour on the key ORBIT will move it to. |
-| Footer | The page band: the button that opened the page, the page's name, and `<` `>` where SELECT can go, with the model, the scale and its root on the right. Below it, the four knobs' names, values and bars, in the order of the real knobs. While a body is open, the band reads BODY and its note in the body's colour, and the four knobs are its own (section 4). |
+| Header | The model's glyph, then the scene's slot (F1–F16, U1–U16) and name, with a small orange square after it while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 11); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many bodies are sounding; and how busy the processor is (LOAD in orange: see Troubleshooting). Below that, three pills named for their buttons, SEL LATCH, PLAY ORBIT and SEQ FRZ, filled while on, always in the same places (while ORBIT runs, a white line fills along the foot of its pill toward the next move); the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise); and a cyan line along the bottom edge while a scene blends in. |
+| The view | The bodies: as beams over their keys, or in one of the other views (section 10). Turning a knob shows its name, its value large and its bar here for a moment; the beams dim but stay in view behind it. Messages such as LATCH OFF, ORBIT ON or SAVED appear here too, and so does the list of scenes while PRESETS turns (section 9). While FX is held, the five effect switches are shown here in a row. |
+| The keys strip | All 27 keys as dark glass, lit only by sound: a sounding body's key glows in its colour, bright at the top and dimming down the key (dim while it fades), with a sun cap when latched; the keys of the scale are slightly lighter glass; a lead's key is white (grey as it fades); the key ORBIT will move a body to, and the key a moved body started on, show in the body's dim colour; the body you have open is framed white. |
+| Footer | The page band: the icon of the button that opened the page, its name, the page's name, and `<` `>` where SELECT can go, with the model, the scale and its root on the right. Below it, the four knobs in the order of the real knobs: each name, its value (a number large with its unit small, or a word), and a bar that shows the kind of value: segments filling for an amount, one cell per choice for a list, two cells for an on/off switch, hits and rests for RHYTHM. On DX the SHAPE knob reads VOICE, on SCAN TABLE. While a body is open, the band reads BODY and its note in the body's colour, and the four knobs are its own (section 4). |
 
 ---
 
@@ -130,15 +140,15 @@ If you start a ninth body, one fades out quickly to make room: a body that is al
 else the oldest.
 
 **LATCH** (SEL, lit while on; on by default): a body keeps sounding after you let go of its key. Tap the same key
-again to stop it: it fades out over FADE seconds from when you let go. A latched key has a yellow frame on the
-screen's keys strip. Hold SEL for a second to stop every body (the screen says EVERY BODY LET GO). Bringing in a
+again to stop it: it fades out over FADE seconds from when you let go. A latched key has a sun cap on the screen's
+keys strip, and its beam a sun spark over its head. Hold SEL for a second to stop every body (the screen says EVERY BODY LET GO). Bringing in a
 scene's chord (section 9) latches its bodies and turns LATCH on.
 
 **A body's own values.** With LATCH on, each latched body can be set apart from the others:
 
 1. Hold the key the body started on (after an ORBIT move, its half-lit key). The key blinks.
-2. After a third of a second the body opens: the footer reads BODY and its note, its beam gets a white frame, and
-   the other beams dim. (Turning a knob while the key is down opens it at once.)
+2. After a third of a second the body opens: the footer reads BODY and its note, its beam and its key get a white
+   frame, and the other beams dim. (Turning a knob while the key is down opens it at once.)
 3. The four knobs are now that body's own:
    - **LEVEL**: -24 to +6 dB, one dB a click, and MUTE below -24. A muted body stays latched and silent, so ARP and
      ORBIT still use its note.
@@ -147,7 +157,7 @@ scene's chord (section 9) latches its bodies and turns LATCH on.
      third makes it pure.
    - **ORBIT**: turn right for PINNED, left for MOVES. ORBIT never moves a pinned body, PULSE never dips it, and ARP
      leaves it out, so CHORD and CYCLE move the rest of the chord over it like a pedal note. TRANSPOSE still moves
-     it. A bar across the foot of its beam marks it.
+     it. A sun bar across the foot of its beam marks it.
 4. Let go of the key. The footer goes back to the page you were on, and the body keeps its values (and keeps
    sounding: once a body is open, letting go never stops it). SAVE lights.
 
@@ -404,9 +414,11 @@ and stop, while ARP runs from RATE, so a drum machine can follow the FM-1.
 
 **FREEZE** (SEQ, lit while on): the reverb holds what it has, forever. Nothing new goes in, nothing dies away, and
 it comes up to about the level of the dry sound. The bodies keep playing on top, dry and through the delay. The
-shimmer is silent while frozen. Press SEQ again to let it go. While it is frozen, the view has a frame of ice.
+shimmer is silent while frozen. Press SEQ again to let it go. While it is frozen, four ice brackets stand in the
+view's corners and the view holds still: the stars stop drifting and twinkling, the beams stop breathing, the mist
+stops moving.
 
-![Frozen: the ice frame round the beams, SEQ FRZ lit, ORBIT running](img/screen-frozen.png "FREEZE on")
+![Frozen: ice brackets in the view's corners, SEQ FRZ lit, ORBIT running](img/screen-frozen.png "FREEZE on")
 
 **SHIMMER** (REVERB page) feeds the reverb back into itself an octave higher: a rising cloud. It can't run away,
 whatever the reverb's size.
@@ -444,8 +456,10 @@ and ORBIT) and the effect switches. It also keeps a chord: the bodies that were 
 their own values (section 4). The GLOBAL, MIDI and USB pages are settings instead: they stay as they are when you
 change scene. F1–F16 are the factory scenes. U1–U16 are yours, and start with no chord.
 
-**Changing scene.** Turn PRESETS. The scene names scroll past on the screen, with a bar filling under the name;
-nothing changes while you keep turning. When the bar fills (0.7 s after you stop), the scene lands, and its sound
+**Changing scene.** Turn PRESETS. The view shows the scene you are turning to large, its neighbours on either side,
+and all 32 slots as a row of marks (F1–F16, then U1–U16): the one you are on in cyan, the one you are turning to
+tall and white. Nothing changes while you keep turning. A line fills along the foot of the view, and when it is
+full (0.7 s after you stop) the scene lands, and its sound
 blends in over MORPH seconds (GLOBAL page; 4 s by default, or NOW to switch at once). A bar along the bottom of the
 header shows the blend.
 
@@ -457,9 +471,10 @@ header shows the blend.
 - A delay or reverb the new scene switches off rings out.
 - A MIDI program change does the same.
 
-![Browsing: the candidate scene's name large, the bar filling under it](img/screen-browse.png "Browsing the scenes")
+![Browsing: the candidate scene's name large, its neighbours, the 32 slots as a row of marks, the line filling](img/screen-browse.png "Browsing the scenes")
 
-**Bringing in a scene's chord.** Hold SEL and turn PRESETS: the screen says SCENE + CHORD. Let go of SEL and the
+**Bringing in a scene's chord.** Hold SEL and turn PRESETS: the screen says SCENE + CHORD (in the scene list,
++ CHORD in sun under the name). Let go of SEL and the
 whole scene lands: its chord replaces yours (a note in both keeps sounding), LATCH turns on, and its ORBIT values
 come too. To bring in the chord of the scene you are on, turn PRESETS one click forward and back before you let go.
 A scene with no chord leaves your bodies alone. Every factory chord is stored on C and plays in ROOT (GLOBAL page);
@@ -521,9 +536,9 @@ different pictures over the same keys.
 
 | View | What you see |
 | --- | --- |
-| BEAMS | Each body is a beam rising from its key, in its colour. Its height is its level, so you see it swell in and sink as it fades (dim). A latched beam has a white cap. When ORBIT moves a body, its beam slides to the new key and leaves a mark where it started. A body above or below the keys (a MIDI note, or after an octave change) stands thin at the edge. The noise layer is a soft, wide beam where its band sits, brown to white, drifting with WIND. Stars drift behind at DRIFT's speed, and FREEZE frames the view in ice. A pinned body has a white bar across its foot; an open body (section 4) a white frame, with the other beams dimmed. |
-| MOUTH | An orange pill bottle on the left pops its cap and tumbles out a pill for every new body. A mouth on the right opens with the sound. The pills hang over their keys, high notes higher, in two colours (the body's and white), outlined yellow once latched. A body you stop flies into the mouth and is eaten. Now and then the mouth snatches the pill of a body that is still sounding and spits it back out. |
-| ORBITS | A sun that pulses with the sound. Each body is a planet: its distance from the sun is its pitch, its speed follows its breathing, its size is its level, and its colour is its note. A latched planet has a ring; a fading one dims. Stars drift behind at DRIFT's speed. |
+| BEAMS | Each body is a beam of light rising from its key, in its key's colour, brightest at its foot, with a white-hot head that marks its level: you see it swell in and sink as it fades (dim), and it breathes with the body. A latched beam has a sun spark over its head; a pinned one a sun bar across its foot; an open one (section 4) white frames, with the other beams dimmed. An ARP step flashes its body's head. When ORBIT moves a body, its beam slides to the new key and leaves a mark where it started, and before the move a line reaches from its head toward a dotted ghost at the key it is going to. A body above or below the keys (a MIDI note, or after an octave change) stands thin at the edge. The noise layer is a mound of mist where its band sits, warm when brown and pale when white, drifting with WIND and lifting with each gust. Stars drift at DRIFT's speed, each twinkling slowly on its own, over a faint horizon; FREEZE stills all of it and puts ice brackets in the corners. |
+| MOUTH | An orange pill bottle on the left pops its cap and tumbles out a pill for every new body. A mouth on the right opens with the sound. The pills hang over their keys, high notes higher, in two colours (the body's and white), outlined in sun once latched. A body you stop flies into the mouth and is eaten. Now and then the mouth snatches the pill of a body that is still sounding and spits it back out. |
+| ORBITS | A sun that pulses with the sound. Each body is a planet: its distance from the sun is its pitch, its speed follows its breathing, its size is its level, and its colour is its note. A latched planet has a sun ring; a fading one dims. Stars drift behind at DRIFT's speed. |
 | NEBULA | The bodies' harmonics as glows along a wavy band, low notes on the left and high on the right, coloured by body, with a mark under each body's note. |
 | SCOPE | A radar. Each body is a blip: its note sets the angle and its octave the distance from the centre, and it lights as the sweep passes. The sound's left channel against its right draws a figure; its shape shows the stereo width and the beating. |
 

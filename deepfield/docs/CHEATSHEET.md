@@ -39,7 +39,7 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | Encoder | Does |
 | --- | --- |
 | SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, MOTION 2, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI, USB) |
-| PRESET | Scroll the scenes (a bar fills under the name); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each body crossing into its model; LATCH, ORBIT (and its page while it runs), FREEZE stay. SEL held: + CHORD |
+| PRESET | Scroll the scenes (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each body crossing into its model; LATCH, ORBIT (and its page while it runs), FREEZE stay. SEL held: + CHORD |
 | ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, SCAN, DX (a hard cut) |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); RATE 1 BPM a click; few-value knobs one value a click |
 | MASTER | Volume |
@@ -80,9 +80,11 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | DX | 4-op FM, its envelopes at SWELL's pace | FM depth | the voice: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER (AIR = feedback) |
 
 ## Views (VIEW on the GLOBAL page)
-BEAMS (the default): every body a beam rising from the key that struck it, its level the height, a white cap when
-latched, dim while it fades, a white bar at its foot when pinned, framed while open; ORBIT slides a beam to the
-neighbouring key and marks where it was struck. A body
+BEAMS (the default): every body a beam of light rising from its key in the key's colour, a white-hot head at its
+level, breathing; a sun spark over it when latched, a sun bar at its foot when pinned, white frames while open, dim
+while it fades; an ARP step flashes its head; ORBIT slides a beam to the neighbouring key and marks where it was
+struck, after a line and a dotted ghost show where it is going. The noise is a mound of mist. FREEZE: ice brackets,
+and the view holds still. A body
 below or above the keys stands at the edge. The noise layer is a soft wide beam where its band sits, brown to white.
 MOUTH: an RX bottle tumbles out a pill per body; the pills hang over their keys; a let-go pill flies into the mouth.
 ORBITS: planets = bodies (radius = pitch, size = level, colour = pitch class), sun = output.
@@ -90,14 +92,19 @@ NEBULA: the harmonics as glows, low left, high right.
 SCOPE: radar, blips = bodies by pitch class and octave, figure = left vs right.
 
 ## Screen
-Header: scene slot and name (orange = unsaved); octave, BLE, bodies/8 and CPU at the right; the three states as
-pills named for their buttons (SEL LATCH, PLAY ORBIT, SEQ FRZ); E D R S N lit for the effects heard and the noise; a morph bar
-along the bottom.
+Colours, one meaning each: a body's colour = that body; sun = latched; white = your hand (a lead, an open body);
+cyan = where you are; teal = an effect on; orange = look (unsaved, LOAD).
+Header: the model's glyph, scene slot and name (a small orange square = unsaved); octave, BLE, bodies/8 and CPU at
+the right; the three states as pills at fixed places, named for their buttons (SEL LATCH, PLAY ORBIT with ORBIT's
+countdown along its foot, SEQ FRZ); E D R S N lit for the effects heard and the noise; a morph line along the bottom.
 View: the bodies, in the view chosen; every knob or button large over it for a moment; FX held names the switches
 over their keys.
-Keys strip: the 27 keys as they are lit (sounding, fading, in the scale, a yellow frame when latched).
-Footer: the page band (the button that opened the page, its name, the SELECT arrows; model and scale at the
-right), then the four knobs in a row: name, big value, bar. A body open: BODY and its note, its four values.
+Keys strip: the 27 keys as dark glass lit by their bodies (a sun cap when latched, white for a lead, framed white
+when open; the scale slightly lighter).
+Footer: the page band (the button's icon and name, the page, the SELECT arrows; model and scale at the right), then
+the four knobs in a row: name, the number big with its unit small (or a word), and a bar by kind (segments for an
+amount, a cell per choice, two cells for on/off, hits and rests for RHYTHM). On DX, SHAPE reads VOICE; on SCAN,
+TABLE. A body open: BODY and its note, its four values.
 
 ## Factory scenes
 F1 FIRST LIGHT · F2 VOID TIDE · F3 GLASS ORBIT (made for ORBIT) · F4 BOWED SKY · F5 PULSAR · F6 NEBULA ·

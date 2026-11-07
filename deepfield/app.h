@@ -10,7 +10,7 @@
 #define APP_SPLASH_RGB RGB(90, 200, 255)
 #define APP_PALETTE 2u                   /* cyan: the platform's own screens (crash, update) */
 #define APP_BLOCK 256u                   /* frames per audio block: 5.8 ms at 44.1 kHz */
-#define APP_CANVAS_PX (240u * 86u)       /* the largest strip, the footer, in one transfer */
+#define APP_CANVAS_PX (240u * 84u)       /* the largest strip, the view, in one transfer */
 #define APP_TOUCH                        /* velocity and pressure from the keys (lib/touch.h) */
 #define APP_BTDEV                        /* Bluetooth MIDI devices (lib/btdev.h) */
 #define APP_BLE_AT_BOOT (!df_ble_off())  /* Bluetooth at power-on: as the player left it (REC held) */

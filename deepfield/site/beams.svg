@@ -1,25 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 80" preserveAspectRatio="none">
 <defs>
 <linearGradient id="b4" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffc460" stop-opacity=".95"/><stop offset=".7" stop-color="#ffc460" stop-opacity=".35"/><stop offset="1" stop-color="#ffc460" stop-opacity="0"/></linearGradient>
-<linearGradient id="b6" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#50e0ff" stop-opacity=".95"/><stop offset=".7" stop-color="#50e0ff" stop-opacity=".35"/><stop offset="1" stop-color="#50e0ff" stop-opacity="0"/></linearGradient>
-<linearGradient id="b8" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff60d0" stop-opacity=".95"/><stop offset=".7" stop-color="#ff60d0" stop-opacity=".35"/><stop offset="1" stop-color="#ff60d0" stop-opacity="0"/></linearGradient>
-<linearGradient id="b10" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#a878ff" stop-opacity=".95"/><stop offset=".7" stop-color="#a878ff" stop-opacity=".35"/><stop offset="1" stop-color="#a878ff" stop-opacity="0"/></linearGradient>
-<linearGradient id="b12" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#60ffb0" stop-opacity=".95"/><stop offset=".7" stop-color="#60ffb0" stop-opacity=".35"/><stop offset="1" stop-color="#60ffb0" stop-opacity="0"/></linearGradient>
-<linearGradient id="b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#6088ff" stop-opacity=".95"/><stop offset=".7" stop-color="#6088ff" stop-opacity=".35"/><stop offset="1" stop-color="#6088ff" stop-opacity="0"/></linearGradient>
+<linearGradient id="b6" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#40d8ff" stop-opacity=".95"/><stop offset=".7" stop-color="#40d8ff" stop-opacity=".35"/><stop offset="1" stop-color="#40d8ff" stop-opacity="0"/></linearGradient>
+<linearGradient id="b8" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff58c8" stop-opacity=".95"/><stop offset=".7" stop-color="#ff58c8" stop-opacity=".35"/><stop offset="1" stop-color="#ff58c8" stop-opacity="0"/></linearGradient>
+<linearGradient id="b10" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#b070ff" stop-opacity=".95"/><stop offset=".7" stop-color="#b070ff" stop-opacity=".35"/><stop offset="1" stop-color="#b070ff" stop-opacity="0"/></linearGradient>
+<linearGradient id="b12" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#a8f060" stop-opacity=".95"/><stop offset=".7" stop-color="#a8f060" stop-opacity=".35"/><stop offset="1" stop-color="#a8f060" stop-opacity="0"/></linearGradient>
+<linearGradient id="b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#4878ff" stop-opacity=".95"/><stop offset=".7" stop-color="#4878ff" stop-opacity=".35"/><stop offset="1" stop-color="#4878ff" stop-opacity="0"/></linearGradient>
 </defs>
 <rect x="1" y="64" width="58" height="16" fill="#2c3240"/>
-<rect x="61" y="64" width="58" height="16" fill="#6088ff"/>
+<rect x="61" y="64" width="58" height="16" fill="#4878ff"/>
 <rect x="121" y="64" width="58" height="16" fill="#2c3240"/>
 <rect x="181" y="64" width="58" height="16" fill="#2c3240"/>
 <rect x="241" y="64" width="58" height="16" fill="#ffc460"/>
 <rect x="301" y="64" width="58" height="16" fill="#2c3240"/>
-<rect x="361" y="64" width="58" height="16" fill="#50e0ff"/>
+<rect x="361" y="64" width="58" height="16" fill="#40d8ff"/>
 <rect x="421" y="64" width="58" height="16" fill="#2c3240"/>
-<rect x="481" y="64" width="58" height="16" fill="#ff60d0"/>
+<rect x="481" y="64" width="58" height="16" fill="#ff58c8"/>
 <rect x="541" y="64" width="58" height="16" fill="#2c3240"/>
-<rect x="601" y="64" width="58" height="16" fill="#a878ff"/>
+<rect x="601" y="64" width="58" height="16" fill="#b070ff"/>
 <rect x="661" y="64" width="58" height="16" fill="#2c3240"/>
-<rect x="721" y="64" width="58" height="16" fill="#60ffb0"/>
+<rect x="721" y="64" width="58" height="16" fill="#a8f060"/>
 <rect x="781" y="64" width="58" height="16" fill="#2c3240"/>
 <rect x="841" y="64" width="58" height="16" fill="#2c3240"/>
 <rect x="901" y="64" width="58" height="16" fill="#2c3240"/>

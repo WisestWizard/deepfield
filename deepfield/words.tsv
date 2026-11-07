@@ -196,3 +196,5 @@ MOVES	moves
 MUTE	muted
 CT	cents
 LET GO: BACK	let go to go back
+VOICE	voice
+TABLE	wavetable position

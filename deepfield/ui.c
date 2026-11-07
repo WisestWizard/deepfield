@@ -15,6 +15,7 @@
  * body let go), PLAY runs ORBIT, SEQ freezes the reverb, the page's button lights. FX held: F3 G3 A3 B3 switch the
  * effects (saved with the scene). PRESET scrolls the scenes and the one it stops on morphs in; ALGO picks the
  * model; SAVE saves a scene (PRESET picks the slot, SAVE again saves, HOME cancels); REC is Bluetooth. */
+#include "art.h"                         /* the model glyphs and the page icons */
 enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_MOTION2, PG_FX_ENS, PG_FX_DLY, PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2,
        PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
@@ -83,16 +84,19 @@ static const char *const NOTE_NAME[12] = {"C", "C#", "D", "D#", "E", "F", "F#", 
 static const char *const BTN_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ",
                                          "PLAY", "REC", "OCT-", "OCT+"};
 
-/* the screen: a header of 34 (the scene and the status, then the pills), the view of 84 over the keys strip of
- * 36, the footer of 86 (the page band, the four knobs in a row) */
-#define HEAD_H 34
+/* the screen: a header of 46 (the model's glyph, the scene, the status, then the pills at fixed places), the view
+ * of 84 over the keys strip of 36, the footer of 74 (the page band, the four knobs in a row). PHOSPHOR TUBE: light
+ * means sound. Only the bodies give off light; the interface around them stays unlit, and each colour has one
+ * meaning: sun is latched (everywhere), white your hand (a lead, an open body), cyan where you are (never in the
+ * view), teal an effect on, orange only what needs attention */
+#define HEAD_H 46
 #define SKY_W 240
 #define SKY_H 84
-#define SKY_Y 34
-#define KEYS_Y 118
+#define SKY_Y 46
+#define KEYS_Y 130
 #define KEYS_H 36
-#define FOOT_Y 154
-#define FOOT_H 86
+#define FOOT_Y 166
+#define FOOT_H 74
 #define HUD_MS 1300u
 #define HUE_STAR 0
 #define HUE_SUN 1
@@ -105,25 +109,40 @@ static const char *const BTN_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO
 #define NSTARS 40u
 static uint8_t phos[SKY_W * SKY_H] PLAT_POOL;
 static uint16_t lut[256];
-static const uint8_t HUE_RGB[8][3] = {{236, 240, 255}, {255, 196, 96}, {80, 224, 255}, {255, 96, 208},
-                                      {168, 120, 255}, {96, 255, 176}, {96, 136, 255}, {255, 44, 56}};
-#define C_SKY RGB(0, 4, 16)
-#define C_TEXT RGB(120, 215, 255)
-#define C_LABEL RGB(150, 160, 175)
-#define C_RULE RGB(26, 44, 70)
-#define C_BRIGHT RGB(240, 248, 255)
-#define C_WARN RGB(255, 150, 70)
-#define C_OFF RGB(60, 80, 104)
-#define C_PILL RGB(40, 150, 200)
-#define C_BAND RGB(16, 28, 46)
-#define C_KW_OFF RGB(44, 50, 64)
-#define C_KW_IN RGB(104, 116, 140)
-#define C_KB_OFF RGB(18, 22, 32)
-#define C_KB_IN RGB(60, 68, 88)
-#define C_LATCH RGB(255, 220, 0)
-#define C_LEAD RGB(245, 245, 255)
-#define C_LEAD_OFF RGB(120, 120, 135)
-#define C_FX_ON RGB(40, 210, 160)
+/* the eight hues as ramps, keyed at levels 31 26 20 13 7 2: the pure hue at 26, white-hot above, sliding toward
+ * plum and navy as they dim, every level rising from the sky at 0 and none below it (the old fade from black drew
+ * the faintest levels darker than the sky: a black moat round every glow). Body green moved to lime, away from the
+ * FX teal; blue moved away from violet */
+static const uint8_t RAMP[8][6][3] = {
+    {{255, 255, 255}, {216, 224, 248}, {152, 168, 208}, {88, 104, 144}, {40, 52, 88}, {16, 24, 48}},      /* star */
+    {{255, 244, 216}, {248, 196, 96}, {224, 136, 64}, {160, 72, 56}, {88, 32, 64}, {32, 12, 40}},         /* sun */
+    {{232, 252, 255}, {64, 216, 255}, {40, 152, 208}, {24, 96, 144}, {8, 48, 88}, {0, 24, 48}},           /* cyan */
+    {{255, 232, 248}, {255, 88, 200}, {192, 48, 152}, {128, 24, 112}, {64, 16, 72}, {24, 8, 40}},         /* magenta */
+    {{240, 232, 255}, {176, 112, 255}, {112, 80, 208}, {72, 48, 152}, {40, 28, 96}, {16, 12, 48}},       /* violet */
+    {{244, 255, 224}, {168, 240, 96}, {112, 192, 64}, {64, 120, 48}, {32, 64, 32}, {12, 28, 20}},         /* lime */
+    {{224, 236, 255}, {72, 120, 255}, {56, 88, 208}, {32, 52, 160}, {16, 28, 96}, {8, 12, 48}},           /* blue */
+    {{255, 240, 224}, {255, 64, 80}, {200, 48, 64}, {136, 28, 56}, {72, 16, 48}, {24, 8, 32}},            /* ember */
+};
+static const uint8_t BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};   /* ordered dither */
+#define C_SKY RGB(0, 4, 16)              /* the sky: every glow rises from it (on the panel it reads as black) */
+#define C_HORIZON RGB(8, 16, 48)         /* the view's dithered horizon, so the window reads on a black panel */
+#define C_BAND RGB(10, 22, 40)           /* the page band */
+#define C_RULE RGB(26, 44, 70)           /* rules, empty tracks */
+#define C_BRIGHT RGB(240, 248, 255)      /* values; your hand */
+#define C_LABEL RGB(150, 160, 175)       /* labels */
+#define C_OFF RGB(104, 128, 160)         /* an unlit pill or letter */
+#define C_TEXT RGB(120, 215, 255)        /* where you are: the page, bar fills; never in the view */
+#define C_MODE RGB(40, 150, 200)         /* a mode on: a filled pill */
+#define C_FX_ON RGB(40, 210, 160)        /* an effect on */
+#define C_LATCH RGB(248, 196, 96)        /* latched, everywhere: the sun hue */
+#define C_WARN RGB(255, 150, 70)         /* needs attention: unsaved, LOAD, a failed save */
+#define C_LEAD RGB(240, 248, 255)        /* a lead's key: your hand */
+#define C_LEAD_OFF RGB(112, 124, 148)
+#define C_KW_IN RGB(58, 70, 96)          /* the keys as dark glass, lit only by their bodies: white in the scale */
+#define C_KW_OFF RGB(26, 33, 48)
+#define C_KB_IN RGB(42, 53, 80)
+#define C_KB_OFF RGB(10, 14, 22)
+#define C_STRIP_TOP RGB(24, 48, 80)      /* the strip's top line, where the beams stand */
 static const uint8_t WHITE_K[16] = PLAT_WHITE_KEYS;
 static const uint8_t BLACK_K[11] = PLAT_BLACK_KEYS;
 static uint8_t key_x[NKEYS];             /* each key's centre on the strip */
@@ -150,6 +169,8 @@ static struct {
     uint32_t glo_kt;                     /* a key without pressure (the top row) held under GLO: when its climb began */
     uint8_t fx_used, sel_used;
     uint8_t sel_chord;                   /* SEL held while PRESET turned: the scene lands with its chord as SEL lets go */
+    float mist;                          /* the noise mist's drift, in dither cells */
+    uint16_t hud_id;                     /* the knob whose value the HUD shows (its bar under it); 0xFFFF none */
     uint32_t enc_t[NE];                  /* each knob's last detent: one within 40 ms of it is a fast turn */
     uint32_t bk_down, bk_open;           /* a latched body's key held (LATCH on): counting to a third of a second (it
                                           * blinks), then open: the four knobs are that body's own (several: all of them) */
@@ -255,6 +276,7 @@ static void ui_say(const char *a, const char *b)
         ui.hud[1][i] = b[i];
     ui.hud[1][i] = 0;
     ui.hud_until = plat_ms() + HUD_MS;
+    ui.hud_id = 0xFFFFu;                 /* a message: no bar (a knob sets its own after this) */
     ui.sky_t = 0;                        /* drawn at the next frame */
     if (ann_on()) {
         t[0] = 0;
@@ -596,6 +618,14 @@ static int32_t knob_shown(uint32_t id, int32_t v, int32_t e)
     default: return i == 7 ? 127 : (i * 127 + 6) / 7;
     }
 }
+static const char *param_label(uint32_t id)   /* SHAPE is the voice on DX and the table on SCAN */
+{
+    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_DX)
+        return "VOICE";
+    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_SCAN)
+        return "TABLE";
+    return PM[id].label;
+}
 static void knob(uint32_t id, int32_t e, int fast)
 {
     int32_t v = (int32_t)value_of(id), mx = (int32_t)value_max(id), lo = PM[id].kind == K_CHOUT ? 1 : 0;
@@ -625,7 +655,8 @@ static void knob(uint32_t id, int32_t e, int fast)
         return;
     value_set(id, (uint32_t)v);
     value_text(id, t);
-    ui_say(PM[id].label, t);
+    ui_say(param_label(id), t);
+    ui.hud_id = (uint16_t)id;
     ui.redraw_foot = 1;
 }
 
@@ -1480,34 +1511,44 @@ static void ph_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint32_t 
     }
 }
 static void ph_compose(uint32_t shift, uint32_t dim)   /* the phosphor onto the canvas, each pixel faded a step for
-                                                        * the next frame (dim: the HUD's words go over it) */
+                                                        * the next frame (dim: the HUD's words go over it, and every
+                                                        * level drops to two fifths, so the beams stay in view) */
 {
-    uint32_t i, mask = dim ? 0xE7u : 0xFFu;
+    uint32_t i, x, y;
+    uint16_t hz = swap16(C_HORIZON);
     for (i = 0; i < (uint32_t)(SKY_W * SKY_H); i++) {
         uint32_t v = phos[i], l = v & 31u, d = (l >> shift) + 1u;
-        cv_px[i] = lut[v & mask];
+        cv_px[i] = lut[(v & 0xE0u) | (dim ? (l * 2u + 2u) / 5u : l)];
         if (l)
             phos[i] = (uint8_t)((v & 0xE0u) | (l > d ? l - d : 0u));
     }
-}
-static void lut_build(void)
-{
-    uint32_t h, l;
-    for (h = 0; h < 8u; h++)
-        for (l = 0; l < 32u; l++) {
-            float t = (float)l / 31.0f, k = t * t * fm_sqrtf(t), w = t > 0.82f ? (t - 0.82f) * 3.0f : 0.0f;
-            float r = (float)HUE_RGB[h][0] * k, g = (float)HUE_RGB[h][1] * k, b = (float)HUE_RGB[h][2] * k;
-            r += (255.0f - r) * w;
-            g += (255.0f - g) * w;
-            b += (255.0f - b) * w;
-            if (!l) {
-                r = 0.0f;
-                g = 4.0f;
-                b = 16.0f;
-            }
-            lut[h << 5 | l] = swap16(RGB((uint32_t)r, (uint32_t)g, (uint32_t)b));
+    for (y = SKY_H - 6u; y < (uint32_t)SKY_H; y++)   /* the horizon: the bottom six rows lifted, dithered, more lower down */
+        for (x = 0; x < (uint32_t)SKY_W; x++) {
+            i = y * SKY_W + x;
+            if (!(phos[i] & 31u) && BAYER[y & 3u][x & 3u] < (y - (SKY_H - 6u)) * 5u / 2u)
+                cv_px[i] = hz;
         }
 }
+static void lut_build(void)              /* each hue's 32 levels from its ramp's six keys, the sky at 0 */
+{
+    static const uint8_t KL[7] = {31, 26, 20, 13, 7, 2, 0};
+    static const uint8_t SKY3[3] = {0, 4, 16};
+    uint32_t h, l, i, c;
+    for (h = 0; h < 8u; h++)
+        for (l = 0; l < 32u; l++) {
+            float t, v[3];
+            for (i = 0; !(l <= KL[i] && l >= KL[i + 1u]); i++)
+                ;
+            t = (float)(KL[i] - l) / (float)(KL[i] - KL[i + 1u]);
+            for (c = 0; c < 3u; c++) {
+                float a = RAMP[h][i][c], b = i + 1u < 6u ? RAMP[h][i + 1u][c] : SKY3[c];
+                v[c] = a + (b - a) * t + 0.5f;
+            }
+            lut[h << 5 | l] = swap16(RGB((uint32_t)v[0], (uint32_t)v[1], (uint32_t)v[2]));
+        }
+}
+static inline uint16_t hue_px(uint32_t hue, uint32_t lvl) { return lut[(hue & 7u) << 5 | (lvl > 31u ? 31u : lvl)]; }   /* a
+                                         * ramp's colour as a canvas pixel */
 static void stars_init(void)
 {
     uint32_t i;
@@ -1515,25 +1556,57 @@ static void stars_init(void)
     for (i = 0; i < NSTARS; i++) {
         ui.rng = hash32(ui.rng + i);
         ui.star[i].x = (uint16_t)(ui.rng % (SKY_W * 256u));
-        ui.star[i].y = (uint16_t)((ui.rng >> 12) % (SKY_H * 256u));
+        ui.star[i].y = (uint16_t)((ui.rng >> 12) % ((SKY_H - 8u) * 256u));   /* above the horizon */
         ui.star[i].z = (uint8_t)(1u + (ui.rng >> 24) % 3u);
-        ui.star[i].hue = (uint8_t)((ui.rng >> 27) % 5u == 0u ? HUE_BLUE : (ui.rng >> 27) % 7u == 0u ? HUE_CYAN : HUE_STAR);
+        ui.star[i].hue = HUE_STAR;       /* stars are the sky's: no body colour among them */
     }
 }
-static void stars_draw(float drift)
+static void stars_draw(float drift)      /* the stars drift at DRIFT's pace and each twinkles on its own slow sine (3
+                                          * to 8 s), the brightest flashing a cross at its peak; FREEZE holds them */
 {
-    uint32_t i;
+    uint32_t i, still = dr_frozen();
     for (i = 0; i < NSTARS; i++) {
-        uint32_t z = ui.star[i].z, tw = hash32(ui.frame * 7u + i * 131u) & 7u, lvl;
-        int32_t v = (int32_t)(z * 9u) * (int32_t)(40.0f + 220.0f * drift) / 64;
-        int32_t x = (int32_t)ui.star[i].x - v;
+        uint32_t z = ui.star[i].z, hsh = hash32(i * 2654435761u + 7u), lvl;
+        float per = 75.0f + (float)(hsh % 126u), s = still ? 0.0f : fm_sin_turns((float)ui.frame / per + (float)(hsh >> 8 & 255u) * (1.0f / 256.0f));
+        int32_t v = still ? 0 : (int32_t)(z * 9u) * (int32_t)(40.0f + 220.0f * drift) / 64;
+        int32_t x = (int32_t)ui.star[i].x - v, y;
         if (x < 0)
             x += SKY_W * 256;
         ui.star[i].x = (uint16_t)x;
-        lvl = 4u + z * 5u + tw;
-        if (lvl > 26u)
-            lvl = 26u;
-        ph_dot(x >> 8, ui.star[i].y >> 8, ui.star[i].hue, z == 3u && tw > 5u ? 29u : lvl);
+        x >>= 8;
+        y = ui.star[i].y >> 8;
+        lvl = (uint32_t)(6.0f + (float)z * 3.0f + (4.0f + (float)z * 2.0f) * s);
+        ph_dot(x, y, HUE_STAR, lvl);
+        if (z == 3u && s > 0.93f) {      /* a glint */
+            ph_dot(x - 1, y, HUE_STAR, 18u);
+            ph_dot(x + 1, y, HUE_STAR, 18u);
+            ph_dot(x, y - 1, HUE_STAR, 18u);
+            ph_dot(x, y + 1, HUE_STAR, 18u);
+            ph_dot(x, y, HUE_STAR, 31u);
+        }
+    }
+}
+static void freeze_frame(void)           /* FREEZE: four ice brackets in the corners (and the stars, the mist and the
+                                          * breathing hold still) */
+{
+    int32_t k;
+    for (k = 0; k < 12; k++) {
+        ph_dot(k, 0, HUE_STAR, 24u);
+        ph_dot(k, 1, HUE_STAR, 24u);
+        ph_dot(0, k, HUE_STAR, 24u);
+        ph_dot(1, k, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1 - k, 0, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1 - k, 1, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1, k, HUE_STAR, 24u);
+        ph_dot(SKY_W - 2, k, HUE_STAR, 24u);
+        ph_dot(k, SKY_H - 1, HUE_STAR, 24u);
+        ph_dot(k, SKY_H - 2, HUE_STAR, 24u);
+        ph_dot(0, SKY_H - 1 - k, HUE_STAR, 24u);
+        ph_dot(1, SKY_H - 1 - k, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1 - k, SKY_H - 1, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1 - k, SKY_H - 2, HUE_STAR, 24u);
+        ph_dot(SKY_W - 1, SKY_H - 1 - k, HUE_STAR, 24u);
+        ph_dot(SKY_W - 2, SKY_H - 1 - k, HUE_STAR, 24u);
     }
 }
 static uint32_t body_hue(uint32_t note) { return 2u + (note % 12u) * 5u % 6u; }
@@ -1749,16 +1822,9 @@ static const sprite_t SPR_PLANET = {16, 11, PLANET};
 #define BOTTLE_Y (SKY_H - 42)       /* the bottle stands at the bottom left; its cap sits on its neck */
 #define MOUTHS_X 180
 #define MOUTHS_Y (CY - 23)
-static uint16_t body_px(uint32_t note, int light)   /* a pill's colour by pitch class, as a canvas pixel */
+static uint16_t body_px(uint32_t note, int light)   /* a pill's colour: its body's hue, as the beam and the key */
 {
-    static const uint8_t C[6][3] = {{0, 230, 255}, {255, 40, 200}, {150, 70, 255}, {50, 255, 110}, {40, 110, 255}, {255, 140, 0}};
-    uint32_t h = (note % 12u) * 5u % 6u, r = C[h][0], g = C[h][1], b = C[h][2];
-    if (light) {
-        r += (255u - r) / 2u;
-        g += (255u - g) / 2u;
-        b += (255u - b) / 2u;
-    }
-    return swap16(RGB(r, g, b));
+    return hue_px(body_hue(note), light ? 29u : 26u);
 }
 static void sky_mouth(void)
 {
@@ -1946,7 +2012,7 @@ static void sky_mouth(void)
             cb2 = swap16(RGB(160, 160, 170));
             ch = swap16(RGB(190, 190, 200));
         }
-        spal['k'] = b.latched ? swap16(RGB(255, 220, 0)) : swap16(RGB(10, 8, 14));   /* latched: a yellow outline */
+        spal['k'] = b.latched ? swap16(C_LATCH) : swap16(RGB(10, 8, 14));   /* latched: a sun outline */
         spr(((int32_t)ui.px[i] - (rot ? 7 : 16)) & ~1, ((int32_t)ui.py[i] - (rot ? 16 : 7)) & ~1, &SPR_PILL, rot, ca, cb2, ch);
         spal['k'] = swap16(RGB(10, 8, 14));
     }
@@ -1993,10 +2059,10 @@ static void sky_orbits(void)
         ph_disc((int32_t)px, (int32_t)py, pr + 2, body_hue(b.home), lvl / 3u);   /* a halo */
         ph_disc((int32_t)px, (int32_t)py, pr, body_hue(b.home), lvl);
         if (b.latched)
-            ph_ellipse((int32_t)px, (int32_t)py, pr + 3, pr + 3, HUE_STAR, 14u, 2u);   /* a ring: it stays */
+            ph_ellipse((int32_t)px, (int32_t)py, pr + 3, pr + 3, HUE_SUN, 20u, 2u);   /* a ring: latched, the sun's */
     }
     if (dr_frozen())
-        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+        freeze_frame();
 }
 
 static void sky_nebula(void)
@@ -2056,7 +2122,7 @@ static void sky_nebula(void)
             ph_line(xc, SKY_H - 7, xc, SKY_H - 2, body_hue(b.home), b.fading ? 10u : 22u);
         }
     if (dr_frozen())
-        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+        freeze_frame();
 }
 
 static void sky_scope(void)
@@ -2100,7 +2166,7 @@ static void sky_scope(void)
         py = y;
     }
     if (dr_frozen())
-        ph_ellipse(CX, CY, 116, 38, HUE_CYAN, 14u, 2u);
+        freeze_frame();
 }
 
 /* ------------------------------------------------------------------ the beams --- */
@@ -2140,116 +2206,311 @@ static float beam_x(float pitch, int *off)   /* where a pitch stands over the st
     f = kk - (float)k0;
     return (float)key_x[k0] + f * ((float)key_x[k0 + 1] - (float)key_x[k0]);
 }
-static void sky_beams(void)                  /* each body a beam over its key: its level the height, latched a
-                                              * cap, fading dim, an ORBIT move slides it and marks where it was */
+/* a beam over its key: a 7-pixel core rising from level 20 at the top to the key's pure hue at its foot through the
+ * dither, its breathing moving it, edges at 13, a dithered halo into the sky, a white-hot head three rows deep that
+ * marks the level, and a white-hot foot where it stands on its key; f scales it (fading, or behind an open body) */
+static void beam(int32_t x, int32_t top, uint32_t hue, float f, float breath, int thin)
 {
-    uint32_t i, to;
+    int32_t y, dx, w = thin ? 1 : 3;
+    for (y = top; y < SKY_H; y++) {
+        float frac = (float)(y - top) / (float)(SKY_H - top > 1 ? SKY_H - 1 - top : 1), core = 20.0f + 6.0f * frac + breath;
+        uint32_t lo = (uint32_t)core, t = (uint32_t)((core - (float)lo) * 16.0f);
+        for (dx = -w; dx <= w; dx++)
+            ph_dot(x + dx, y, hue, (uint32_t)((float)(BAYER[y & 3][(x + dx) & 3] < t ? lo + 1u : lo) * f));
+        if (thin)
+            continue;
+        for (dx = 4; dx <= 5; dx++) {
+            ph_dot(x - dx, y, hue, (uint32_t)(13.0f * f));
+            ph_dot(x + dx, y, hue, (uint32_t)(13.0f * f));
+        }
+        if (BAYER[y & 3][(x - 6) & 3] < 8u)
+            ph_dot(x - 6, y, hue, (uint32_t)(7.0f * f));
+        if (BAYER[y & 3][(x + 6) & 3] < 8u)
+            ph_dot(x + 6, y, hue, (uint32_t)(7.0f * f));
+    }
+    for (dx = -w; dx <= w; dx++) {       /* the head, its top corners cut */
+        if (dx != -w && dx != w)
+            ph_dot(x + dx, top, hue, (uint32_t)(31.0f * f));
+        ph_dot(x + dx, top + 1, hue, (uint32_t)(31.0f * f));
+        ph_dot(x + dx, top + 2, hue, (uint32_t)(31.0f * f));
+        if (dx > -3 && dx < 3)
+            ph_dot(x + dx, SKY_H - 1, hue, (uint32_t)(31.0f * f));
+    }
+}
+static void sky_beams(void)                  /* each body a beam over its key: its level the height, a sun spark when
+                                              * latched, a sun bar at its foot when pinned, white frames when open;
+                                              * an ORBIT move slides it and marks where it was; the noise a mist */
+{
+    uint32_t i, k, to, now = plat_ms(), still = dr_frozen(), quick = orbit_quick();
+    int32_t arp = dr_arp_note();
     dr_body_t b;
     float nlv, nnote, ncol, nband, frac = dr_orbit_next();
     stars_draw((float)dr_scene.p[P_DRIFT] * (1.0f / 127.0f) * 0.4f);
     dr_noise(&nlv, &nnote, &ncol, &nband);
-    if (nlv > 0.004f) {                  /* the noise: a soft wide beam where its band sits, brown to white */
-        int off, hw = 8 + (int32_t)((1.0f - nband) * 40.0f), dx, y;
-        int32_t x = (int32_t)(beam_x(nnote, &off) + 0.5f), h = (int32_t)(fm_sqrtf(nlv) * (float)(SKY_H - 12));
-        uint32_t hue = ncol < 0.33f ? HUE_EMBER : ncol < 0.66f ? HUE_SUN : HUE_STAR;
+    if (!still)                          /* the mist's dither drifts with WIND */
+        ui.mist += 0.05f + 0.3f * (float)dr_scene.p[P_NZ_WIND] * (1.0f / 127.0f);
+    if (nlv > 0.004f) {                  /* the noise: a mound of dithered mist where its band sits, warm when brown,
+                                          * pale when white, feathered at the top, lifting with each gust */
+        int off, hw = 8 + (int32_t)((1.0f - nband) * 40.0f), dx, y, sc = (int32_t)ui.mist;
+        int32_t x = (int32_t)(beam_x(nnote, &off) + 0.5f);
+        float a = fm_sqrtf(nlv), peak = 5.0f + 8.0f * a, hgt = 8.0f + a * (float)SKY_H * 0.4f;
+        uint32_t hue = ncol < 0.5f ? HUE_SUN : HUE_STAR;
         for (dx = -hw; dx <= hw; dx++) {
-            float k = 1.0f - fm_fabsf((float)dx) / (float)(hw + 1);
-            uint32_t l = 3u + (uint32_t)(15.0f * k * k);
-            for (y = SKY_H - 1 - h; y < SKY_H; y++)
-                ph_dot(x + dx, y, hue, l);
+            float kk = 1.0f - fm_fabsf((float)dx) / (float)(hw + 1);
+            int32_t top = SKY_H - 1 - (int32_t)(hgt * kk);
+            for (y = top; y < SKY_H; y++) {
+                float feather = (float)(y - top) * (1.0f / 6.0f);
+                if (BAYER[y & 3][(x + dx + sc) & 3] < 8u)
+                    ph_dot(x + dx, y, hue, (uint32_t)(peak * kk * (feather > 1.0f ? 1.0f : feather)));
+            }
         }
     }
     for (i = 0; i < DR_NV; i++) {
-        int off, w, open = 0;
+        int off, open = 0;
         int32_t x, h, top, y, dx;
-        uint32_t hue, lvl, k;
+        uint32_t hue;
+        float f;
         if (!dr_body(i, &b))
             continue;
-        for (k = 0; k < NKEYS; k++)      /* a body open under its key: framed bright, the others at half */
+        for (k = 0; k < NKEYS; k++)
             if (ui.bk_open >> k & 1u && ui.keynote[k] == b.home && !b.fading)
                 open = 1;
         x = (int32_t)(beam_x(b.pitch, &off) + 0.5f);
         hue = body_hue(b.home);
         h = (int32_t)(b.level * (float)(SKY_H - 10));
-        if (h < 1)
-            h = 1;
-        lvl = b.fading ? 14u : 31u;
-        if (ui.bk_open && !open)
-            lvl /= 2u;
-        w = off ? 1 : 4;
+        if (h < 3)
+            h = 3;
         top = SKY_H - 1 - h;
-        for (dx = -w - 2; dx <= w + 2; dx++) {
-            uint32_t l = (dx < -w || dx > w) ? lvl / 3u : (dx == -w || dx == w) ? lvl * 2u / 3u : lvl;
-            for (y = top; y < SKY_H; y++)
-                ph_dot(x + dx, y, hue, l);
+        f = (b.fading ? 0.5f : 1.0f) * (ui.bk_open && !open ? 0.5f : 1.0f);
+        beam(x, top, hue, f, still ? 0.0f : (b.spark - 0.5f) * 3.0f, off);
+        if (b.latched && !b.fading) {    /* latched: a sun spark over the head */
+            ph_dot(x, top - 5, HUE_SUN, (uint32_t)(31.0f * f));
+            ph_dot(x - 1, top - 4, HUE_SUN, (uint32_t)(31.0f * f));
+            ph_dot(x + 1, top - 4, HUE_SUN, (uint32_t)(31.0f * f));
+            ph_dot(x, top - 3, HUE_SUN, (uint32_t)(31.0f * f));
+            ph_dot(x, top - 4, HUE_STAR, (uint32_t)(31.0f * f));
         }
-        if (open)
-            for (y = top - 2; y < SKY_H; y++) {
-                ph_dot(x - w - 3, y, HUE_STAR, 31u);
-                ph_dot(x + w + 3, y, HUE_STAR, 31u);
+        if (b.pinned && !b.fading)       /* pinned: a sun bar across its foot */
+            for (dx = -7; dx <= 7; dx++) {
+                ph_dot(x + dx, SKY_H - 1, HUE_SUN, (uint32_t)(31.0f * f));
+                ph_dot(x + dx, SKY_H - 2, HUE_SUN, (uint32_t)(26.0f * f));
             }
-        if (b.pinned && !b.fading)       /* pinned: a bar across its foot, wider than the beam */
-            for (dx = -w - 4; dx <= w + 4; dx++) {
-                ph_dot(x + dx, SKY_H - 1, HUE_STAR, 31u);
-                ph_dot(x + dx, SKY_H - 2, HUE_STAR, 24u);
+        if (open)                        /* open: white frames, your hand */
+            for (y = top - 7; y < SKY_H; y++) {
+                ph_dot(x - 8, y, HUE_STAR, 31u);
+                ph_dot(x + 8, y, HUE_STAR, 31u);
             }
-        if (b.latched && !b.fading)
-            for (dx = -w; dx <= w; dx++) {
-                ph_dot(x + dx, top, HUE_STAR, 31u);
-                ph_dot(x + dx, top - 1, HUE_STAR, 22u);
+        if (arp >= 0 && (int32_t)(b.pitch + 0.5f) == arp && now - ui.arp_step_t < 80u) {   /* an ARP step on its
+                                                                                        * note: the head flares */
+            for (dx = -2; dx <= 2; dx++) {
+                ph_dot(x + dx, top + 1, HUE_STAR, 31u);
+                ph_dot(x, top + 1 + dx, HUE_STAR, 31u);
             }
-        if (fm_fabsf(b.pitch - (float)b.home) > 0.05f) {
+        }
+        if (fm_fabsf(b.pitch - (float)b.home) > 0.05f) {   /* moved: a mark where it was struck */
             int32_t hx = (int32_t)(beam_x((float)b.home, &off) + 0.5f);
             for (y = SKY_H - 4; y < SKY_H; y++)
                 ph_dot(hx, y, hue, 24u);
         }
-        if (!orbit_quick() && dr_orbit_pending(i, &to)) {   /* where ORBIT is taking it: a ghost of the beam at the
-                                                             * destination, and
-                                          * a line reaching out from the beam's top toward it as the countdown fills */
-            int32_t tx = (int32_t)(beam_x((float)to, &off) + 0.5f), ty = top < 5 ? 5 : top;
+        if (!quick && dr_orbit_pending(i, &to)) {   /* where ORBIT is taking it: a dithered ghost of the beam at the
+                                                    * destination, and a line reaching out from its head as the
+                                                    * countdown fills */
+            int32_t tx = (int32_t)(beam_x((float)to, &off) + 0.5f), ty = top < 7 ? 7 : top;
             int32_t ex = x + (int32_t)((float)(tx - x) * frac);
-            for (y = ty; y < SKY_H; y++) {
-                ph_dot(tx - 1, y, hue, 6u);
-                ph_dot(tx, y, hue, 9u);
-                ph_dot(tx + 1, y, hue, 6u);
-            }
-            ph_line(x, ty - 3, ex, ty - 3, hue, 26u);
-            ph_line(x, ty - 4, ex, ty - 4, hue, 18u);
-            ph_dot(ex, ty - 5, hue, 31u);
-            ph_dot(ex, ty - 2, hue, 31u);
+            for (y = ty; y < SKY_H; y++)
+                for (dx = -2; dx <= 2; dx++)
+                    if ((y + dx) & 1)
+                        ph_dot(tx + dx, y, hue, 13u);
+            ph_line(x, ty - 5, ex, ty - 5, hue, 26u);
+            ph_line(x, ty - 6, ex, ty - 6, hue, 18u);
+            ph_dot(ex, ty - 7, hue, 31u);
+            ph_dot(ex, ty - 4, hue, 31u);
         }
     }
-    for (i = 0; i < DR_NL; i++) {        /* a lead: a thin white beam over its key, dim as it releases */
+    for (i = 0; i < DR_NL; i++) {        /* a lead: a thin white beam over its key (your hand), its edges its note's
+                                          * hue, half as bright as it releases */
         int off;
-        int32_t x, h, y, dx;
-        uint32_t lvl;
+        int32_t x, h, y;
+        float f;
         if (!dr_lead_body(i, &b))
             continue;
         x = (int32_t)(beam_x((float)b.home, &off) + 0.5f);
         h = (int32_t)(b.level * (float)(SKY_H - 10));
-        if (h < 1)
-            h = 1;
-        lvl = b.fading ? 16u : 31u;
-        for (dx = -2; dx <= 2; dx++) {
-            uint32_t l = (dx == -2 || dx == 2) ? lvl / 3u : (dx == 0) ? lvl : lvl * 2u / 3u;
-            for (y = SKY_H - 1 - h; y < SKY_H; y++)
-                ph_dot(x + dx, y, dx == 0 ? HUE_STAR : body_hue(b.home), l);
+        if (h < 3)
+            h = 3;
+        f = b.fading ? 0.5f : 1.0f;
+        for (y = SKY_H - 1 - h; y < SKY_H; y++) {
+            ph_dot(x, y, HUE_STAR, (uint32_t)((y < SKY_H - h + 2 ? 31.0f : 26.0f) * f));
+            ph_dot(x - 1, y, body_hue(b.home), (uint32_t)(20.0f * f));
+            ph_dot(x + 1, y, body_hue(b.home), (uint32_t)(20.0f * f));
         }
     }
-    if (dr_frozen()) {                   /* ice: a dotted frame round the view */
-        int32_t x, y;
-        for (x = 0; x < SKY_W; x += 4) {
-            ph_dot(x, 0, HUE_CYAN, 28u);
-            ph_dot(x, 1, HUE_CYAN, 20u);
-            ph_dot(x + 2, SKY_H - 1, HUE_CYAN, 28u);
-            ph_dot(x + 2, SKY_H - 2, HUE_CYAN, 20u);
+    if (still)
+        freeze_frame();
+}
+
+/* ------------------------------------------------------------------ values, drawn --- */
+/* one bar per kind of value: segments filling for a continuous value (the last one white-hot), a cell per option
+ * for a list (the one chosen lit), two cells for a switch, the hits and rests for RHYTHM, a bar from the centre for a
+ * value either way (a body's TONE and TUNE) */
+enum { BAR_NONE, BAR_FILL, BAR_LIST, BAR_SWITCH, BAR_RHYTHM, BAR_CENTRE };
+static uint32_t bar_kind(uint32_t id, uint32_t *n, uint32_t *sel, float *frac)
+{
+    uint32_t v, mx;
+    *n = *sel = 0;
+    *frac = 0.0f;
+    if (id == PID_NONE)
+        return BAR_NONE;
+    v = value_of(id);
+    mx = value_max(id);
+    *frac = mx ? (float)v / (float)mx : 0.0f;
+    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_DX) {
+        *n = DR_DX_VOICES;
+        *sel = dx_voice_of(v);
+        return BAR_LIST;
+    }
+    switch (PM[id].kind) {
+    case K_ONOFF: *sel = v; return BAR_SWITCH;
+    case K_RHYTHM: *sel = v; return BAR_RHYTHM;
+    case K_STEPS: *n = 4; *sel = v * 4u / 128u; return BAR_LIST;
+    case K_DIST: *n = 3; *sel = v * 3u / 128u; return BAR_LIST;
+    case K_BODIES: *n = 8; *sel = v >= 120u ? 7u : v * 7u / 127u; return BAR_LIST;
+    case K_DLYTIME:
+        if (v >= 100u) {
+            *n = DR_DLY_NDIV;
+            *sel = (v - 100u) / 4u;
+            return BAR_LIST;
         }
-        for (y = 0; y < SKY_H; y += 4) {
-            ph_dot(0, y, HUE_CYAN, 28u);
-            ph_dot(1, y, HUE_CYAN, 20u);
-            ph_dot(SKY_W - 1, y + 2, HUE_CYAN, 28u);
-            ph_dot(SKY_W - 2, y + 2, HUE_CYAN, 20u);
+        *frac = (float)v / 99.0f;
+        return BAR_FILL;
+    default: break;
+    }
+    if (mx < 127u && mx + 1u <= 14u) {
+        *n = mx + 1u;
+        *sel = v;
+        return BAR_LIST;
+    }
+    return BAR_FILL;
+}
+static void draw_bar(int32_t x, int32_t y, int32_t w, uint32_t kind, uint32_t n, uint32_t sel, float frac)
+{
+    int32_t i;
+    switch (kind) {
+    case BAR_FILL: {
+        int32_t segs = w / 4, lit = (int32_t)(frac * (float)segs + 0.5f);
+        if (lit == 0 && frac > 0.0f)
+            lit = 1;
+        for (i = 0; i < segs; i++)
+            cv_rect(x + 4 * i, y, 3, 5, i < lit ? (i == lit - 1 ? C_BRIGHT : C_TEXT) : C_RULE);
+        break;
+    }
+    case BAR_LIST:
+        for (i = 0; i < (int32_t)n; i++) {
+            int32_t x0 = x + i * w / (int32_t)n, x1 = x + (i + 1) * w / (int32_t)n - (n > 8u ? 1 : 2);
+            cv_rect(x0, y, x1 - x0, 5, (uint32_t)i == sel ? C_TEXT : C_RULE);
         }
+        break;
+    case BAR_SWITCH:
+        cv_rect(x, y, w / 2 - 1, 5, sel ? C_RULE : C_LABEL);
+        cv_rect(x + w / 2 + 1, y, w - w / 2 - 1, 5, sel ? C_TEXT : C_RULE);
+        break;
+    case BAR_RHYTHM: {                   /* "5/8": five hits spread over eight steps, as the engine spreads them */
+        const char *r = DR_RHYTHM_NAME[sel % DR_RHYTHMS];
+        uint32_t k = (uint32_t)(r[0] - '0'), len = (uint32_t)(r[2] - '0'), j;
+        if (r[3] >= '0' && r[3] <= '9')
+            len = len * 10u + (uint32_t)(r[3] - '0');
+        for (j = 0; j < len; j++) {
+            int32_t x0 = x + (int32_t)j * w / (int32_t)len, x1 = x + ((int32_t)j + 1) * w / (int32_t)len - 1;
+            if ((j * k) % len < k)
+                cv_rect(x0, y, x1 - x0, 5, C_TEXT);
+            else
+                cv_rect(x0, y + 4, x1 - x0, 1, C_RULE);
+        }
+        break;
+    }
+    case BAR_CENTRE: {                   /* frac 0.5 is the centre */
+        int32_t c = x + w / 2, v = x + (int32_t)(frac * (float)w + 0.5f);
+        cv_rect(x, y, w, 5, C_RULE);
+        cv_rect(v < c ? v : c, y, (v < c ? c - v : v - c) > 1 ? (v < c ? c - v : v - c) : 2, 5, C_TEXT);
+        cv_rect(c - 1, y - 2, 2, 9, C_LABEL);
+        break;
+    }
+    default: break;
+    }
+}
+static int value_split(const char *t, char *num, char *unit)   /* "334MS": "334" and "MS"; a word: 0 */
+{
+    uint32_t i = 1, j = 0;
+    num[0] = unit[0] = 0;
+    if (!((t[0] >= '0' && t[0] <= '9') || ((t[0] == '+' || t[0] == '-') && t[1] >= '0' && t[1] <= '9')))
+        return 0;
+    num[0] = t[0];
+    while (t[i] && i < 15u && ((t[i] >= '0' && t[i] <= '9') || t[i] == '.' || t[i] == '/')) {
+        num[i] = t[i];
+        i++;
+    }
+    num[i] = 0;
+    while (t[i] == ' ')
+        i++;
+    while (t[i] && j < 15u)
+        unit[j++] = t[i++];
+    unit[j] = 0;
+    return 1;
+}
+static void cell_value(int32_t x, int32_t y, const char *t)   /* a number large with its unit small, on one
+                                                              * baseline, so the value never changes size with its
+                                                              * unit; a word in S (XS when wider than the cell) */
+{
+    char num[16], unit[16];
+    if (value_split(t, num, unit)) {
+        const felucca_font_t *f = text_w(&FONT_M, num) + 1 + text_w(&FONT_T, unit) <= 58 ? &FONT_M : &FONT_S;
+        int32_t nx = cv_text(x, f == &FONT_M ? y : y + 6, f, num, C_BRIGHT);
+        cv_text(nx + 1, y + 10, &FONT_T, unit, C_LABEL);
+    } else {
+        const felucca_font_t *f = text_w(&FONT_S, t) <= 56 ? &FONT_S : &FONT_XS;
+        cv_text(x, f == &FONT_S ? y + 6 : y + 8, f, t, C_BRIGHT);
+    }
+}
+
+static void browse_draw(uint32_t now)    /* PRESET turning: the scene's neighbours, its name, the 32 slots as a row of
+                                          * stars (F then U, the candidate tall and white, the scene playing in cyan),
+                                          * and the line filling until it lands; SEL held: + CHORD */
+{
+    char t[24], u[28];
+    int32_t s = ui.sel_slot, i;
+    const felucca_font_t *f;
+    if (s > 0) {
+        slot_title((uint32_t)s - 1u, t);
+        u[0] = 0;
+        text_cat(u, "< ");
+        text_cat(u, t);
+        cv_text(4, 3, &FONT_XS, u, C_LABEL);
+    }
+    if (s + 1 < (int32_t)NSLOTS) {
+        slot_title((uint32_t)s + 1u, t);
+        text_cat(t, " >");
+        cv_text(236 - text_w(&FONT_XS, t), 3, &FONT_XS, t, C_LABEL);
+    }
+    slot_title((uint32_t)s, t);
+    f = text_w(&FONT_L, t) <= 232 ? &FONT_L : &FONT_M;
+    cv_text((SKY_W - text_w(f, t)) / 2, f == &FONT_L ? 20 : 24, f, t, C_BRIGHT);
+    if (ui.sel_chord)
+        cv_text((SKY_W - text_w(&FONT_XS, "+ CHORD")) / 2, 52, &FONT_XS, "+ CHORD", C_LATCH);
+    for (i = 0; i < (int32_t)NSLOTS; i++) {
+        int32_t x = 25 + i * 6 + (i >= (int32_t)NFACTORY ? 4 : 0);
+        if (i == s)
+            cv_rect(x, 60, 2, 10, C_BRIGHT);
+        else if (i == (int32_t)set.scene)
+            cv_rect(x, 62, 2, 8, C_TEXT);
+        else
+            cv_rect(x, 65, 2, 5, i < (int32_t)NFACTORY ? C_OFF : C_RULE);
+    }
+    cv_text(25, 71, &FONT_T, "F1", C_LABEL);
+    cv_text(25 + (int32_t)NFACTORY * 6 + 4, 71, &FONT_T, "U1", C_LABEL);
+    if (!ui.sel_chord) {
+        uint32_t el = now - ui.sel_t;
+        cv_rect(20, SKY_H - 2, 200, 2, C_RULE);
+        cv_rect(20, SKY_H - 2, (int32_t)((el > 700u ? 700u : el) * 200u / 700u), 2, C_TEXT);
     }
 }
 
@@ -2282,7 +2543,7 @@ static void sky_draw(void)
     if (fx_layer) {                      /* FX held: the four switches large, in the order of their keys */
         uint32_t act = dr_fx_active();
         const char *t = "FX HELD   F3 G3 A3 B3 C4 SWITCH";
-        cv_rect(0, 0, SKY_W, SKY_H, C_BLACK);
+        cv_rect(0, 0, SKY_W, SKY_H, C_SKY);
         cv_text((SKY_W - text_w(&FONT_T, t)) / 2, 2, &FONT_T, t, C_LABEL);
         for (i = 0; i < NFXK; i++) {
             int on = act >> i & 1u, x = 2 + 48 * (int32_t)i;
@@ -2300,21 +2561,32 @@ static void sky_draw(void)
         hud = 0;
     }
     CRUMB(12);
-    if (hud) {                           /* the HUD: the name small, the value as large as fits */
-        const felucca_font_t *f = text_w(&FONT_L, ui.hud[1]) <= 232 ? &FONT_L : &FONT_M;
-        int32_t w = text_w(&FONT_XS, ui.hud[0]);
+    if (hud) {                           /* the HUD: the name small, the value as large as fits, a knob's bar under it */
         if (set.view == VIEW_MOUTH)
             cv_rect(0, 0, SKY_W, SKY_H, C_BLACK);
-        if (ui.hud[1][0]) {
-            cv_text((SKY_W - w) / 2, 6, &FONT_XS, ui.hud[0], C_TEXT);
-            cv_text((SKY_W - text_w(f, ui.hud[1])) / 2, f == &FONT_L ? 26 : 30, f, ui.hud[1], C_BRIGHT);
+        if (ui.sel_slot >= 0) {
+            browse_draw(now);
+        } else if (ui.hud[1][0]) {
+            char num[16], unit[16];
+            int32_t w = text_w(&FONT_XS, ui.hud[0]);
+            cv_text((SKY_W - w) / 2, 6, &FONT_XS, ui.hud[0], C_LABEL);
+            if (value_split(ui.hud[1], num, unit) && text_w(&FONT_L, num) + 3 + text_w(&FONT_S, unit) <= 232) {
+                int32_t nw = text_w(&FONT_L, num), x0 = (SKY_W - nw - 3 - text_w(&FONT_S, unit)) / 2;
+                cv_text(x0, 24, &FONT_L, num, C_BRIGHT);
+                cv_text(x0 + nw + 3, 38, &FONT_S, unit, C_LABEL);
+            } else {
+                const felucca_font_t *f = text_w(&FONT_L, ui.hud[1]) <= 232 ? &FONT_L : &FONT_M;
+                cv_text((SKY_W - text_w(f, ui.hud[1])) / 2, f == &FONT_L ? 24 : 28, f, ui.hud[1], C_BRIGHT);
+            }
+            if (ui.hud_id < PID_COUNT) {
+                uint32_t n, sel, kind;
+                float frac;
+                kind = bar_kind(ui.hud_id, &n, &sel, &frac);
+                if (kind != BAR_NONE)
+                    draw_bar(40, 70, 160, kind, n, sel, frac);
+            }
         } else {
-            cv_text((SKY_W - text_w(&FONT_L, ui.hud[0])) / 2, 26, &FONT_L, ui.hud[0], C_BRIGHT);
-        }
-        if (ui.sel_slot >= 0 && !ui.sel_chord) {   /* PRESET browsing: the rest before it lands, filling */
-            uint32_t el = now - ui.sel_t;
-            cv_rect(20, 66, 200, 3, C_RULE);
-            cv_rect(20, 66, (int32_t)((el > 700u ? 700u : el) * 200u / 700u), 3, C_TEXT);
+            cv_text((SKY_W - text_w(&FONT_L, ui.hud[0])) / 2, 24, &FONT_L, ui.hud[0], C_BRIGHT);
         }
     }
     CRUMB(13);
@@ -2322,10 +2594,9 @@ static void sky_draw(void)
 }
 
 /* ------------------------------------------------------------------ the keys strip --- */
-static uint16_t body_rgb(uint32_t note, int fading)
+static uint16_t body_rgb(uint32_t note, int fading)   /* a body's colour for a flat fill: its beam's */
 {
-    const uint8_t *c = HUE_RGB[body_hue(note)];
-    return fading ? RGB(c[0] / 2u, c[1] / 2u, c[2] / 2u) : RGB(c[0], c[1], c[2]);
+    return swap16(hue_px(body_hue(note), fading ? 10u : 26u));
 }
 static uint32_t keys_sig(void)           /* what the strip would show: drawn again only when it changes */
 {
@@ -2341,100 +2612,143 @@ static uint32_t keys_sig(void)           /* what the strip would show: drawn aga
         h = hash32(h ^ (dr_orbit_pending(i, &to) ? to | 1u << 21 : 0xFFFDu));
     }
     return hash32(h ^ (uint32_t)(set.octave + 2) ^ (uint32_t)set.scale << 4 ^ (uint32_t)set.root << 8
-                  ^ (ui.btn >> B_FX & 1u) << 12 ^ dr_fx_active() << 13);
+                  ^ (ui.btn >> B_FX & 1u) << 12 ^ dr_fx_active() << 13 ^ ui.bk_open * 2654435761u
+                  ^ (uint32_t)orbit_quick() << 19);
 }
-static void key_frame(int32_t x, int32_t y, int32_t w, int32_t h)   /* a 2 px frame inside a key: latched */
+/* a key lit from its beam: the ramp from hi at the top to lo at the bottom through the dither */
+static void key_lit(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t hue, uint32_t hi, uint32_t lo)
 {
-    cv_rect(x, y, w, 2, C_LATCH);
-    cv_rect(x, y + h - 2, w, 2, C_LATCH);
-    cv_rect(x, y, 2, h, C_LATCH);
-    cv_rect(x + w - 2, y, 2, h, C_LATCH);
+    int32_t yy, xx;
+    for (yy = 0; yy < h; yy++) {
+        float lv = (float)hi - (float)(hi - lo) * (float)yy / (float)(h > 1 ? h - 1 : 1);
+        uint32_t l0 = (uint32_t)lv, t = (uint32_t)((lv - (float)l0) * 16.0f);
+        for (xx = 0; xx < w; xx++)
+            cv_px[(uint32_t)(y + yy) * cv_w + (uint32_t)(x + xx)] = hue_px(hue, BAYER[yy & 3][xx & 3] < t ? l0 + 1u : l0);
+    }
 }
+static void key_frame(int32_t x, int32_t y, int32_t w, int32_t h)   /* a 2 px white frame inside a key: the body
+                                                                     * open under your finger */
+{
+    cv_rect(x, y, w, 2, C_BRIGHT);
+    cv_rect(x, y + h - 2, w, 2, C_BRIGHT);
+    cv_rect(x, y, 2, h, C_BRIGHT);
+    cv_rect(x + w - 2, y, 2, h, C_BRIGHT);
+}
+/* the 27 keys as dark glass, lit only by sound: a sounding body's key in its beam's hue, bright at the top and
+ * dimming down the key (dim while it fades), a sun cap when latched; a moved body's home key and ORBIT's destination
+ * in the body's dim hue; a lead's key white; the scale a little lighter glass; an open body's key framed white */
+enum { KS_GLASS, KS_LIT, KS_DIM, KS_LEAD, KS_LEAD_OFF, KS_FX_ON, KS_FX_OFF };
 static void keys_draw(void)
 {
-    uint32_t k, i, fx_layer = ui.btn >> B_FX & 1u, act = dr_fx_active();
-    uint16_t fill[NKEYS];
-    uint8_t latched[NKEYS];
+    uint32_t k, i, fx_layer = ui.btn >> B_FX & 1u, act = dr_fx_active(), quick = orbit_quick();
+    uint8_t st[NKEYS], hue[NKEYS], fade[NKEYS], cap[NKEYS], open[NKEYS];
     dr_body_t b;
     cv_begin(240, KEYS_H, C_BLACK);
-    for (k = 0; k < NKEYS; k++) {
-        uint32_t note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
-        int in = set.scale == SC_CHROMA || dr_snap(note) == note;
-        fill[k] = key_white[k] ? (in ? C_KW_IN : C_KW_OFF) : (in ? C_KB_IN : C_KB_OFF);
-        latched[k] = 0;
-    }
-    for (i = 0; i < DR_NV; i++) {        /* the key its body is at now in its colour; its home key, if ORBIT
-                                          * moved it, in the dim colour */
+    for (k = 0; k < NKEYS; k++)
+        st[k] = KS_GLASS, hue[k] = fade[k] = cap[k] = open[k] = 0;
+    for (i = 0; i < DR_NV; i++) {
         int32_t kk, kh;
         if (!dr_body(i, &b))
             continue;
         kk = (int32_t)(b.pitch + 0.5f) - 53 - 12 * set.octave;
         kh = (int32_t)b.home - 53 - 12 * set.octave;
-        if (kh != kk && kh >= 0 && kh < (int32_t)NKEYS)
-            fill[kh] = body_rgb(b.home, 1);
+        if (kh != kk && kh >= 0 && kh < (int32_t)NKEYS && st[kh] == KS_GLASS) {
+            st[kh] = KS_DIM;
+            hue[kh] = (uint8_t)body_hue(b.home);
+        }
         if (kk >= 0 && kk < (int32_t)NKEYS) {
-            fill[kk] = body_rgb(b.home, b.fading);
-            latched[kk] = (uint8_t)(b.latched && !b.fading);
+            uint32_t j, o = 0;
+            for (j = 0; j < NKEYS; j++)
+                if (ui.bk_open >> j & 1u && ui.keynote[j] == b.home && !b.fading)
+                    o = 1;
+            st[kk] = KS_LIT;
+            hue[kk] = (uint8_t)body_hue(b.home);
+            fade[kk] = (uint8_t)(b.fading || (ui.bk_open && !o));
+            cap[kk] = (uint8_t)(b.latched && !b.fading);
+            open[kk] = (uint8_t)o;
         }
     }
-    for (i = 0; i < DR_NV; i++) {        /* where ORBIT is taking a body: its key in the body's dim colour */
+    for (i = 0; i < DR_NV && !quick; i++) {
         uint32_t to;
         int32_t kk;
-        if (orbit_quick() || !dr_orbit_pending(i, &to) || !dr_body(i, &b))
+        if (!dr_orbit_pending(i, &to) || !dr_body(i, &b))
             continue;
         kk = (int32_t)to - 53 - 12 * set.octave;
-        if (kk >= 0 && kk < (int32_t)NKEYS && !latched[kk])
-            fill[kk] = body_rgb(b.home, 1);
+        if (kk >= 0 && kk < (int32_t)NKEYS && st[kk] == KS_GLASS) {
+            st[kk] = KS_DIM;
+            hue[kk] = (uint8_t)body_hue(b.home);
+        }
     }
-    for (i = 0; i < DR_NL; i++) {        /* a lead: its key white while held, grey as it releases */
+    for (i = 0; i < DR_NL; i++) {
         int32_t kk;
         if (!dr_lead_body(i, &b))
             continue;
         kk = (int32_t)b.home - 53 - 12 * set.octave;
         if (kk >= 0 && kk < (int32_t)NKEYS)
-            fill[kk] = b.fading ? C_LEAD_OFF : C_LEAD;
+            st[kk] = b.fading ? KS_LEAD_OFF : KS_LEAD;
     }
     if (fx_layer)
         for (i = 0; i < NFXK; i++) {
-            fill[FXKEY[i]] = (act >> i & 1u) ? C_FX_ON : C_KW_OFF;
-            latched[FXKEY[i]] = 0;
+            st[FXKEY[i]] = (act >> i & 1u) ? KS_FX_ON : KS_FX_OFF;
+            cap[FXKEY[i]] = open[FXKEY[i]] = 0;
         }
-    for (i = 0; i < 16u; i++) {
-        int32_t x = 15 * (int32_t)i + 1;
-        k = WHITE_K[i];
-        cv_rect(x, 1, 13, 34, fill[k]);
-        if (latched[k])
-            key_frame(x, 1, 13, 34);
-    }
-    for (i = 0; i < 11u; i++) {
-        int32_t x = (int32_t)key_x[BLACK_K[i]] - 4;
-        k = BLACK_K[i];
-        cv_rect(x, 1, 9, 20, fill[k]);
-        if (latched[k])
-            key_frame(x, 1, 9, 20);
+    cv_rect(0, 0, 240, 1, C_STRIP_TOP);
+    for (i = 0; i < 27u; i++) {
+        int32_t x, w, h;
+        uint32_t note, in;
+        k = i < 16u ? WHITE_K[i] : BLACK_K[i - 16u];   /* the white keys first, the black ones over them */
+        x = i < 16u ? 15 * (int32_t)i + 1 : (int32_t)key_x[k] - 4;
+        w = i < 16u ? 13 : 9;
+        h = i < 16u ? 34 : 20;
+        note = (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
+        in = set.scale == SC_CHROMA || dr_snap(note) == note;
+        switch (st[k]) {
+        case KS_LIT: key_lit(x, 1, w, h, hue[k], fade[k] ? 13u : 26u, fade[k] ? 6u : 13u); break;
+        case KS_DIM: cv_rect(x, 1, w, h, swap16(hue_px(hue[k], 8u))); break;
+        case KS_LEAD: cv_rect(x, 1, w, h, C_LEAD); break;
+        case KS_LEAD_OFF: cv_rect(x, 1, w, h, C_LEAD_OFF); break;
+        case KS_FX_ON: cv_rect(x, 1, w, h, C_FX_ON); break;
+        case KS_FX_OFF: cv_rect(x, 1, w, h, C_KW_OFF); break;
+        default: cv_rect(x, 1, w, h, key_white[k] ? (in ? C_KW_IN : C_KW_OFF) : (in ? C_KB_IN : C_KB_OFF)); break;
+        }
+        if (cap[k])
+            cv_rect(x, 1, w, 3, C_LATCH);
+        if (open[k])
+            key_frame(x, 1, w, h);
     }
     cv_blit(0, KEYS_Y);
 }
 
 /* ------------------------------------------------------------------ header and footer --- */
-static int32_t pill_w(const char *s) { return text_w(&FONT_T, s) + 10; }
-/* a state named for its button, filled when on; frac > 0: filled that far (ORBIT's countdown); flash: bright */
-static int32_t pill(int32_t x, const char *s, int on, float frac, int flash)
+static void art_draw(int32_t x, int32_t y, const char *const *rows, uint32_t n, uint32_t hue)   /* one of art.h's
+                                                                                                * bitmaps */
 {
-    int32_t w = pill_w(s);
+    static const uint8_t LV[128] = {['1'] = 7, ['2'] = 13, ['3'] = 20, ['4'] = 26, ['W'] = 31};
+    uint32_t r, c;
+    for (r = 0; r < n; r++)
+        for (c = 0; rows[r][c]; c++) {
+            uint32_t l = LV[(uint8_t)rows[r][c] & 127u];
+            if (l && (uint32_t)(x + (int32_t)c) < cv_w && (uint32_t)(y + (int32_t)r) < cv_h)
+                cv_px[(uint32_t)(y + (int32_t)r) * cv_w + (uint32_t)(x + (int32_t)c)] = hue_px(hue, l);
+        }
+}
+/* the three states, named for their buttons, at fixed places: filled while on; ORBIT's countdown a line filling
+ * along the foot of its pill, the pill bright as a move lands */
+static void pill(int32_t x, int32_t w, const char *s, int on, float frac, int flash)
+{
+    int32_t tx = x + (w - text_w(&FONT_T, s)) / 2;
     if (on) {
-        cv_rect(x, 17, w, 15, flash ? C_BRIGHT : frac > 0.0f ? RGB(20, 70, 95) : C_PILL);
+        cv_rect(x, 29, w, 15, flash ? C_BRIGHT : C_MODE);
+        cv_text(tx, 30, &FONT_T, s, C_BLACK);
         if (frac > 0.0f && !flash)
-            cv_rect(x, 17, (int32_t)((float)w * frac + 0.5f), 15, C_PILL);
-        cv_text(x + 5, 18, &FONT_T, s, C_BLACK);
+            cv_rect(x, 41, (int32_t)((float)w * frac + 0.5f), 3, C_BRIGHT);
     } else {
-        cv_rect(x, 17, w, 1, C_RULE);
-        cv_rect(x, 31, w, 1, C_RULE);
-        cv_rect(x, 17, 1, 15, C_RULE);
-        cv_rect(x + w - 1, 17, 1, 15, C_RULE);
-        cv_text(x + 5, 18, &FONT_T, s, C_OFF);
+        cv_rect(x, 29, w, 1, C_RULE);
+        cv_rect(x, 43, w, 1, C_RULE);
+        cv_rect(x, 29, 1, 15, C_RULE);
+        cv_rect(x + w - 1, 29, 1, 15, C_RULE);
+        cv_text(tx, 30, &FONT_T, s, C_OFF);
     }
-    return x + w + 4;
 }
 static void draw_header(void)
 {
@@ -2442,10 +2756,13 @@ static void draw_header(void)
     int32_t x;
     uint32_t i, act = dr_fx_active();
     cv_begin(240, HEAD_H, C_BLACK);
+    art_draw(3, 6, MODEL_GLYPH[dr_scene.p[P_MODEL] % M_COUNT], ART_GLYPH, HUE_STAR);   /* the model, as a glyph */
     slot_name(set.scene, n);
-    x = cv_text(3, 1, &FONT_B, n, C_LABEL);
-    cv_text(x + 5, 1, &FONT_B, dr_scene.name, scene_dirty ? C_WARN : C_BRIGHT);
-    t[0] = 0;                            /* the status, at the right: octave, Bluetooth, bodies and CPU */
+    x = cv_text(19, 0, &FONT_M, n, C_LABEL);
+    x = cv_text(x + 5, 0, &FONT_M, dr_scene.name, C_BRIGHT);
+    if (scene_dirty)                     /* edited since it was loaded or saved: a mark, not an orange name */
+        cv_rect(x + 4, 13, 5, 5, C_WARN);
+    t[0] = 0;                            /* the status, at the right: octave, recording, Bluetooth, bodies and CPU */
     if (set.octave) {
         c[0] = set.octave < 0 ? '-' : '+';
         c[1] = (char)('0' + (set.octave < 0 ? -set.octave : set.octave));
@@ -2469,43 +2786,51 @@ static void draw_header(void)
     if (overload_seen)
         text_cat(t, " LOAD");
     x = 237 - text_w(&FONT_T, t);
-    cv_rect(x - 5, 0, 240 - x + 5, 17, C_BLACK);   /* a long name ends under it */
-    cv_text(x, 3, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
-    x = pill(3, ui.shift ? "SEL TRANS" : "SEL LATCH", set.latch || ui.shift, 0.0f, 0);
+    cv_rect(x - 5, 0, 240 - x + 5, 18, C_BLACK);   /* a long name ends under it */
+    cv_text(x, 4, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
+    pill(3, 54, ui.shift ? "SEL TRANS" : "SEL LATCH", set.latch || ui.shift, 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
         static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE",
                                                    "PLAY ECHO", "PLAY PULSE"};
-        x = pill(x, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
-                 plat_ms() - ui.orbit_flash_t < 300u);
+        pill(61, 69, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
+             plat_ms() - ui.orbit_flash_t < 300u);
     }
-    pill(x, "SEQ FRZ", dr_frozen(), 0.0f, 0);
+    pill(134, 42, "SEQ FRZ", dr_frozen(), 0.0f, 0);
     for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */
-        cv_text(196 + (int32_t)i * 9, 18, &FONT_T, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
-    if (dr_morphing())                   /* the morph's progress, a bar along the bottom of the header */
+        cv_text(196 + (int32_t)i * 9, 31, &FONT_T, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
+    if (dr_morphing())                   /* the morph's progress along the header's foot */
         cv_rect(0, HEAD_H - 2, (int32_t)(240.0f * dr_morph_pos()), 2, C_TEXT);
     else
-        cv_rect(0, HEAD_H - 1, 240, 1, C_RULE);
+        for (i = 0; i < 16u; i++)        /* a tick over every white key */
+            cv_rect(15 * (int32_t)i + 7, HEAD_H - 2, 1, 2, C_RULE);
     cv_blit(0, 0);
 }
-static void knob_cell(int32_t x, uint32_t id)
+static void knob_cell(int32_t x, uint32_t id)   /* a knob: its name, its value, its bar by kind */
 {
     char t[16];
-    uint32_t v, mx;
-    int32_t w;
-    const felucca_font_t *f;
+    uint32_t n, sel, kind;
+    float frac;
     if (id == PID_NONE) {                /* nothing on this knob here */
-        cv_rect(x, 44, 12, 2, C_RULE);
+        cv_rect(x, 40, 12, 2, C_RULE);
         return;
     }
-    v = value_of(id);
-    mx = value_max(id);
-    cv_text(x, 18, &FONT_T, PM[id].label, C_LABEL);
+    cv_text(x, 17, &FONT_T, param_label(id), C_LABEL);
     value_text(id, t);
-    f = text_w(&FONT_M, t) <= 56 ? &FONT_M : text_w(&FONT_S, t) <= 56 ? &FONT_S : &FONT_XS;   /* as large as fits */
-    cv_text(x, f == &FONT_M ? 31 : f == &FONT_S ? 37 : 39, f, t, C_BRIGHT);
-    w = mx ? (int32_t)((v * 56u + mx / 2u) / mx) : 0;
-    cv_rect(x, 62, 56, 5, C_RULE);
-    cv_rect(x, 62, w, 5, C_TEXT);
+    cell_value(x, 28, t);
+    kind = bar_kind(id, &n, &sel, &frac);
+    draw_bar(x, 60, 56, kind, n, sel, frac);
+}
+static uint32_t page_icon(uint32_t pg)
+{
+    switch (PAGE_BTN[pg]) {
+    case B_EDIT: return ICON_EDIT;
+    case B_ENV: return ICON_ENV;
+    case B_LFO: return ICON_LFO;
+    case B_FX: return ICON_FX;
+    case B_ARP: return ICON_ARP;
+    case B_GLO: return ICON_GLO;
+    default: return ICON_HOME;
+    }
 }
 static void draw_footer(void)
 {
@@ -2516,9 +2841,9 @@ static void draw_footer(void)
         char n[24];
         slot_title(NFACTORY + ui.save_to, n);
         cv_text(4, 0, &FONT_S, "SAVE SCENE TO", C_LABEL);
-        cv_text(4, 20, &FONT_M, n, C_BRIGHT);
-        cv_text(4, 50, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
-        cv_text(4, 69, &FONT_S, "PRESET PICKS THE SLOT", C_LABEL);
+        cv_text(4, 16, &FONT_M, n, C_BRIGHT);
+        cv_text(4, 41, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
+        cv_text(4, 57, &FONT_S, "PRESET PICKS THE SLOT", C_LABEL);
         cv_blit(0, FOOT_Y);
         return;
     }
@@ -2544,20 +2869,22 @@ static void draw_footer(void)
         cv_text(4, 1, &FONT_T, t, C_BRIGHT);
         cv_text(236 - text_w(&FONT_T, "LET GO: BACK"), 1, &FONT_T, "LET GO: BACK", C_BRIGHT);
         for (w = 0; w < BE_COUNT; w++) {
-            int32_t x = 3 + 60 * (int32_t)w, val = ui.bval[kk][w], fill;
-            const felucca_font_t *f;
+            int32_t x = 3 + 60 * (int32_t)w, val = ui.bval[kk][w];
             body_value_text(w, val, v);
-            cv_text(x, 18, &FONT_T, BE_LABEL[w], C_LABEL);
-            f = text_w(&FONT_M, v) <= 56 ? &FONT_M : text_w(&FONT_S, v) <= 56 ? &FONT_S : &FONT_XS;
-            cv_text(x, f == &FONT_M ? 31 : f == &FONT_S ? 37 : 39, f, v, C_BRIGHT);
-            fill = w == BE_LEVEL ? (val - DR_LVL_MUTE) * 56 / (6 - DR_LVL_MUTE) : w == BE_PIN ? val * 56 : (val + 50) * 56 / 100;
-            cv_rect(x, 62, 56, 5, C_RULE);
-            cv_rect(x, 62, fill, 5, C_TEXT);
+            cv_text(x, 17, &FONT_T, BE_LABEL[w], C_LABEL);
+            cell_value(x, 28, v);
+            if (w == BE_LEVEL)
+                draw_bar(x, 60, 56, BAR_FILL, 0, 0, (float)(val - DR_LVL_MUTE) / (float)(6 - DR_LVL_MUTE));
+            else if (w == BE_PIN)
+                draw_bar(x, 60, 56, BAR_SWITCH, 0, (uint32_t)(val != 0), 0.0f);
+            else
+                draw_bar(x, 60, 56, BAR_CENTRE, 0, 0, (float)(val + 50) * 0.01f);
         }
         cv_blit(0, FOOT_Y);
         return;
     }
-    cv_rect(0, 0, 240, 14, C_BAND);      /* the page band: the button, the page, the SELECT arrows */
+    cv_rect(0, 0, 240, 14, C_BAND);      /* the page band: its button's icon, the page, the SELECT arrows */
+    art_draw(4, 3, PAGE_ICON[page_icon(ui.page)], ART_ICON, HUE_CYAN);
     t[0] = 0;
     if (ui.page > 0u)
         text_cat(t, "< ");
@@ -2568,7 +2895,7 @@ static void draw_footer(void)
     }
     if (ui.page < PG_COUNT - 1u)
         text_cat(t, " >");
-    cv_text(4, 1, &FONT_T, t, C_TEXT);
+    cv_text(17, 1, &FONT_T, t, C_TEXT);
     t[0] = 0;
     text_cat(t, MODEL_NAME[dr_scene.p[P_MODEL] % M_COUNT]);
     text_cat(t, "  ");
@@ -2597,7 +2924,7 @@ static void speak(void)
             if (id == PID_NONE)
                 continue;
             text_cat(t, ". ");
-            text_cat(t, PM[id].label);
+            text_cat(t, param_label(id));
             text_cat(t, " ");
             value_text(id, v);
             text_cat(t, v);

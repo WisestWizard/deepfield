@@ -6,8 +6,9 @@ forces (MASS, DRIFT, SPACE, TIDE) shape every body at once; a held key gives one
 ORBIT pin. Ten models (SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, and from Pocket Poly the SCAN wavetables
 and four-operator DX), a noise layer under them or alone, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds
 (ping-pong, tape, three heads, reverse, octaves up, octaves down, grains) and an ensemble. 32 scenes, each a sound:
-changing scene morphs the sound under the chord you are playing, each body crossing into the new model. MIDI over
-USB, Bluetooth (both ways) and TRS.
+changing scene morphs the sound under the chord you are playing, each body crossing into the new model. The screen,
+PHOSPHOR TUBE, lets only sound give off light: beams in their key's colour with white-hot heads, dark-glass keys
+lit by their bodies, one meaning per colour. MIDI over USB, Bluetooth (both ways) and TRS.
 
 Built as an app on [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0), beside Pocket Poly in this
 repository. The research and the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
@@ -25,6 +26,7 @@ repository. The research and the point of view behind it: `docs/research.md`. Th
 | `tests/basic.txt` | 499 simulator checks; `tests/screens.txt` the manual's screenshots; `tests/golden.txt` the renders' hashes |
 | `tools/render_scenes.py` | every factory scene, with its chord, to WAV, compared with the golden file (`--levels` prints peak/RMS); `tools/fx_levels.py` prints each effect's wet level |
 | `tools/gen_wt.py` | SCAN's wavetables and their loudness gains, generated at build time (fm1.toml `gen`) into flash |
+| `art.h` | the pixel art as text: the ten model glyphs and the seven page icons, tinted through the colour ramps |
 | `words.tsv`, `site/`, `docs/` | the screen reader's words, the site's front page, the manual, research, and `docs/BUDGET.md`: what the device can do and what the app uses |
 
 ## Build and test

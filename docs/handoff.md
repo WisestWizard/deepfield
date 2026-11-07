@@ -2,9 +2,47 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash (DEEP FIELD, flashed 2026-11-07 early; site 0.4 published the same night)
+## Start here: the last flash, PHOSPHOR TUBE, DEEP FIELD's new screen (flashed 2026-11-07; site 0.5 the same day)
 
 When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order.
+Flashed on his word ("Flash it"), through first time; booted clean (FIRST LIGHT, Kyle already playing: 2 bodies,
+31 % CPU, nothing but the platform's boot lines in the log). Site 0.5 published with `deepfield/tools/publish_site.sh
+0.5` (release FM-1_14000500). Not committed. Not yet judged on the panel by Kyle.
+
+Kyle asked for a design review of the screen (a UI/UX designer, a pixel artist, an FM-1 expert as agents; the review
+page is the artifact https://claude.ai/artifact/XufR1cQRyPw3Ma1hJKiebq) and picked its recommended direction ("Build
+Phosphor Tube"). Light means sound: only the bodies glow; one meaning per colour (a body's colour = that body, sun =
+latched, white = your hand, cyan = where you are, teal = an effect on, orange = look). Sound unchanged (the goldens
+match), 499 checks pass, the sanitizer run is clean, the device build passes (image 395 KB, pool 14.1 KB spare).
+
+- **The glow fixed:** the colour table is eight ramps keyed at levels 31/26/20/13/7/2 that rise from the sky (the old
+  fade from black drew the faintest 5 to 11 levels below the sky: black moats round every beam, ORBIT's ghost a
+  black slot, the noise in a black box). The HUD dims by lowering every level to two fifths (the old mask kept a
+  level's low three bits and blacked out the beams). Body green moved to lime, blue off violet.
+- **The beams:** a 7 px core rising from level 20 to the key's pure hue through a 4x4 ordered dither, edges and a
+  dithered halo, a white-hot head three rows deep, breathing with the body's spark; latched a sun spark, pinned a
+  sun bar, open white frames; an ARP step flashes the head; ORBIT's ghost dithered at the destination; the noise a
+  mist mound (warm or pale) that drifts with WIND; stars twinkle on slow sines with glints; FREEZE holds everything
+  and draws four ice brackets; a dithered horizon at the bottom of the view.
+- **The layout:** header 46 (the model's glyph from art.h, slot and name in M, an orange mark when edited, pills at
+  fixed places with ORBIT's countdown along the PLAY pill's foot, ticks over the white keys, the morph line), view
+  84, keys 36 (dark glass lit by the bodies, sun caps, white frames for the open body), footer 74 (the page's icon,
+  numbers in M with units in T, bars by kind: segments, a cell per choice, two cells for a switch, RHYTHM's hits,
+  centred for TONE and TUNE; SHAPE reads VOICE on DX and TABLE on SCAN). The 19 empty rows at the bottom are used.
+- **Browsing PRESET:** neighbours, the name large, the 32 slots as marks (the one playing cyan, the candidate tall
+  white), the landing line; + CHORD in sun while SEL is held.
+- Not built from the review: stage mode (the red palette and backlight dimming, which needs a test on the unit),
+  the boot screen and the LED language, Star Chart and Aurora.
+
+How to test (numbered for the unit): 1. Switch on, tap C4 E4 G4: three beams in their keys' colours with white
+heads and sun sparks, the keys lit from below them. 2. Turn MASS: the value large, the beams dimmed but visible
+behind it. 3. Turn PRESET slowly: the list of scenes and the line filling. 4. PLAY with CHORD on a short EVERY: the
+dotted ghosts and lines before each move. 5. SEQ: the brackets, everything still. 6. Hold E4: the white frames.
+7. Look at it in a dark room and at an angle: does the navy read, is the small text readable, is the mist visible
+(raise NOISE LEVEL)?
+
+## The flash before (DEEP FIELD, flashed 2026-11-07 early; site 0.4 published the same night)
+
 Kyle's six asks of 2026-11-06 ("Build all six"), each as the expert pass proposed it. Flashed on his word ("Flash
 it") with `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes` (through first time);
 booted clean: FIRST LIGHT in silence, 0 bodies, 5 % CPU, nothing in the log. Not yet heard, device CPU not read with
