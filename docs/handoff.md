@@ -2,42 +2,65 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash (DEEP FIELD, flashed 2026-11-04 evening)
+## Start here: the last flash (DEEP FIELD, flashed 2026-11-06 evening; site 0.3 published the same night)
 
 When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order
-below. The unit booted clean on it (FIRST LIGHT, 3 bodies, 30 % CPU, no xruns). Not yet heard by Kyle; the device
-CPU at full load not yet read.
+below. Flashed on his word ("update the device now") with `/usr/bin/python3 base/tools/fm1_install.py
+deepfield/build/deepfield.fwsc --yes` (the first try died at CoreMIDI client creation, -304, before writing anything;
+the second went through). Booted clean: FIRST LIGHT, 3 bodies, 31 % CPU, no xruns, no crash. Not yet heard by Kyle;
+device CPU at full load not read. The code is not committed. The site went up as 0.3 the same night
+(`deepfield/tools/publish_site.sh 0.3`, release package FM-1_14000300) in the PHOSPHOR theme Kyle picked:
+`deepfield/site/theme.css` and `beams.svg`, put in every page by `deepfield/tools/site_theme.py` (fm1-base's front
+page, manual, installer and emulator page, and the cheat sheet; base/ untouched); `publish_site.sh X.Y --local`
+builds the site into deepfield/build/site without pushing, for the "deepfield-site" preview.
 
-What changed:
+Kyle on the 11-04 flash: the echoes are heard on a latched drone, but less than on a played key. Measured: the send is
+the same, but a steady drone's echo sits 12 to 14 dB under it in every 50 ms window and adds no movement, so it
+fuses; a played key's echo tops the dry in the gaps by up to 10 dB. His answer: a delay TYPE, COLOUR to DELAY 2,
+two new DELAY 2 controls. This build:
 
-- **FX keys work on every scene.** F3 G3 A3 B3 (ensemble, delay, reverb, shimmer): an effect the scene has at zero
-  now comes in at a usable amount, and pressing again switches it off. Before, nine scenes had no delay and G3 did
-  nothing audible.
-- **The delay is longer.** Free DLY TIME 50 to 800 ms (was 418), the right side up to 1.1 s, so the repeats are
-  heard as echoes that bounce left and right. Synced: 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2; too long at the tempo, it
-  halves and stays in time.
-- **COLOUR** (DELAY page, knob 4): the repeats dark and full at 0, bright and thin at 100. DIFFUSE moved to a new
-  DELAY 2 page, one SELECT further.
-- **Black keys play their own note.** The scale used to snap them to the white key below; now it only glows and
-  bounds ORBIT.
-- **TRANSPOSE.** Hold SEL and touch a key: the pill reads SEL TRANS, and every key then moves the latched chord so
-  its lowest note lands there, gliding at GLIDE. Tap SEL for LATCH again; hold SEL a second to let everything go.
+- **DELAY page: TYPE, DLY TIME, DLY FDBK, DLY MIX.** TYPE: PING (the delay he has heard), TAPE (one centre echo,
+  darker and harder each pass, wandering), HEADS (three echoes at a third, two thirds and the whole time, left
+  centre right), REVERSE (each echo backwards, a swell), RISE (an octave up each repeat), FALL (an octave down),
+  GRAINS (pieces of the last two seconds, one every DLY TIME, scattered). Turning TYPE fades the echoes out in 12 ms
+  and starts the new kind fresh.
+- **DELAY 2 page: COLOUR, DIFFUSE, WOW, CHOP.** WOW: the tape's wander, 0 clean, 31 % (40) what it always had, full
+  seasick. CHOP: only a slice at the start of each DLY TIME goes in (full: a tenth), louder as it shortens; a held
+  chord comes back as a pulse.
+- **Synced PING lands on the beat:** the right echo used to come at 2.38 times the division; now at 2 times.
+- CC 102 TYPE, 103 WOW, 104 CHOP. Every scene, saved ones included, loads PING, WOW 40, CHOP 0.
+- **ARP PLAYED fixed** (Kyle: "I don't think PLAYED works"). Every upward order began on its second note, so a bed
+  struck G C A E ran C A E G, which sounds like UP; with the bed let go PLAYED fell back to low to high; and a body
+  added or let go mid-run made any order repeat or skip a step. Now G C A E runs G C A E from the first step, keeps
+  that order after the bed is let go, and carries on from the note just played when the chord changes.
 
 How to test (numbered for the unit):
 
-1. F1 FIRST LIGHT: hold FX, press G3. The screen says DELAY ON and the D in the header lights; play a short key
-   with SEL tapped off (LATCH OFF, KEYS PLAY) and listen for echoes left then right. Press G3 again: DELAY OFF.
-2. On the same scene try F3 (ensemble) and B3 (shimmer): each should come on and be heard.
-3. F7 DEEP VOID: tap FX, turn SELECT once to DELAY, turn knob 4 (COLOUR) from 0 to 100 and back. Knob 1 to the
-   top reads 1/2, 1/4D and so on.
-4. Black keys: on any scene, tap F#3. Its own key lights on the strip, not F3.
-5. TRANSPOSE: hold SEL a second to clear, latch C4 E4 G4, hold SEL and touch D4 (pill SEL TRANS, screen
-   TRANSPOSE D4), let go of SEL, then play a bass line on the low keys. Tap SEL to leave. With GLIDE low (ENV page,
-   knob 4) the moves are quick; high, they slide.
+1. F1 FIRST LIGHT: hold FX, press G3 (DELAY ON). Tap FX, turn SELECT once: the DELAY page, knob 1 reads PING.
+2. Turn knob 1 one step at a time and listen to the latched chord on each: TAPE (wobbly, centre), HEADS (a little
+   rhythm), REVERSE (swells), RISE (a climbing shimmer), FALL (a low shadow), GRAINS (a sparkle). Knob 4 (DLY MIX)
+   up makes any of them louder.
+3. Back to PING. Turn SELECT once more (DELAY 2). Knob 4 (CHOP) to the top: the chord comes back as a pulse. Knob 2
+   on the DELAY page (DLY TIME) sets the pulse's speed.
+4. DELAY 2 knob 3 (WOW) to the top on TAPE: seasick. Back to about a third.
+5. Tap SEL off (LATCH OFF), play short keys on REVERSE and GRAINS: the echoes are clearest on single notes.
+6. F3 GLASS ORBIT (synced 1/8D): play a short key with LATCH off; the right echo is now in time with the left.
+7. ARP PLAYED: hold SEL a second to clear, latch G4 C4 A4 E4 in that order, tap ARP, knob 1 to ARP, knob 4 to
+   PLAYED, tap PLAY: the runner plays G C A E from the first step. Hold SEL a second: it keeps G C A E.
 
-Questions to ask after: are the echoes now heard on a drone; is COLOUR's range right; does TRANSPOSE want its own
-anchor (the key touched as the chord's root) rather than the lowest body; next delay steps from the musician (a
-modulation depth knob on DELAY 2, half the wet into the hall).
+Questions to ask after: which types earn their place; is CHOP's pulse the drone echo he wanted; is WOW's range right.
+
+Measured: every type within 1.5 dB of PING's wet level on a held chord and a played key; no click on a TYPE change
+(the largest sample step the same as with none); RISE's echo at 900 zero crossings a second against the drone's
+290, FALL's at 242; REVERSE's first echo rises 25 dB to its peak over 140 ms. Host cost of the delay stage 0.3 to
+1.4 us a block for every type (about 1 % of the device); device CPU not read.
+
+**Waiting on Kyle (2026-11-06): his other asks, each with an expert proposal (details in the DEEP FIELD section,
+"Proposals of 2026-11-06"):** per-body edits by holding a latched key (LEVEL, TONE, TUNE, ORBIT pin); arp options
+(RHYTHM first); EVERY below one second; finer knob steps (the device never uses the fast step); more voices from
+Pocket Poly (SCAN wavetables, then a DX model); what a scene change should carry over. Two arp questions from the
+bug pass: bodies held over MIDI (LATCH on) are never latched, so the arp plays nothing over a chord held from a
+controller (as the manual says); RANDOM can repeat a note at once.
 
 ## Where it stands
 
@@ -65,6 +88,9 @@ modulation depth knob on DELAY 2, half the wet into the hall).
 - MIDI (USB, TRS, Bluetooth both roles) stays in every build; never cut for resources.
 - Device instructions as numbered steps naming buttons and what the screen shows.
 - Terse replies, no emojis, no recaps; debugging needs an executable confirmation before a fix.
+- Every commit or flash (2026-11-06): bring all the docs up to that build first (MANUAL, both cheat sheets: the
+  markdown and `site/cheatsheet/index.html`, README, BUDGET, this handoff) and republish the site with its emulator
+  (DEEP FIELD: `deepfield/tools/publish_site.sh X.Y`, the next version; never the base script).
 
 ## How to resume
 
@@ -455,6 +481,61 @@ tail), scene RMS -12 to -18, device package built (image 320,604 B, RAM 79,904 o
 344,064), flashed the same evening (booted clean, 30 % with 3 bodies), not heard by Kyle, device CPU at full load
 not read. Still open from the musician: a modulation depth
 knob (DELAY 2 has three free slots) and half the wet into the hall.
+
+**Delay types pass (2026-11-06, built, not flashed):** P_DLY_TYPE 57 (DT_PING..DT_GRAINS), P_DLY_WOW 58 (INIT 40),
+P_DLY_CHOP 59 (INIT 0) at the end of the enum, so older banks unpack with the INIT values (the size-based
+migration); TYPE reads dr_scene.p directly, never morphed, like ENSEMBLE. fx.c: the one 42,240-sample buffer is two
+legs (PING, RISE, FALL) or one line of 1.91 s (TAPE, HEADS, REVERSE, GRAINS); a TYPE change fades the wet over 256
+half-rate samples, then `dly_clear` and the new type (at once when the stage rests or is bypassed); `dly_tap` clamps
+its distance inside the leg. WOW is now a distance in samples, one-sided (400 w² for the wow at 0.35 Hz, 14.1 √w
+for the flutter at 6.3 Hz; TAPE 2.5× and 1.5×), where it was a fraction of the time: 40 gives the 3 and 12 cents the
+delay had at 0.6 s, the same at every time now. CHOP gates the input at the start of each DLY TIME, duty 1 - 0.9
+CHOP, 2 ms edges, makeup 1/√duty. RISE/FALL: two heads half a 1,536-sample grain apart on each leg (the leg's
+maximum time 70 ms shorter). HEADS: taps at T/3, 2T/3, T, the last fed back. REVERSE: two heads at 2 + 2Ww behind the
+write. GRAINS: four voices, one started every T, 1.6 T long (40 to 300 ms), from 80 ms to 1.9 s back (squared
+random, the recent more often), smoothstep window, √ pan, feedback 0.7 of the sum. DLY_OG levels each type's wet
+with PING's (TAPE 0.5, HEADS 1.16, REVERSE 1.35, RISE 1.55, FALL 1.4, GRAINS 1.15). Synced (`dly_synced`), PING's
+right leg slews to the left's length. 372 checks pass (basic.txt's DELAY section rewritten, CC 102-104 checked),
+ASan/UBSan clean (also a script cycling all seven types at FDBK, WOW and CHOP extremes), goldens rewritten: rendered
+alone, every scene without a delay is bit-identical to 22d5ce3 and the seven with one keep their level within
+0.1 dB (the in-sequence render changes more, through tails carried scene to scene). Device package: image 325,460 B,
+RAM 80,240 of 98,304, pool 330,064 of 344,064. `tools/fx_levels.py` knob numbers fixed for the new pages.
+
+**ARP fix (2026-11-06, same build):** `arp_gather(played)` keeps `arp_mem`, the latched notes in the order struck
+with each body's age, through the bed being let go, sorted low to high only when ORDER is not PLAYED (PLAYED's own
+case is gone); each step's body age is kept (`arp_age`) so a changed chord carries on from the note just played;
+`arp_pos = ~0u` before the first step (PLAY, MIDI start), DOWN's wrap adjusted to start at the top. OCTAVES and
+ORDER now also apply to the remembered notes. basic.txt ends with the check (G4 C4 A4 E4 out in that order; it fails
+on 22d5ce3). Left: letting go the very body that just sounded can skip one step once.
+
+**Proposals of 2026-11-06 (expert passes on Kyle's asks; nothing built):**
+
+- *Per-body edit* (musician): hold a latched key past a third of a second (or turn a knob while holding) and the
+  footer becomes BODY <note> with LEVEL (MUTE, -24..+6 dB), TONE (its own MASS ±50 %), TUNE (±50 cents) and ORBIT
+  (MOVES / PINNED: never moved by ORBIT, left out of the arp; the top pick); a tap still lets a body go, on release;
+  several keys held edit together. Fits voice_t's spare bytes; saves with the scene (lvl/tone/tune[8], pins in
+  rsv[0]; needs a new bank magic SCN5); NRPN for MIDI. Runner-up: per-body TIDE.
+- *Arp options* (musician), ranked: RHYTHM (euclidean 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, ORBIT 2 knob 3), DIV
+  (1/16..one bar incl. triplets and dotted, a new ORBIT 3 page; also fixes the clocked arp stuck at eighths), CHANCE
+  (its own byte), CHORDS (the bed walks a progression under the runner), ACCENT, RATCHET (the only one with a CPU
+  cost).
+- *EVERY below a second* (musician): the same knob over 0.1..60 s on the same curve, tenths shown below 1 s,
+  saved scenes migrated (new = 0.64 old + 46); ECHO floored at 1 s (its phrase breaks below); 1/2 and 1/4 beat
+  under MIDI clock; no destination preview below 0.5 s. WANDER/SCATTER/CYCLE gain the most, CHORD turns to mush.
+- *Knob steps* (audit): on the device the fast step (8) never fires: `knob()` takes it only for 4 or more detents
+  in one read and the loop reads every pass, so every 0..127 knob is a flat 4 a detent (32 a sweep). Proposed:
+  time-based acceleration (a detent within 40 ms of the last: 8), slow step 3 for all (43 a sweep, Kyle's 25 %), 2 for
+  VOID MASS, free DLY TIME and ATTACK, 1 for RATE, one shown value a detent for LIFT, STEPS, DISTANCE, BODIES and the
+  synced divisions; SWELL, FADE and GLIDE in ms below 1 s. No parameter smoothing exists (dr_param sets at once).
+- *More voices from Pocket Poly* (survey): SCAN (the three wavetables as one model, SHAPE through all 48 frames;
+  61 KB of tables, in flash as const data or in the STRING lines' 48 KB), then DX (FM6 with SHAPE choosing eight
+  sustaining voices, capped at four operators; CPU the risk, Pocket Poly's FM BELL ran 80 % against 52 %), TEAR (sync
+  and ring, cheap); skip PD. If "voices" means polyphony: CPU has room, the pool does not (4 KB STRING line a voice).
+- *Scene changes* (performer, interaction and sound designers): a scene is a sound, not a state. On landing, the
+  latched chord, LATCH, ORBIT on/off (and its values while PLAY is lit), FREEZE, octave and scale carry over; the
+  values morph over MORPH; each body hands over to the new model through a twin instead of restarting; effect tails
+  ring out; boot loads the scene's sound silent. SEL held + PRESET loads the whole scene with its chord (factory
+  chords rewritten on C and transposed to ROOT). The 0.7 s browse rest shown as a filling bar.
 
 **What's next (agreed order, 2026-11-03 night):**
 

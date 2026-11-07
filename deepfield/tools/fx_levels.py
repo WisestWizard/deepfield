@@ -26,13 +26,13 @@ NOBYP = "press FX\nwait 100\nkey 26 down\nwait 40\nkey 26 up\nwait 40\nrelease F
 cases = [
  ("factory F1", ""),
  ("DLY MIX max", "midi B0 5E 7F\n"),
- ("DLY MIX max, DLY FDBK max", "midi B0 5E 7F\ntap FX\nwait 30\nspin SELECT 1\nwait 30\nspin K2 127\nwait 30\ntap HOME\nwait 30\n"),
- ("DLY FDBK 70%", "tap FX\nwait 30\nspin SELECT 1\nwait 30\nspin K2 44\nwait 30\ntap HOME\nwait 30\n"),
+ ("DLY MIX max, DLY FDBK max", "midi B0 5E 7F\ntap FX\nwait 30\nspin SELECT 1\nwait 30\nspin K3 127\nwait 30\ntap HOME\nwait 30\n"),
+ ("DLY FDBK 70%", "tap FX\nwait 30\nspin SELECT 1\nwait 30\nspin K3 44\nwait 30\ntap HOME\nwait 30\n"),
  ("ENS on, ENS MIX factory 40", "tap FX\nwait 30\nspin K1 3\nwait 30\ntap HOME\nwait 30\n"),
  ("ENS on, ENS MIX max", "tap FX\nwait 30\nspin K1 3\nwait 30\nmidi B0 5D 7F\ntap HOME\nwait 30\n"),
  ("SPACE max", "midi B0 12 7F\n"),
  ("SPACE 0", "midi B0 12 00\n"),
- ("SHIMMER max", "tap FX\nwait 30\nspin SELECT 2\nwait 30\nspin K3 127\nwait 30\ntap HOME\nwait 30\n"),
+ ("SHIMMER max", "tap FX\nwait 30\nspin SELECT 3\nwait 30\nspin K3 127\nwait 30\ntap HOME\nwait 30\n"),
 ]
 for label, setup in cases:
     full = run("full", setup + NOBYP)

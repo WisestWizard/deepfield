@@ -1,7 +1,9 @@
 #!/bin/sh
 # base/tools/publish_site.sh for deepfield.fog.baby: GitHub Pages drops a custom domain whenever a push replaces the
 # gh-pages branch without a CNAME file, and the base script replaces the branch on every publish.
-#   deepfield/tools/publish_site.sh VERSION
+#   deepfield/tools/publish_site.sh VERSION            builds the site (PHOSPHOR on every page) and pushes it
+#   deepfield/tools/publish_site.sh VERSION --local    builds it into deepfield/build/site only, to preview
+#                                                      (.claude/launch.json "deepfield-site")
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APP="$ROOT/deepfield"
@@ -14,7 +16,12 @@ export JIELI_TOOLCHAIN="${JIELI_TOOLCHAIN:-$HOME/.jieli/toolchain}" AC79_SDK="${
 "$PY" "$ROOT/base/tools/make_site.py" "$APP" "$APP/build/deepfield-$V.fwsc" "$V" "$APP/build/site"
 mkdir -p "$APP/build/site/cheatsheet"
 sed "s/{{VERSION}}/$V/g" "$APP/site/cheatsheet/index.html" > "$APP/build/site/cheatsheet/index.html"
+"$PY" "$APP/tools/site_theme.py" "$APP/build/site"
 printf '%s\n' "$DOMAIN" > "$APP/build/site/CNAME"
+if [ "$2" = "--local" ]; then
+  echo "built the site for deepfield $V in $APP/build/site (not pushed)"
+  exit 0
+fi
 REMOTE="$(git -C "$APP" remote get-url origin)"
 SHA="$(git -C "$APP" rev-parse --short HEAD)"
 cd "$APP/build/site"

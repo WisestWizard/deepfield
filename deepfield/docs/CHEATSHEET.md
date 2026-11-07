@@ -55,8 +55,8 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | MOTION | TIDE RATE | WOBBLE | WALK | WIDTH |
 | MOTION 2 | SPREAD (the bodies unlike each other) | CROSS (pairs bend each other) | TIMBRE (each body's MASS walks) | SWAY (each body drifts across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
-| FX DELAY | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from the runner's RATE or the MIDI clock, halved when too long) | DLY FDBK | DLY MIX | COLOUR (repeats dark and full to bright and thin) |
-| FX DELAY 2 | DIFFUSE (repeats smeared into a cloud) | – | – | – |
+| FX DELAY | TYPE: PING (left, right), TAPE (centre, worn), HEADS (three a time), REVERSE (swells), RISE (octaves up), FALL (octaves down), GRAINS (pieces scattered) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from the runner's RATE or the MIDI clock, halved when too long; GRAINS: how often a piece) | DLY FDBK | DLY MIX |
+| FX DELAY 2 | COLOUR (repeats dark and full to bright and thin) | DIFFUSE (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | CHOP (only a slice of each DLY TIME goes in: a held chord pulses) |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
 | ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE: EVERY; ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE; ECHO: DECAY | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS; ECHO: JUMPS; PULSE: ROLL |
 | ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |
@@ -102,5 +102,5 @@ F13 ASCENT · F14 DESCENT · F15 FOLDED SUN · F16 TIDE POOL. U1..U16 are yours.
 
 ## MIDI
 In: notes hold while on (CC 64 keeps them), any channel by default. Out: key down = note on, let go = note off (later if latched), ORBIT moves too.
-CC 16–19 MASS DRIFT SPACE TIDE · 20 NOISE LEVEL · 74 MASS · 71 SHAPE · 72 FADE · 73 SWELL · 91 SPACE · 1 wobble · 7 volume · 123 all off.
+CC 16–19 MASS DRIFT SPACE TIDE · 20 NOISE LEVEL · 74 MASS · 71 SHAPE · 72 FADE · 73 SWELL · 91 SPACE · 93 ENS MIX · 94 DLY MIX · 102 DLY TYPE · 103 WOW · 104 CHOP · 1 wobble · 7 volume · 123 all off.
 Program change 0–15 = F1–F16, 16–31 = U1–U16.

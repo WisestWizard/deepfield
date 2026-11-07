@@ -4,20 +4,26 @@
  * (one line, wow and flutter, dark saturated feedback), a hall (an eight-line feedback delay network, 16-bit
  * lines, pre-delay) with a shimmer (its output an octave up, fed back in) and a freeze (the network holds what it
  * has), a peak limiter. Stereo float
- * in place; memory from the arena. From Pocket Poly's fx.c. The delay is two legs at half the rate, 0.80 s left and
- * 1.11 s right (read 1.382 times the left), the repeats crossing over, two allpasses a leg smearing them by DIFFUSE,
- * COLOUR setting the feedback's low-pass and high-pass. */
+ * in place; memory from the arena. From Pocket Poly's fx.c. The delay runs at half the rate on one buffer of 1.91 s,
+ * used by its TYPE as two legs (0.80 s left, 1.11 s right: PING, RISE, FALL) or as one line (TAPE, HEADS, REVERSE,
+ * GRAINS); two allpasses a leg smear the repeats by DIFFUSE, COLOUR sets the feedback's low-pass and high-pass, WOW
+ * the tape's wander, CHOP lets the input in only in slices of the delay time. */
 #pragma once
 #include <stdint.h>
 
 typedef struct {
     uint32_t ens_mode;                   /* ENS_* */
     float ens_mix;                       /* 0..1 */
-    float dly_time_s;                    /* 0.05 .. 0.8: the left leg; the right is 1.382 of it, up to 1.11 */
+    uint32_t dly_type;                   /* DT_* */
+    uint32_t dly_synced;                 /* TIME is a division of the beat: PING's right leg as long as the left */
+    float dly_time_s;                    /* 0.05 .. 0.8: the left leg (PING's right is 1.382 of it free); GRAINS: the
+                                          * time between grains */
     float dly_fdbk;                      /* 0..1 */
     float dly_send;                      /* 0..1 */
     float dly_diff;                      /* 0..1: the repeats smeared into a cloud */
     float dly_colour;                    /* 0..1: dark and full to bright and thin */
+    float dly_wow;                       /* 0..1: the tape's wander, clean to seasick */
+    float dly_chop;                      /* 0..1: everything in, to a tenth of each delay time */
     float rev_decay;                     /* 0..1: the decay time, 0.6 to 8 s */
     float rev_damp;                      /* 0..1 */
     float rev_send;                      /* 0..1 */

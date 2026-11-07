@@ -83,6 +83,8 @@ static float echo_vel = 1.0f;
 static uint32_t echo_due[8], echo_off[8];
 static uint8_t echo_note[8];
 static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count, arp_due;
+static uint32_t arp_age[NV * 3u];        /* each step's body, by its age: the chord changing, the arp goes on from it */
+static uint32_t arp_mem[NV], arp_mem_age[NV], arp_mem_n;   /* the latched notes as struck, kept once the bed is let go */
 static uint32_t clk_now, clk_last, clk_period, clk_count, clk_ext, clk_out, orbit_clk_left, orbit_clk_per;
 static float clk_acc;
 static void (*rt_out)(uint32_t);
@@ -1525,28 +1527,37 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
         orbit_moves++;
     }
 }
-static void arp_gather(void)             /* the latched notes, low to high, then OCTAVES up; none: keep the last */
+static void arp_gather(uint32_t played)  /* the latched notes as struck (none: the last remembered), low to high unless
+                                          * PLAYED, then OCTAVES up */
 {
-    uint32_t i, j, n = 0, oct = 1u + (dr_scene.p[P_ARP_OCT] < 3u ? dr_scene.p[P_ARP_OCT] : 2u), notes[NV];
+    uint32_t i, j, n = 0, oct = 1u + (dr_scene.p[P_ARP_OCT] < 3u ? dr_scene.p[P_ARP_OCT] : 2u), notes[NV], age[NV];
     for (i = 0; i < NV; i++)
-        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart)
-            notes[n++] = (uint32_t)(vc[i].target + 0.5f);
-    if (!n)
-        return;
-    for (i = 1; i < n; i++) {            /* sorted, insertion */
-        uint32_t x = notes[i];
-        j = i;
-        while (j && notes[j - 1u] > x) {
-            notes[j] = notes[j - 1u];
-            j--;
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart) {
+            for (j = n++; j && arp_mem_age[j - 1u] > vc[i].age; j--) {
+                arp_mem_age[j] = arp_mem_age[j - 1u];
+                arp_mem[j] = arp_mem[j - 1u];
+            }
+            arp_mem_age[j] = vc[i].age;
+            arp_mem[j] = (uint32_t)(vc[i].target + 0.5f);
         }
-        notes[j] = x;
+    if (n)
+        arp_mem_n = n;
+    n = arp_mem_n;
+    for (i = 0; i < n; i++) {            /* low to high unless PLAYED: insertion */
+        for (j = i; j && !played && notes[j - 1u] > arp_mem[i]; j--) {
+            notes[j] = notes[j - 1u];
+            age[j] = age[j - 1u];
+        }
+        notes[j] = arp_mem[i];
+        age[j] = arp_mem_age[i];
     }
     arp_n = 0;
     for (j = 0; j < oct; j++)
         for (i = 0; i < n; i++)
-            if (notes[i] + 12u * j <= 108u)
+            if (notes[i] + 12u * j <= 108u) {
+                arp_age[arp_n] = age[i];
                 arp_notes[arp_n++] = notes[i] + 12u * j;
+            }
 }
 static void arp_release(void)
 {
@@ -1581,14 +1592,20 @@ static void arp_tick(uint32_t n)
     }
     arp_count++;
     arp_release();
-    arp_gather();
+    {
+        uint32_t k, l_age = arp_pos < arp_n ? arp_age[arp_pos] : 0u, l_note = arp_pos < arp_n ? arp_notes[arp_pos] : 0u;
+        arp_gather(order == AO_PLAYED);
+        for (k = 0; k < arp_n; k++)      /* a body added or let go: on from the step just played, where it now stands */
+            if (arp_age[k] == l_age && arp_notes[k] == l_note)
+                arp_pos = k;
+    }
     if (!arp_n)
         return;
     {
         uint32_t note;
         switch (order) {
         case AO_DOWN:
-            arp_pos = arp_pos ? arp_pos - 1u : arp_n - 1u;
+            arp_pos = arp_pos && arp_pos <= arp_n ? arp_pos - 1u : arp_n - 1u;
             break;
         case AO_UPDOWN:
             if (arp_n < 2u)
@@ -1611,35 +1628,13 @@ static void arp_tick(uint32_t n)
             orbit_rng = orbit_rng * 1664525u + 1013904223u;
             arp_pos = (orbit_rng >> 10) % arp_n;
             break;
-        case AO_PLAYED: {                /* in the order the bodies were struck, then the octaves up */
-            uint32_t i, cnt = 0, idx[NV], a, b, oct = 1u + (dr_scene.p[P_ARP_OCT] < 3u ? dr_scene.p[P_ARP_OCT] : 2u);
-            for (i = 0; i < NV; i++)
-                if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart)
-                    idx[cnt++] = i;
-            for (a = 1; a < cnt; a++)
-                for (b = a; b && vc[idx[b - 1u]].age > vc[idx[b]].age; b--) {
-                    uint32_t t = idx[b];
-                    idx[b] = idx[b - 1u];
-                    idx[b - 1u] = t;
-                }
-            if (cnt) {
-                arp_pos = (arp_pos + 1u) % (cnt * oct);
-                note = (uint32_t)(vc[idx[arp_pos % cnt]].target + 0.5f) + 12u * (arp_pos / cnt);
-                if (note > 108u)
-                    note -= 12u * (arp_pos / cnt);
-                goto play;
-            }
-            arp_pos = (arp_pos + 1u) % arp_n;   /* the bed gone: its memory, low to high */
-            break;
-        }
-        default:
+        default:                         /* UP, and PLAYED (arp_notes in the order struck) */
             arp_pos = (arp_pos + 1u) % arp_n;
             break;
         }
         if (arp_pos >= arp_n)
             arp_pos = 0;
         note = arp_notes[arp_pos];
-play:
         if (note_out)
             note_out(note, 100, 1);
         lead_machine = 1;
@@ -1655,7 +1650,8 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
     uint32_t i;
     for (i = 0; i < NV; i++)
         pend_to[i] = 0;
-    arp_n = arp_pos = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = 0;
+    arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = 0;
+    arp_pos = ~0u;                       /* before the first step: it lands on the first note (DOWN: the top) */
     cyc_pos = 0;
     for (i = 0; i < 8u; i++)
         echo_due[i] = echo_off[i] = 0;
@@ -1693,7 +1689,8 @@ void dr_clock(void)
 void dr_clock_start(void)
 {
     clk_count = 0;
-    arp_pos = 0;
+    arp_pos = ~0u;
+    arp_dir = 0;
     orbit_clk_left = 0;
     clk_ext = 1;
     clk_last = clk_now;
@@ -2134,6 +2131,7 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     {
         uint32_t pt = (uint32_t)(p01(P_DLY_TIME) * 127.0f + 0.5f);
         int32_t dv = dr_dly_div(pt);
+        fx.dly_synced = dv >= 0;
         if (dv >= 0) {                   /* in time: the MIDI clock followed, else the runner's RATE */
             float bpm = dr_clock_bpm(), t;
             if (bpm <= 0.0f)
@@ -2149,6 +2147,9 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     fx.dly_fdbk = p01(P_DLY_FDBK);
     fx.dly_diff = p01(P_DLY_DIFF);
     fx.dly_colour = p01(P_DLY_COLOUR);
+    fx.dly_type = dr_scene.p[P_DLY_TYPE] < DT_COUNT ? dr_scene.p[P_DLY_TYPE] : DT_PING;   /* a kind, not morphed */
+    fx.dly_wow = p01(P_DLY_WOW);
+    fx.dly_chop = p01(P_DLY_CHOP);
     fx.dly_send = fm_sqrtf(p01(P_DLY_MIX)) * (0.6f + 0.4f * space);   /* DLY MIX is the delay's level; SPACE
                                                                         * only pushes it a little further */
     fx.rev_decay = p01(P_REV_SIZE);

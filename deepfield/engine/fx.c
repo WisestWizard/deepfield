@@ -30,11 +30,17 @@ static float *ens_l, *ens_r;
 static uint32_t ens_pos;
 static float ens_ph1, ens_ph2;
 
-/* The delay: two legs on one 16-bit buffer (left, then right), the input into the left, each leg's repeat crossing
- * into the other with the feedback, the right leg 1.382 times the left so the sides never coincide; two allpasses
- * a leg smear the repeats by DIFFUSE; wow and flutter, a low-pass and high-pass set by COLOUR and a soft clip in
- * each leg. The legs run at half the rate: the repeats are filtered well below 11 kHz anyway, and the same memory
- * holds twice the time. */
+/* The delay: one 16-bit buffer at half the rate (the repeats are filtered well below 11 kHz anyway, and the same
+ * memory holds twice the time), used by its TYPE in one of two ways. Two legs (the left 0.80 s, then the right
+ * 1.11 s): the input into the left, each leg's repeat crossing into the other with the feedback, the right read
+ * 1.382 times the left so the sides never coincide (as long as the left when TIME is in time) - PING, and RISE and
+ * FALL, which read each leg through two crossfading heads an octave up or down. Or one line of the whole 1.91 s:
+ * TAPE (one head, darker and harder each pass, wandering more), HEADS (three heads at a third, two thirds and the
+ * whole time, left centre right), REVERSE (two heads reading back across windows of the delay time), GRAINS (short
+ * windowed pieces from up to 1.9 s back, one every delay time, scattered left and right). Every write passes two
+ * allpasses (DIFFUSE), a low-pass and high-pass set by COLOUR and a soft clip. WOW moves every head's distance
+ * (wow and flutter); CHOP gates the input in slices of the delay time. A change of TYPE fades the repeats out over
+ * 12 ms, empties the buffer and starts the new type there. */
 #define FSH (FS * 0.5f)
 #define DLY_LEN_L 17664u                 /* the left leg: 0.80 s at the half rate */
 #define DLY_LEN_R (DLY_LEN - DLY_LEN_L)  /* the right: 1.11 s */
@@ -49,11 +55,20 @@ static const uint32_t DLY_AP[4] = {DLY_AP0, DLY_AP1, DLY_AP2, DLY_AP3};
 typedef char fx_ap_check[DLY_AP0 + DLY_AP1 + DLY_AP2 + DLY_AP3 == FX_DLY_AP
                          && DLY_AP0 + DLY_AP1 == DLY_AP_SUM && DLY_AP2 + DLY_AP3 == DLY_AP_SUM
                          && DLY_LEN_R > DLY_LEN_L ? 1 : -1];
+#define DLY_SHIFT_G 1536u               /* RISE and FALL: a head's grain, 70 ms at the half rate */
+#define DLY_WOB_MAX 420.0f               /* the most WOW moves a head back, in half-rate samples (TAPE's at full) */
+#define DLY_NGR 4u                       /* GRAINS: pieces sounding at once */
 static int16_t *dly;
 static line_t dly_ap[4];
-static uint32_t dly_pos_l, dly_pos_r;
-static float dly_read, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
+static uint32_t dly_pos_l, dly_pos_r, dly_pos_w, dly_type_cur;
+static float dly_read, dly_ratio = DLY_RATIO, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
 static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
+static float dly_fade = 1.0f, chop_ph, chop_g = 1.0f, sh_ph, rev_ph, gr_left;
+typedef struct { float d, pos, len, gl, gr; uint32_t on; } grain_t;
+static grain_t grn[DLY_NGR];
+static const float DLY_OG[DT_COUNT] = {1.0f, 0.5f, 1.16f, 1.35f, 1.55f, 1.4f, 1.15f};   /* each TYPE's wet, level
+                                         * with PING's on a held chord (measured: the drone and a played key) */
+static uint32_t gr_rng = 0x9E3779B9u;
 
 static line_t rv_pre[2], rv_ap[4], rv_fd[8];
 static float rv_hp_l, rv_hp_r, rv_lp[8], rv_mod_ph;
@@ -185,6 +200,13 @@ void fx_init(void *arena)
     dly_live = rv_live = 0;
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
     dly_read = 2205.0f;
+    dly_ratio = DLY_RATIO;
+    dly_type_cur = DT_PING;
+    dly_pos_w = 0;
+    dly_fade = chop_g = 1.0f;
+    chop_ph = sh_ph = rev_ph = gr_left = 0.0f;
+    for (i = 0; i < DLY_NGR; i++)
+        grn[i].on = 0;
     dly_lp[0] = dly_lp[1] = dly_hp_x[0] = dly_hp_x[1] = dly_hp_y[0] = dly_hp_y[1] = rv_hp_l = rv_hp_r = 0.0f;
     dly_dn1 = dly_dn2 = dly_ol = dly_or = dly_ul = dly_ur = 0.0f;
     lim_gain = lim_tgt = 1.0f;
@@ -194,8 +216,11 @@ void fx_init(void *arena)
 }
 
 static inline float dly_tap(const int16_t *buf, uint32_t len, uint32_t pos, float back, int32_t *live)
-{                                        /* a leg read a fraction back */
-    uint32_t b = (uint32_t)back, i0 = pos + len - b, i1;
+{                                        /* a leg read a fraction back (kept within the leg) */
+    uint32_t b, i0, i1;
+    back = back < 1.0f ? 1.0f : back > (float)(len - 2u) ? (float)(len - 2u) : back;
+    b = (uint32_t)back;
+    i0 = pos + len - b;
     if (i0 >= len)
         i0 -= len;
     i1 = i0 == 0u ? len - 1u : i0 - 1u;
@@ -208,19 +233,56 @@ static inline void dly_put(int16_t *buf, uint32_t pos, float c, int32_t *live)
     buf[pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
     *live |= buf[pos];
 }
-static inline float dly_leg(uint32_t s, float c, float g, float lpc, float hpa)
+static inline float dly_leg(uint32_t s, float c, float g, float lpc, float hpa, float drive)
 {                                        /* what goes into a leg: smeared, filtered by COLOUR, softer */
     float y;
     c = allpass(&dly_ap[2u * s], c, g);
     c = allpass(&dly_ap[2u * s + 1u], c, g);
     dly_lp[s] += (c - dly_lp[s]) * lpc;
-    c = dly_lp[s] * 1.2f;                           /* a cubic clip */
+    c = dly_lp[s] * drive;                          /* a cubic clip, harder with the drive, the same gain below it */
     c = c > 1.5f ? 1.5f : c < -1.5f ? -1.5f : c;
-    c = (c - c * c * c * (4.0f / 27.0f)) * 0.85f;
+    c = (c - c * c * c * (4.0f / 27.0f)) * (1.02f / drive);
     y = hpa * (dly_hp_y[s] + c - dly_hp_x[s]);      /* the low end thinned, so the repeats sit off the drone */
     dly_hp_x[s] = c;
     dly_hp_y[s] = y;
     return y;
+}
+
+static void dly_clear(void)              /* a new TYPE: the buffer, the smearing, the filters and the heads from zero */
+{
+    uint32_t i, k;
+    for (i = 0; i < DLY_LEN; i++)
+        dly[i] = 0;
+    for (i = 0; i < 4u; i++) {
+        for (k = 0; k < dly_ap[i].len; k++)
+            dly_ap[i].buf[k] = 0;
+        dly_ap[i].pos = 0;
+    }
+    for (i = 0; i < 2u; i++)
+        dly_lp[i] = dly_hp_x[i] = dly_hp_y[i] = 0.0f;
+    for (i = 0; i < DLY_NGR; i++)
+        grn[i].on = 0;
+    dly_pos_l = dly_pos_r = dly_pos_w = 0;
+    sh_ph = rev_ph = gr_left = 0.0f;
+}
+static inline float gr_rand(void)        /* 0..1 */
+{
+    gr_rng ^= gr_rng << 13;
+    gr_rng ^= gr_rng >> 17;
+    gr_rng ^= gr_rng << 5;
+    return (float)(gr_rng >> 8) * (1.0f / 16777216.0f);
+}
+static inline float tri01(float w) { return 1.0f - fm_fabsf(2.0f * w - 1.0f); }   /* 0 at the ends, 1 in the middle */
+static inline float dly_shift(const int16_t *buf, uint32_t len, uint32_t pos, float base, float up, int32_t *live)
+{                                        /* a leg read an octave up (or down) by two heads half a grain apart: the
+                                          * distance falls a grain over a grain (up) or rises half of one (down) */
+    float w1 = sh_ph, w2 = sh_ph + 0.5f, g1, d1, d2;
+    if (w2 >= 1.0f)
+        w2 -= 1.0f;
+    g1 = tri01(w1);
+    d1 = base + (up > 0.0f ? (float)DLY_SHIFT_G * (1.0f - w1) : 0.5f * (float)DLY_SHIFT_G * w1);
+    d2 = base + (up > 0.0f ? (float)DLY_SHIFT_G * (1.0f - w2) : 0.5f * (float)DLY_SHIFT_G * w2);
+    return g1 * dly_tap(buf, len, pos, d1, live) + (1.0f - g1) * dly_tap(buf, len, pos, d2, live);
 }
 
 void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensemble and the delay, in place */
@@ -287,104 +349,251 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         }
         pk_ens = 0.0f;
     }
-    /* the delay: mono in, down to the half rate, two legs read at a slowly wandering distance, filtered and soft in
-     * the feedback, back up to the full rate */
-    if ((p->dly_send > 0.001f && bus_pk > 0.0f) || dly_live)
-        dly_tail = 2u * DLY_LEN_R / n + 2u;   /* the longer leg: nothing in or out that long, and it is all zeros */
-    else if (dly_tail)
-        dly_tail--;
-    if (dly_tail && !(p->bypass & FX_BYP_DLY)) {
-        float tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM, slew = 0.0008f, fb = 0.95f * fm_sqrtf(p->dly_fdbk),
-              send = p->dly_send, g = 0.6f * p->dly_diff, maxl = (float)(DLY_LEN_L - 64u),
-              maxr = (float)(DLY_LEN_R - 64u), col = p->dly_colour,
-              lpc = 1.0f - fm_expf(-TWO_PI * (1500.0f + 7500.0f * col * col) / FSH),   /* 1.5 to 9 kHz */
-              hpa = fm_expf(-TWO_PI * (30.0f + 170.0f * col) / FSH);                   /* 30 to 200 Hz */
+    /* the delay: mono in (through CHOP's gate), down to the half rate, its TYPE's heads at a wandering distance,
+     * written back filtered and soft, back up to the full rate */
+    {
+        uint32_t want = p->dly_type < DT_COUNT ? p->dly_type : DT_PING;
+        if ((p->dly_send > 0.001f && bus_pk > 0.0f) || dly_live)
+            dly_tail = 2u * DLY_LEN / n + 2u;   /* the whole buffer: nothing in or out that long, and it is all zeros */
+        else if (dly_tail)
+            dly_tail--;
+        if (want != dly_type_cur && (!dly_tail || (p->bypass & FX_BYP_DLY))) {   /* silent or skipped: at once */
+            dly_clear();
+            dly_type_cur = want;
+            dly_fade = 1.0f;
+        }
+    }
+    {
+        uint32_t ty = dly_type_cur, two = ty == DT_PING || ty == DT_RISE || ty == DT_FALL;
+        float wa = 400.0f * p->dly_wow * p->dly_wow, wfl = 14.1f * fm_sqrtf(p->dly_wow);   /* WOW: the wow's and the
+                                         * flutter's reach back, in samples; 40 of 127 is the 3 and 12 cents of before */
+        float tmax, tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM;
+        if (ty == DT_TAPE) {             /* the worn tape wanders more */
+            wa *= 2.5f;
+            wfl *= 1.5f;
+        }
+        tmax = two ? (float)(DLY_LEN_L - 64u) - DLY_WOB_MAX - (ty == DT_PING ? 0.0f : (float)DLY_SHIFT_G)
+                   : (float)(DLY_LEN - 64u) - DLY_WOB_MAX;
+        if (ty == DT_REVERSE)            /* its heads reach back twice the window */
+            tmax = 0.5f * ((float)(DLY_LEN - 64u) - DLY_WOB_MAX) - (float)DLY_AP_SUM;
+        if (tgt > tmax)
+            tgt = tmax;
+        if (tgt < 32.0f)
+            tgt = 32.0f;
+        if (dly_tail && !(p->bypass & FX_BYP_DLY)) {
+            float slew = 0.0008f, fb = 0.95f * fm_sqrtf(p->dly_fdbk), send = p->dly_send, g = 0.6f * p->dly_diff,
+                  maxr = (float)(DLY_LEN_R - 64u) - DLY_WOB_MAX - (ty == DT_PING ? 0.0f : (float)DLY_SHIFT_G),
+                  col = p->dly_colour, ratio_t = p->dly_synced ? 1.0f : DLY_RATIO,
+                  lpc = 1.0f - fm_expf(-TWO_PI * (1500.0f + 7500.0f * col * col) / FSH),   /* 1.5 to 9 kHz */
+                  hpa = fm_expf(-TWO_PI * (30.0f + 170.0f * col) / FSH),                   /* 30 to 200 Hz */
+                  drive = 1.2f, per = p->dly_time_s * FSH, chop_inc, duty = 1.0f - 0.9f * p->dly_chop,
+                  chop_mk = 1.0f / fm_sqrtf(duty),   /* the slices as loud on average as the whole: louder each */
+                  sh_inc = (ty == DT_RISE ? 1.0f : 0.5f) / (float)DLY_SHIFT_G, up = ty == DT_RISE ? 1.0f : -1.0f;
                                          /* the feedback as a square root: repeats from the first turn, 0.95 at full */
-        float wf0, wf1, dwf;
-        uint32_t h = n / 2u;
-        int32_t live = 0;
-        wf0 = 1.0f + 0.0015f * fm_sin_turns(wow_ph) + 0.0003f * fm_sin_turns(flut_ph);   /* wow and flutter: the
-                                                                              * ends of the block, a line between */
-        wow_ph += 0.35f * (float)n / FS;
-        if (wow_ph >= 1.0f)
-            wow_ph -= 1.0f;
-        flut_ph += 6.3f * (float)n / FS;
-        if (flut_ph >= 1.0f)
-            flut_ph -= 1.0f;
-        wf1 = 1.0f + 0.0015f * fm_sin_turns(wow_ph) + 0.0003f * fm_sin_turns(flut_ph);
-        dwf = (wf1 - wf0) / (float)h;
-        if (tgt > maxl)                  /* wow and flutter read up to 0.18 % further back */
-            tgt = maxl;
-        if (tgt < 32.0f)
-            tgt = 32.0f;
-        for (i = 0; i < n; i += 2u) {
-            float in, backl, backr, outl, outr, c, m, x0, x1;
-            x0 = (l[i] + r[i]) * 0.5f * send;           /* two one-poles at 7 kHz, then every other sample */
-            dly_dn1 += (x0 - dly_dn1) * 0.63f;
-            dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
-            x1 = (l[i + 1u] + r[i + 1u]) * 0.5f * send;
-            dly_dn1 += (x1 - dly_dn1) * 0.63f;
-            dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
-            in = dly_dn2;
-            dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
-            wf0 += dwf;
-            backl = dly_read * wf0;
-            backr = dly_read * DLY_RATIO;
-            if (backr > maxr)
-                backr = maxr;
-            backr *= wf0;
-            outl = dly_tap(dly, DLY_LEN_L, dly_pos_l, backl, &live);
-            outr = dly_tap(dly + DLY_LEN_L, DLY_LEN_R, dly_pos_r, backr, &live);
-            c = dly_leg(0, in + outr * fb, g, lpc, hpa);   /* the left leg: the input, and the right's repeat back */
-            dly_put(dly, dly_pos_l, c, &live);
-            c = dly_leg(1, outl * fb, g, lpc, hpa);        /* the right leg: the left's repeat crossing over */
-            dly_put(dly + DLY_LEN_L, dly_pos_r, c, &live);
-            dly_pos_l = dly_pos_l + 1u == DLY_LEN_L ? 0u : dly_pos_l + 1u;
-            dly_pos_r = dly_pos_r + 1u == DLY_LEN_R ? 0u : dly_pos_r + 1u;
-            m = (outl + outr) * 0.5f;
-            outl = m + (outl - m) * DLY_WIDTH;
-            outr = m + (outr - m) * DLY_WIDTH;
-            x0 = (dly_ol + outl) * 0.5f;                /* back up: the midpoint, then the sample, smoothed */
-            dly_ul += (x0 - dly_ul) * 0.75f;
-            l[i] += dly_ul;
-            dly_ul += (outl - dly_ul) * 0.75f;
-            l[i + 1u] += dly_ul;
-            x1 = (dly_or + outr) * 0.5f;
-            dly_ur += (x1 - dly_ur) * 0.75f;
-            r[i] += dly_ur;
-            dly_ur += (outr - dly_ur) * 0.75f;
-            r[i + 1u] += dly_ur;
-            dly_ol = outl;
-            dly_or = outr;
+            float wa0, wa1, wf0, wf1, dwa, dwf;
+            uint32_t h = n / 2u, want = p->dly_type < DT_COUNT ? p->dly_type : DT_PING;
+            int32_t live = 0;
+            if (ty == DT_TAPE) {         /* darker and harder each time round */
+                lpc *= 0.55f;
+                drive = 1.7f;
+            }
+            if (per < 32.0f)
+                per = 32.0f;
+            chop_inc = 1.0f / per;
+            wa0 = wa * 0.5f * (1.0f + fm_sin_turns(wow_ph));   /* wow and flutter: the ends of the block, a line
+                                                                 * between; one-sided, so a head never reads ahead */
+            wf0 = wfl * 0.5f * (1.0f + fm_sin_turns(flut_ph));
+            wow_ph += 0.35f * (float)n / FS;
+            if (wow_ph >= 1.0f)
+                wow_ph -= 1.0f;
+            flut_ph += 6.3f * (float)n / FS;
+            if (flut_ph >= 1.0f)
+                flut_ph -= 1.0f;
+            wa1 = wa * 0.5f * (1.0f + fm_sin_turns(wow_ph));
+            wf1 = wfl * 0.5f * (1.0f + fm_sin_turns(flut_ph));
+            dwa = (wa1 - wa0) / (float)h;
+            dwf = (wf1 - wf0) / (float)h;
+            for (i = 0; i < n; i += 2u) {
+                float in, outl, outr, c, m, x0, x1, wob;
+                x0 = (l[i] + r[i]) * 0.5f * send;           /* two one-poles at 7 kHz, then every other sample */
+                dly_dn1 += (x0 - dly_dn1) * 0.63f;
+                dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
+                x1 = (l[i + 1u] + r[i + 1u]) * 0.5f * send;
+                dly_dn1 += (x1 - dly_dn1) * 0.63f;
+                dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
+                chop_ph += chop_inc;                        /* CHOP: the input let in for the first part of each
+                                                             * delay time, its edges 2 ms soft */
+                if (chop_ph >= 1.0f)
+                    chop_ph -= 1.0f;
+                chop_g += ((chop_ph < duty ? 1.0f : 0.0f) - chop_g) * 0.02f;
+                in = dly_dn2 * chop_g * chop_mk;
+                dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
+                dly_ratio += (ratio_t - dly_ratio) * slew;
+                wa0 += dwa;
+                wf0 += dwf;
+                wob = wa0 + wf0;
+                switch (ty) {
+                default:
+                case DT_PING:
+                case DT_RISE:
+                case DT_FALL: {
+                    float backl = dly_read + wob, backr = dly_read * dly_ratio + wob;
+                    if (backr > maxr)
+                        backr = maxr;
+                    if (ty == DT_PING) {
+                        outl = dly_tap(dly, DLY_LEN_L, dly_pos_l, backl, &live);
+                        outr = dly_tap(dly + DLY_LEN_L, DLY_LEN_R, dly_pos_r, backr, &live);
+                    } else {
+                        outl = dly_shift(dly, DLY_LEN_L, dly_pos_l, backl, up, &live);
+                        outr = dly_shift(dly + DLY_LEN_L, DLY_LEN_R, dly_pos_r, backr, up, &live);
+                        sh_ph += sh_inc;
+                        if (sh_ph >= 1.0f)
+                            sh_ph -= 1.0f;
+                    }
+                    c = dly_leg(0, in + outr * fb, g, lpc, hpa, drive);   /* the left leg: the input, and the right's
+                                                                           * repeat back */
+                    dly_put(dly, dly_pos_l, c, &live);
+                    c = dly_leg(1, outl * fb, g, lpc, hpa, drive);        /* the right leg: the left's repeat crossing */
+                    dly_put(dly + DLY_LEN_L, dly_pos_r, c, &live);
+                    dly_pos_l = dly_pos_l + 1u == DLY_LEN_L ? 0u : dly_pos_l + 1u;
+                    dly_pos_r = dly_pos_r + 1u == DLY_LEN_R ? 0u : dly_pos_r + 1u;
+                    break;
+                }
+                case DT_TAPE: {
+                    float o = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob, &live);
+                    c = dly_leg(0, in + o * fb, g, lpc, hpa, drive);
+                    outl = outr = o;
+                    break;
+                }
+                case DT_HEADS: {                            /* a third, two thirds and the whole time back */
+                    float t3 = (dly_read + (float)DLY_AP_SUM) * (1.0f / 3.0f), d1 = t3 - (float)DLY_AP_SUM,
+                          d2 = 2.0f * t3 - (float)DLY_AP_SUM, h1, h2, h3;
+                    d1 = d1 < 16.0f ? 16.0f : d1;
+                    d2 = d2 < 16.0f ? 16.0f : d2;
+                    h1 = dly_tap(dly, DLY_LEN, dly_pos_w, d1 + wob, &live);
+                    h2 = dly_tap(dly, DLY_LEN, dly_pos_w, d2 + wob, &live);
+                    h3 = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob, &live);
+                    c = dly_leg(0, in + h3 * fb, g, lpc, hpa, drive);   /* the last head is the feedback */
+                    outl = 0.6f * h1 + 0.4f * h2 + 0.15f * h3;
+                    outr = 0.15f * h1 + 0.4f * h2 + 0.6f * h3;
+                    break;
+                }
+                case DT_REVERSE: {                          /* two heads, half a window apart, each reading back
+                                                             * across the last window: twice as fast as the line runs */
+                    float win = dly_read + (float)DLY_AP_SUM, w1 = rev_ph, w2 = rev_ph + 0.5f, g1, s1, s2;
+                    if (w2 >= 1.0f)
+                        w2 -= 1.0f;
+                    g1 = tri01(w1);
+                    s1 = g1 * dly_tap(dly, DLY_LEN, dly_pos_w, 2.0f + 2.0f * win * w1 + wob, &live);
+                    s2 = (1.0f - g1) * dly_tap(dly, DLY_LEN, dly_pos_w, 2.0f + 2.0f * win * w2 + wob, &live);
+                    rev_ph += 1.0f / win;
+                    if (rev_ph >= 1.0f)
+                        rev_ph -= 1.0f;
+                    c = dly_leg(0, in + (s1 + s2) * fb, g, lpc, hpa, drive);
+                    outl = 0.75f * s1 + 0.35f * s2;     /* the swell leans left on one head and right on the other */
+                    outr = 0.35f * s1 + 0.75f * s2;
+                    break;
+                }
+                case DT_GRAINS: {                           /* a piece every delay time, from anywhere up to 1.9 s
+                                                             * back (more often the recent), 1.6 delay times long
+                                                             * (40 to 300 ms), its own place left to right */
+                    uint32_t k;
+                    float sum = 0.0f;
+                    outl = outr = 0.0f;
+                    gr_left -= 1.0f;
+                    if (gr_left <= 0.0f) {
+                        grain_t *gv = &grn[0];
+                        float len = 1.6f * (dly_read + (float)DLY_AP_SUM), pan, q = gr_rand();
+                        gr_left += dly_read + (float)DLY_AP_SUM;
+                        for (k = 0; k < DLY_NGR; k++)   /* a free one, else the furthest through */
+                            if (!grn[k].on || (gv->on && grn[k].pos / grn[k].len > gv->pos / gv->len))
+                                gv = &grn[k];
+                        len = len < 880.0f ? 880.0f : len > 6600.0f ? 6600.0f : len;
+                        gv->on = 1;
+                        gv->pos = 0.0f;
+                        gv->len = len;
+                        gv->d = 1765.0f + q * q * ((float)(DLY_LEN - 64u) - DLY_WOB_MAX - 1765.0f);
+                        pan = 0.9f * (2.0f * gr_rand() - 1.0f);
+                        gv->gl = fm_sqrtf(0.5f * (1.0f - pan));
+                        gv->gr = fm_sqrtf(0.5f * (1.0f + pan));
+                    }
+                    for (k = 0; k < DLY_NGR; k++) {
+                        grain_t *gv = &grn[k];
+                        float t, w, v;
+                        if (!gv->on)
+                            continue;
+                        t = tri01(gv->pos / gv->len);
+                        w = t * t * (3.0f - 2.0f * t);   /* a smooth window */
+                        v = w * dly_tap(dly, DLY_LEN, dly_pos_w, gv->d + wob, &live);
+                        outl += v * gv->gl;
+                        outr += v * gv->gr;
+                        sum += v;
+                        gv->pos += 1.0f;
+                        if (gv->pos >= gv->len)
+                            gv->on = 0;
+                    }
+                    c = dly_leg(0, in + sum * fb * 0.7f, g, lpc, hpa, drive);
+                    break;
+                }
+                }
+                if (!two) {                                 /* the one line: its write, and on */
+                    dly_put(dly, dly_pos_w, c, &live);
+                    dly_pos_w = dly_pos_w + 1u == DLY_LEN ? 0u : dly_pos_w + 1u;
+                }
+                m = (outl + outr) * 0.5f;
+                outl = (m + (outl - m) * DLY_WIDTH) * dly_fade * DLY_OG[ty];
+                outr = (m + (outr - m) * DLY_WIDTH) * dly_fade * DLY_OG[ty];
+                if (want != ty) {                           /* a new TYPE: out over 12 ms, then a fresh start */
+                    dly_fade -= 1.0f / 256.0f;
+                    if (dly_fade <= 0.0f) {
+                        dly_clear();
+                        dly_type_cur = ty = want;
+                        two = ty == DT_PING || ty == DT_RISE || ty == DT_FALL;
+                        dly_fade = 1.0f;
+                        sh_inc = (ty == DT_RISE ? 1.0f : 0.5f) / (float)DLY_SHIFT_G;
+                        up = ty == DT_RISE ? 1.0f : -1.0f;
+                    }
+                }
+                x0 = (dly_ol + outl) * 0.5f;                /* back up: the midpoint, then the sample, smoothed */
+                dly_ul += (x0 - dly_ul) * 0.75f;
+                l[i] += dly_ul;
+                dly_ul += (outl - dly_ul) * 0.75f;
+                l[i + 1u] += dly_ul;
+                x1 = (dly_or + outr) * 0.5f;
+                dly_ur += (x1 - dly_ur) * 0.75f;
+                r[i] += dly_ur;
+                dly_ur += (outr - dly_ur) * 0.75f;
+                r[i + 1u] += dly_ur;
+                dly_ol = outl;
+                dly_or = outr;
+            }
+            dly_live = live != 0;
+            for (i = 0; i < 2u; i++) {
+                dly_lp[i] = fm_flush(dly_lp[i]);
+                dly_hp_x[i] = fm_flush(dly_hp_x[i]);
+                dly_hp_y[i] = fm_flush(dly_hp_y[i]);
+            }
+            dly_dn1 = fm_flush(dly_dn1);
+            dly_dn2 = fm_flush(dly_dn2);
+            dly_ul = fm_flush(dly_ul);
+            dly_ur = fm_flush(dly_ur);
+            pk_dly = block_peak(l, r, n);
+            bus_pk = pk_dly;
+        } else {
+            float ratio_t = p->dly_synced ? 1.0f : DLY_RATIO;
+            for (i = 0; i < n; i += 2u) {  /* at rest: the time still settles */
+                dly_read += (tgt - dly_read) * 0.0008f;
+                dly_ratio += (ratio_t - dly_ratio) * 0.0008f;
+            }
+            wow_ph += 0.35f * (float)n / FS;   /* wow and flutter keep their phase */
+            if (wow_ph >= 1.0f)
+                wow_ph -= 1.0f;
+            flut_ph += 6.3f * (float)n / FS;
+            if (flut_ph >= 1.0f)
+                flut_ph -= 1.0f;
+            pk_dly = 0.0f;
+            dly_live = 0;
         }
-        dly_live = live != 0;
-        for (i = 0; i < 2u; i++) {
-            dly_lp[i] = fm_flush(dly_lp[i]);
-            dly_hp_x[i] = fm_flush(dly_hp_x[i]);
-            dly_hp_y[i] = fm_flush(dly_hp_y[i]);
-        }
-        dly_dn1 = fm_flush(dly_dn1);
-        dly_dn2 = fm_flush(dly_dn2);
-        dly_ul = fm_flush(dly_ul);
-        dly_ur = fm_flush(dly_ur);
-        pk_dly = block_peak(l, r, n);
-        bus_pk = pk_dly;
-    } else {
-        float tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM, slew = 0.0008f;
-        if (tgt > (float)(DLY_LEN_L - 64u))
-            tgt = (float)(DLY_LEN_L - 64u);
-        if (tgt < 32.0f)
-            tgt = 32.0f;
-        for (i = 0; i < n; i += 2u)      /* at rest: the time still settles */
-            dly_read += (tgt - dly_read) * slew;
-        wow_ph += 0.35f * (float)n / FS;   /* wow and flutter keep their phase */
-        if (wow_ph >= 1.0f)
-            wow_ph -= 1.0f;
-        flut_ph += 6.3f * (float)n / FS;
-        if (flut_ph >= 1.0f)
-            flut_ph -= 1.0f;
-        pk_dly = 0.0f;
-        dly_live = 0;
     }
 }
 

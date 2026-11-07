@@ -940,8 +940,8 @@ wait 1100
 release SEL
 tap HOME
 wait 7000
-# the DELAY page: DIFFUSE on the fourth knob; DLY TIME free below 100 (ms), then the beat's divisions (1/16, 1/8,
-# 1/8D, 1/4T, 1/4) timed from the runner's RATE or the MIDI clock
+# the DELAY page: TYPE on the first knob (PING TAPE HEADS REVERSE RISE FALL GRAINS, one a detent); DLY TIME free
+# below 100 (ms), then the beat's divisions (1/16, 1/8, 1/8D, 1/4T, 1/4) timed from the runner's RATE or the MIDI clock
 listen
 tap HOME
 wait 3000
@@ -950,30 +950,67 @@ wait 300
 turn SELECT 1
 wait 300
 expect page 9
-spin K4 5
+spin K1 1
 wait 300
-said COLOUR
-expect p56 >50
-spin K1 70
+said TAPE
+expect p57 1
+spin K1 5
+wait 300
+said GRAINS
+expect p57 6
+spin K1 -6
+wait 300
+said PING
+expect p57 0
+spin K2 70
 wait 300
 said 1/2
 expect p20 127
-spin K1 -6
+spin K2 -6
 wait 300
 said 1/4D
-spin K1 -6
+spin K2 -6
 wait 300
 said 1/8D
-spin K1 -30
+spin K2 -30
 wait 300
 said MS
+# DELAY 2: COLOUR, DIFFUSE, WOW, CHOP
 spin SELECT 1
 wait 300
 expect page 10
 spin K1 5
 wait 300
+said COLOUR
+expect p56 >50
+spin K2 5
+wait 300
 said DIFFUSE
 expect p55 >25
+spin K3 5
+wait 300
+said WOW
+expect p58 >40
+spin K4 5
+wait 300
+said CHOP
+expect p59 >0
+# CC 102 TYPE (seven equal parts), 103 WOW, 104 CHOP
+midi B0 66 7F
+wait 50
+expect p57 6
+midi B0 66 24
+wait 50
+expect p57 1
+midi B0 66 00
+wait 50
+expect p57 0
+midi B0 67 28
+wait 50
+expect p58 40
+midi B0 68 00
+wait 50
+expect p59 0
 # TRANSPOSE: SEL held and a key touched; then every key moves the latched bodies, the lowest to that key; the note offs go before the note ons; a SEL tap is LATCH again
 tap HOME
 wait 500
@@ -1054,3 +1091,63 @@ tapkey 1
 wait 200
 expect note 54
 expect sounding54 1
+# ARP ORDER PLAYED: the bed struck G4 C4 A4 E4 runs in that order from its first note (it began on the second, which
+# sounded like UP); the struck order stays once the bed is let go
+reboot
+wait 700
+press SEL
+wait 1100
+release SEL
+wait 7000
+expect bodies 0
+key 14 down
+wait 40
+key 14 up
+wait 100
+key 7 down
+wait 40
+key 7 up
+wait 100
+key 16 down
+wait 40
+key 16 up
+wait 100
+key 11 down
+wait 40
+key 11 up
+wait 300
+expect latch 4
+tap ARP
+wait 30
+spin K1 3
+wait 30
+expect orbitmode 3
+spin K4 10
+wait 30
+expect p41 4
+spin SELECT 1
+wait 30
+spin K2 -5
+wait 30
+expect p42 0
+spin SELECT -1
+wait 30
+out
+tap PLAY
+wait 60
+expect_out USB 90 43 64
+expect_no_out USB 90 3C 64
+out
+wait 250
+expect_out USB 90 3C 64
+expect_no_out USB 90 45 64
+out
+wait 250
+expect_out USB 90 45 64
+out
+wait 250
+expect_out USB 90 40 64
+expect_no_out USB 90 43 64
+out
+tap PLAY
+wait 300

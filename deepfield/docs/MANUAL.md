@@ -184,7 +184,7 @@ next or previous page, in the order of the table below: DELAY, DELAY 2 and REVER
 after ENSEMBLE, for example. The page band's `<` and `>` show where SELECT can go. A page stays open until you
 press another page button or turn SELECT. Most values show on the screen as a percentage.
 
-COLOUR is on both NOISE and DELAY, and WIDTH on both MOTION and NOISE 2: the page band tells you which one you are
+COLOUR is on both NOISE and DELAY 2, and WIDTH on both MOTION and NOISE 2: the page band tells you which one you are
 turning.
 
 | Button | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
@@ -198,8 +198,8 @@ turning.
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
 | LFO, SELECT once | MOTION 2 | SPREAD | CROSS | TIMBRE | SWAY |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest) | ENS MIX | – | – |
-| FX, SELECT once | DELAY | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) | COLOUR (dark or bright repeats) |
-| FX, SELECT twice | DELAY 2 | DIFFUSE (echoes blurred into a cloud) | – | – | – |
+| FX, SELECT once | DELAY | TYPE (PING, TAPE, HEADS, REVERSE, RISE, FALL, GRAINS) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
+| FX, SELECT twice | DELAY 2 | COLOUR (dark or bright repeats) | DIFFUSE (echoes blurred into a cloud) | WOW (how far the tape wanders) | CHOP (only slices of the sound go in) |
 | FX, SELECT three times | REVERB | REV SIZE (how long it rings, about 0.6 to 8 s) | REV DAMP (how fast the highs die away) | SHIMMER | SPACE (the same as on HOME) |
 | ARP, or hold PLAY | ORBIT | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
 | ARP, SELECT once | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | – | – |
@@ -260,19 +260,40 @@ eight pitches.
 - **SWAY** moves each body across the stereo field on its own slow cycle, from one swing every 50 s to one every
   3 s.
 
-**The delay** echoes left, then right, then left again, each repeat a little further away. DLY FDBK sets how many
-repeats.
+**The delay.** DLY FDBK sets how many repeats and DLY MIX how loud they are. **TYPE** (the first knob on DELAY)
+chooses what kind of delay it is:
 
-- Over most of its turn, **DLY TIME** is a time from 50 to 800 ms, and the screen shows it in ms. The right-hand
-  echo comes a little later than the left one, up to 1.1 s.
+| TYPE | What you hear |
+|---|---|
+| PING | Left, then right, then left again, each repeat a little further away. The right-hand echo comes a little later than the left one, so the repeats never fall into a pattern. |
+| TAPE | One echo in the middle, darker and grittier each time round, its pitch wandering, so it beats against the drone. |
+| HEADS | Three echoes for every one: at a third, two thirds and the whole of DLY TIME, left, centre and right. One note becomes a rhythm. |
+| REVERSE | Each echo plays backwards: a note's echo swells up to where it started. |
+| RISE | Each echo an octave higher than the last, climbing out of the drone and thinning as it goes. |
+| FALL | Each echo an octave lower, sinking under the drone. |
+| GRAINS | Short pieces of the last two seconds, one every DLY TIME, scattered left and right: a held chord turns into a glittering cloud of itself. |
+
+Turning TYPE fades the echoes out and starts the new kind fresh.
+
+A held drone hides its own echoes: an echo of a steady sound is the same steady sound. TAPE's wander, RISE and FALL's
+pitch, REVERSE's swell and GRAINS' pieces make them heard; on PING, and on all of them, CHOP and WOW help.
+
+- Over most of its turn, **DLY TIME** is a time from 50 to 800 ms, and the screen shows it in ms. On PING the
+  right-hand echo comes a little later than the left one, up to 1.1 s.
 - Near the top of its turn, DLY TIME becomes a note length: 1/16, 1/8, 1/4T, 1/8D, 1/4, 1/4D or 1/2 (T is a
   triplet, D is dotted). The tempo comes from RATE (ARP's tempo, on the ORBIT page with MODE set to ARP), or from
-  MIDI clock when it is coming in, so the echoes land in time with ARP. A length that would be longer than 800 ms at
-  that tempo plays at half length, still in time.
-- **COLOUR** filters the repeats: low, they get darker and stay full; high, they get thinner and brighter, so they
-  stand apart from the drone.
+  MIDI clock when it is coming in, so the echoes land in time with ARP; on PING the right-hand echo then lands on the
+  beat too. A length that would be longer than 800 ms at that tempo plays at half length, still in time. On GRAINS,
+  DLY TIME is how often a piece comes.
+- **COLOUR** (DELAY 2) filters the repeats: low, they get darker and stay full; high, they get thinner and
+  brighter, so they stand apart from the drone.
 - **DIFFUSE** (DELAY 2) blurs each repeat: at 0 a clean tape echo, past the middle a short burst, at full a cloud
   that trails the drone instead of repeating it.
+- **WOW** (DELAY 2) sets how far the tape's pitch wanders: at 0 clean, at about a third the gentle wander the delay
+  always had, at full seasick. A wandering echo goes slightly out of tune with the drone, and you hear it beat.
+- **CHOP** (DELAY 2) lets only slices of the sound into the delay, one at the start of every DLY TIME: at 0
+  everything goes in, at full a short slice. A held chord then comes back as a pulse of itself, in time with the
+  delay. The slices are made louder as they get shorter, so the echoes stay as loud overall.
 - Changing DLY TIME bends the pitch on its way, like tape.
 
 ---
@@ -292,7 +313,7 @@ and PLAY's colour shows it:
 | WANDER | green | EVERY, CHANCE, STEPS UP TO | Every EVERY seconds (give or take a quarter), with a CHANCE, one body moves to a nearby note in the scale, up to STEPS UP TO scale steps away. It never moves onto a note another body is playing. |
 | CHORD | orange | EVERY, CHANCE, DISTANCE | All the bodies move together by the same number of scale steps, up to DISTANCE, so the whole chord shifts to a related one. |
 | SCATTER | orange | EVERY, BODIES, STEPS UP TO | Several bodies move at once, each its own way, with looser timing (give or take a half). BODIES sets how many: one at 0, all the latched bodies at full. |
-| ARP | red | RATE, GATE, ORDER | An arpeggio. The bodies keep droning while a lead (section 4) steps through their notes at RATE (40 to 240 BPM, one step per eighth note). GATE is how long each step is held (smoothly joined at the top). ORDER is UP, DOWN, UP DOWN, RANDOM, or PLAYED (the order you struck them). OCTAVES (ORBIT 2) spreads it over more octaves. ARP remembers the notes: stop every body (hold SEL) and it keeps playing until you press PLAY. The pill fills over a bar of eight steps. |
+| ARP | red | RATE, GATE, ORDER | An arpeggio. The bodies keep droning while a lead (section 4) steps through their notes at RATE (40 to 240 BPM, one step per eighth note). GATE is how long each step is held (smoothly joined at the top). ORDER is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). OCTAVES (ORBIT 2) spreads it over more octaves. Add or let go a body while it runs and it carries on from the note it just played. ARP remembers the notes, in the same ORDER: stop every body (hold SEL) and it keeps playing until you press PLAY. The pill fills over a bar of eight steps. |
 | CYCLE | orange | EVERY, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord. |
 | ECHO | orange | EVERY, DECAY, JUMPS | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every EVERY seconds, quieter each time, losing notes (DECAY) and jumping octaves (JUMPS) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. |
 | PULSE | orange | EVERY, CHANCE, ROLL | Every EVERY seconds, with a CHANCE, each body dips and swells back at SWELL speed, from low to high, ROLL apart: a slow strum across the chord. |
@@ -469,6 +490,9 @@ don't play DEEP FIELD.
 | 91 | SPACE |
 | 93 | ENS MIX |
 | 94 | DLY MIX |
+| 102 | The delay's TYPE (0–127 in seven equal parts: PING, TAPE, HEADS, REVERSE, RISE, FALL, GRAINS) |
+| 103 | WOW |
+| 104 | CHOP |
 | 120 | Silence at once |
 | 121 | Controllers back to rest |
 | 123 | Stop every body |

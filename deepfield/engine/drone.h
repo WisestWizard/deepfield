@@ -33,8 +33,10 @@ enum {
     P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROLL,                        /* ECHO's decay and octave jumps; PULSE's roll */
     P_DLY_DIFF,                                                   /* the delay's repeats smeared into a cloud */
     P_DLY_COLOUR,                                                 /* the delay's repeats dark and full to bright and thin */
+    P_DLY_TYPE, P_DLY_WOW, P_DLY_CHOP,                            /* the delay's kind, its tape's wander, its input in slices */
     P_COUNT
 };
+enum { DT_PING, DT_TAPE, DT_HEADS, DT_REVERSE, DT_RISE, DT_FALL, DT_GRAINS, DT_COUNT };   /* P_DLY_TYPE, the index */
 enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_PULSE, OM_COUNT };   /* P_ORB_MODE, the index */
 enum { AO_UP, AO_DOWN, AO_UPDOWN, AO_RANDOM, AO_PLAYED, AO_COUNT };   /* P_ARP_ORDER, the index; P_ARP_OCT: 0..2 = 1..3 octaves */
 

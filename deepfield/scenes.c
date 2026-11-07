@@ -112,6 +112,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_SPREAD] = 30, [P_CROSS] = 0, [P_TWALK] = 25, [P_SWAY] = 15,
         [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50,
         [P_DLY_DIFF] = 25, [P_DLY_COLOUR] = 50,
+        [P_DLY_TYPE] = DT_PING, [P_DLY_WOW] = 40, [P_DLY_CHOP] = 0,   /* WOW 40: the wander the delay always had */
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
@@ -376,6 +377,8 @@ static void project_load(void)
             bank.u[i].p[P_ARP_OCT] = 0;
         if (bank.u[i].p[P_ORB_PROG] >= DR_PROGS)
             bank.u[i].p[P_ORB_PROG] = 0;
+        if (bank.u[i].p[P_DLY_TYPE] >= DT_COUNT)
+            bank.u[i].p[P_DLY_TYPE] = DT_PING;
         for (k = 0; k < DR_NV; k++) {
             bank.u[i].note[k] &= 127u;
             bank.u[i].vel[k] &= 127u;

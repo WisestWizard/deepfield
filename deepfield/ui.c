@@ -21,7 +21,7 @@ enum { PID_SCALE = P_COUNT, PID_ROOT, PID_VIEW, PID_MORPH, PID_MIDI_IN, PID_MIDI
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_VIEW, K_MORPH, K_CHIN, K_CHOUT,
        K_ONOFF, K_HZ, K_STEPS, K_ATTACK, K_RELEASE, K_SEMI, K_OMODE, K_DIST, K_BODIES, K_BPM, K_ORDER, K_OCTS,
-       K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_NONE };
+       K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_DTYPE, K_NONE };
 typedef struct {
     const char *title, *button;
     uint8_t p[4];
@@ -36,8 +36,8 @@ static const page_t PAGES[PG_COUNT] = {
     {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},
     {"MOTION 2", "LFO", {P_SPREAD, P_CROSS, P_TWALK, P_SWAY}},   /* the bodies apart from each other */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
-    {"DELAY", "FX", {P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX, P_DLY_COLOUR}},
-    {"DELAY 2", "FX", {P_DLY_DIFF, PID_NONE, PID_NONE, PID_NONE}},
+    {"DELAY", "FX", {P_DLY_TYPE, P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX}},
+    {"DELAY 2", "FX", {P_DLY_COLOUR, P_DLY_DIFF, P_DLY_WOW, P_DLY_CHOP}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
     {"ORBIT", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, PID_NONE, PID_NONE}},
@@ -58,7 +58,8 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"REV SIZE", K_PCT}, [P_REV_DAMP] = {"REV DAMP", K_PCT},
     [P_SHIMMER] = {"SHIMMER", K_PCT},   [P_DLY_MIX] = {"DLY MIX", K_PCT},   [P_DLY_TIME] = {"DLY TIME", K_DLYTIME},
     [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
-    [P_DLY_DIFF] = {"DIFFUSE", K_PCT}, [P_DLY_COLOUR] = {"COLOUR", K_PCT},
+    [P_DLY_DIFF] = {"DIFFUSE", K_PCT}, [P_DLY_COLOUR] = {"COLOUR", K_PCT}, [P_DLY_TYPE] = {"TYPE", K_DTYPE},
+    [P_DLY_WOW] = {"WOW", K_PCT},      [P_DLY_CHOP] = {"CHOP", K_PCT},
     [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
     [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
     [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},
@@ -264,6 +265,7 @@ static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "
 static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI IV", "I VI III VII", "I IV I V",
                                                 "I II V", "I III VI IV", "I VII IV"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
+static const char *const DTYPE_NAME[DT_COUNT] = {"PING", "TAPE", "HEADS", "REVERSE", "RISE", "FALL", "GRAINS"};
 static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are the mode's */
 {
     if (pg == PG_ORBIT && k) {
@@ -309,6 +311,7 @@ static uint32_t value_max(uint32_t id)
     case K_ORDER: return AO_COUNT - 1u;
     case K_OCTS: return 2u;
     case K_ENS: return ENS_COUNT - 1u;
+    case K_DTYPE: return DT_COUNT - 1u;
     case K_SCALE: return SC_COUNT - 1u;
     case K_ROOT: return 11u;
     case K_VIEW: return VIEW_COUNT - 1u;
@@ -350,6 +353,7 @@ static void value_text(uint32_t id, char *b)
         text_cat(b, "S");
         break;
     case K_ENS: text_cat(b, ENS_NAME[v % ENS_COUNT]); break;
+    case K_DTYPE: text_cat(b, DTYPE_NAME[v % DT_COUNT]); break;
     case K_DLYTIME:
         if (dr_dly_div(v) >= 0) {
             text_cat(b, DR_DLY_DIV_NAME[dr_dly_div(v)]);

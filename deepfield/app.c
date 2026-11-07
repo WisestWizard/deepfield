@@ -35,7 +35,8 @@ static void crumb_log(void)
 static void t_crumb_init(void) { crumb_log(); }
 
 /* the CC map (render context): 1 wheel, 7 volume, 64 sustain, 16-19 the four forces, 20 NOISE LEVEL, 74 MASS, 71 SHAPE, 72 FADE,
- * 73 SWELL, 91 SPACE, 93 ENS MIX, 94 DLY MIX, 120 all sound off, 121 reset controllers, 123 all notes off */
+ * 73 SWELL, 91 SPACE, 93 ENS MIX, 94 DLY MIX, 102 DLY TYPE (the 128 values in seven equal parts), 103 WOW, 104 CHOP,
+ * 120 all sound off, 121 reset controllers, 123 all notes off */
 static void midi_param(uint32_t id, uint32_t v)
 {
     dr_param(id, v & 127u);
@@ -60,6 +61,9 @@ static void midi_cc(uint32_t cc, uint32_t v)
     case 91: midi_param(P_SPACE, v); break;
     case 93: midi_param(P_ENS_MIX, v); break;
     case 94: midi_param(P_DLY_MIX, v); break;
+    case 102: midi_param(P_DLY_TYPE, (v & 127u) * DT_COUNT / 128u); break;
+    case 103: midi_param(P_DLY_WOW, v); break;
+    case 104: midi_param(P_DLY_CHOP, v); break;
     case 120: dr_panic(); break;
     case 121:
         dr_wheel(0);
