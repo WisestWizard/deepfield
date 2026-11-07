@@ -1,14 +1,14 @@
 # DEEP FIELD — an ambient drone machine for the M-VAVE FM-1
 
-Every key strikes a body that swells in and stays; eight of them rise as beams over the keys on the screen, breathe,
-drift, and move to neighbouring notes by themselves when ORBIT runs, or under an arpeggio with Euclidean rhythms. Four
-forces (MASS, DRIFT, SPACE, TIDE) shape every body at once; a held key and a knob give one body its own LEVEL, TONE,
-TUNE and an ORBIT pin; SEL held moves the chord to the keys you touch. Thirteen models (SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, from Pocket Poly the SCAN wavetables,
-four-operator DX and TEAR's hard sync, and TAPE, a worn loop, and RESONATOR, a singing bowl), a noise layer under them or alone, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds
-(ping-pong, tape, three heads, reverse, octaves up, octaves down, grains) and an ensemble. 32 scenes, each a sound:
-changing scene morphs the sound under the chord you are playing, each body crossing into the new model. The screen,
+Every key strikes a voice that swells in and stays; eight of them rise as beams over the keys on the screen, breathe,
+drift, and move to neighbouring notes by themselves when GEN runs, or under an arpeggio with Euclidean rhythms. Four
+macros (TIMBRE, DRIFT, REVERB, TREMOLO) shape every voice at once; a held key and a knob give one voice its own LEVEL, TONE,
+TUNE and a LOCK against GEN; SEL held moves the chord to the keys you touch. Thirteen models (ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, from Pocket Poly WAVETABLE,
+FM 4-OP and SYNC, then TAPE, a worn loop, and RESONATOR, a singing bowl), a noise layer under them or alone, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds
+(ping pong, tape, multi tap, reverse, octave up, octave down, granular) and an ensemble. 32 presets, each a sound:
+changing preset morphs the sound under the chord you are playing, each voice crossing into the new model. The screen,
 PHOSPHOR TUBE, lets only sound give off light: beams in their key's colour with white-hot heads, dark-glass keys
-lit by their bodies, one meaning per colour; at power-on the name spirals into a vortex. MIDI over USB, Bluetooth (both ways) and TRS.
+lit by their voices, one meaning per colour; at power-on the name spirals into a vortex. MIDI over USB, Bluetooth (both ways) and TRS.
 
 Built as an app on [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0), beside Pocket Poly in this
 repository. The research and the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
@@ -19,14 +19,14 @@ repository. The research and the point of view behind it: `docs/research.md`. Th
 | --- | --- |
 | `fm1.toml` | build settings (package identity FM-1_1400, Bluetooth both roles, the second core) |
 | `app.h`, `app.c` | the contract with fm1-base, MIDI in, the simulator's checks and commands (`param`, `land`) |
-| `scenes.c` | settings, the scene bank, the factory scenes, the scales |
+| `scenes.c` | settings, the preset bank, the factory presets, the scales |
 | `ui.c` | the keys, buttons, pages, the screen that mirrors the panel: beams over the keys strip |
-| `engine/drone.c`, `drone.h` | the engine: eight bodies, thirteen models, each body's own values, the hand-over between models, the noise layer, ORBIT and the arp, the morph (an -O2 unit) |
-| `engine/fx.c`, `fx.h` | ensemble, the delay and its seven types (WOW, CHOP), an eight-line FDN hall with pre-delay, freeze and shimmer, limiter |
-| `tests/basic.txt` | 572 simulator checks; `tests/screens.txt` the manual's screenshots; `tests/golden.txt` the renders' hashes |
-| `tools/render_scenes.py` | every factory scene, with its chord, to WAV, compared with the golden file (`--levels` prints peak/RMS); `tools/fx_levels.py` prints each effect's wet level |
-| `tools/gen_wt.py` | SCAN's wavetables and their loudness gains, generated at build time (fm1.toml `gen`) into flash |
-| `art.h` | the pixel art as text: the ten model glyphs and the seven page icons, tinted through the colour ramps |
+| `engine/drone.c`, `drone.h` | the engine: eight voices, thirteen models, each voice's own values, the hand-over between models, the noise layer, GEN and the arp, the morph (an -O2 unit) |
+| `engine/fx.c`, `fx.h` | ensemble, the delay and its seven types (WOW, GATE), an eight-line FDN hall with pre-delay, freeze and shimmer, limiter |
+| `tests/basic.txt` | 598 simulator checks; `tests/screens.txt` the manual's screenshots; `tests/golden.txt` the renders' hashes |
+| `tools/render_scenes.py` | every factory preset, with its chord, to WAV, compared with the golden file (`--levels` prints peak/RMS); `tools/fx_levels.py` prints each effect's wet level |
+| `tools/gen_wt.py` | WAVETABLE's wavetables and their loudness gains, generated at build time (fm1.toml `gen`) into flash |
+| `art.h` | the pixel art as text: the thirteen model glyphs and the seven page icons, tinted through the colour ramps |
 | `words.tsv`, `site/`, `docs/` | the screen reader's words, the site's front page, the manual, research, and `docs/BUDGET.md`: what the device can do and what the app uses |
 
 ## Build and test

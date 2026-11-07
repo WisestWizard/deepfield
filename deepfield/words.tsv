@@ -2,23 +2,13 @@
 # DEEP FIELD's words for a screen reader (fm1-reader): the text on the screen <TAB> what to say.
 # url: https://deepfield.invalid/words/
 DEEP FIELD	deep field
-MASS	mass
 DRIFT	drift
-SPACE	space
 TIDE	tide
-TIDE RATE	tide rate
-WOBBLE	wobble
 WALK	walk
 WIDTH	stereo width
-SWELL	swell
-FADE	fade
-PRESS	pressure
 GLIDE	glide
 SHAPE	shape
 SUB	sub oscillator
-AIR	air
-REV SIZE	reverb size
-REV DAMP	reverb damping
 SHIMMER	shimmer
 DLY MIX	delay mix
 DLY TIME	delay time
@@ -27,27 +17,17 @@ ENS MIX	ensemble mix
 ENSEMBLE	ensemble
 CHOR I	chorus one
 CHOR II	chorus two
-PERIOD	period
 CHANCE	chance
 RANGE	range
-GRAVITY	gravity
 ORBIT	orbit
 LATCH	latch
 FREEZE	freeze
 FRZ	freeze
 MORPH	morph
-SCENE	scene
 NEBULA	nebula
 SOLAR	solar
 VOID	void
 GLASS	glass
-STRING	string
-CHROMA	chromatic
-PHRYGIA	phrygian
-MIXO	mixolydian
-PENTA+	major pentatonic
-PENTA-	minor pentatonic
-HARM-	harmonic minor
 OMNI	omni
 IN CH	input channel
 OUT CH	output channel
@@ -56,29 +36,19 @@ HZ	hertz
 MS	milliseconds
 S	seconds
 K	kilohertz
-EVERY BODY	every body
 LET GO	let go
-SAVE TO	save to
 SAVE AGAIN	press save again
 BLE	bluetooth
 SEL LATCH	latch
 SEL TRANS	transpose
-PLAY ORBIT	orbit
 SEQ FRZ	freeze
 ENS	ensemble
 DLY	delay
 REV	reverb
 SHM	shimmer
 LOAD	load
-EVERY	every
-STEPS UP TO	steps up to
-HOME PULL	home pull
-ORBIT ON	orbit on
 NOISE	noise
 LEVEL	level
-COLOUR	colour
-WIND	wind
-BAND	band
 CHOIR	choir
 BELL	bell
 SHEPARD	shepard
@@ -86,32 +56,22 @@ FOLD	fold
 LEAD	lead
 ATTACK	attack
 RELEASE	release
-LIFT	lift
 LATCH OFF	latch off
 KEYS PLAY	keys play
 MODE	mode
-WANDER	wander
 CHORD	chord
-SCATTER	scatter
 ARP	arp
-DISTANCE	distance
-BODIES	bodies
 RATE	rate
 GATE	gate
-ORDER	order
 OCTAVES	octaves
 UP DOWN	up down
 RANDOM	random
 PLAYED	played
-ORBIT 2	orbit two
-TEXTURE	texture
 GUST	gust
 DUCK	duck
 HISS	hiss
 RAIN	rain
 CRACKLE	crackle
-PLAY CHORD	play chord
-PLAY SCATTER	play scatter
 PLAY ARP	play arp
 USB	usb
 SPEAKER	speaker
@@ -121,21 +81,10 @@ USB LEVEL	usb level
 DB	decibels
 CLOCK OUT	clock out
 EXT	external clock
-CYCLE	cycle
 CHORDS	chords
-PLAY CYCLE	play cycle
 SPREAD	spread
-CROSS	cross
 TIMBRE	timbre
-SWAY	sway
-ECHO	echo
-PULSE	pulse
 DECAY	decay
-JUMPS	jumps
-ROLL	roll
-PLAY ECHO	play echo
-PLAY PULSE	play pulse
-DIFFUSE	diffuse
 1/16	sixteenth
 1/8	eighth
 1/8D	dotted eighth
@@ -144,18 +93,9 @@ DIFFUSE	diffuse
 1/4D	dotted quarter
 1/2	half
 DELAY 2	delay two
-TYPE	delay type
-PING	ping
 TAPE	tape
-HEADS	heads
 REVERSE	reverse
-RISE	rise
-FALL	fall
-GRAINS	grains
 WOW	wow
-CHOP	chop
-SCAN	scan
-DX	D X
 ANALOG	analog
 VOX	vox
 GLASS PAD	glass pad
@@ -166,7 +106,6 @@ E.PIANO	electric piano
 WOOD	wood
 STRINGS	strings
 CLUSTER	cluster
-RHYTHM	rhythm
 DIV	step length
 1/16T	sixteenth triplet
 1/8T	eighth triplet
@@ -179,18 +118,11 @@ DIV	step length
 4/9	four of nine
 7/16	seven of sixteen
 5/16	five of sixteen
-SCENE + CHORD	scene and its chord
-BODY	body
 TONE	tone
 TUNE	tune
-PINNED	pinned
-MOVES	moves
 MUTE	muted
 CT	cents
 LET GO: BACK	let go to go back
-VOICE	voice
-TABLE	wavetable position
-TEAR	tear
 RESONATOR	resonator
 RATIO	ratio
 SOURCE	source
@@ -198,3 +130,84 @@ MATERIAL	material
 PURE	pure
 BOWL	bowl
 BRONZE	bronze
+OSC	oscillator
+GEN	generate
+GEN 2	generate two
+GEN ON	generate on
+PLAY GEN	generate
+PLAY SHIFT	generate shift
+PLAY RANDOM	generate random
+PLAY PROG	generate progression
+PLAY LOOP	generate loop
+PLAY STRUM	generate strum
+SHIFT	shift
+PROG	progression
+LOOP	loop
+STRUM	strum
+REVERB	reverb
+TREMOLO	tremolo
+TREM RATE	tremolo rate
+VIBRATO	vibrato
+AFTERTOUCH	aftertouch
+DAMPING	damping
+DIFFUSION	diffusion
+COLOR	color
+BANDPASS	band-pass
+TRANSPOSE	transpose
+VOICES	voices
+VOICE	voice
+TEMPO	tempo
+PATTERN	pattern
+RETURN	return
+EUCLID	euclidean
+OCT JUMP	octave jump
+SPEED	speed
+CROSS MOD	cross modulation
+TIMBRE DRIFT	timbre drift
+PAN DRIFT	pan drift
+TYPE	type
+LOCK	lock
+ALL NOTES	all notes
+PRESET	preset
+PRESET + CHORD	preset and its chord
+SAVE PRESET TO	save preset to
+PING PONG	ping pong
+MULTI TAP	multi tap
+OCT UP	octave up
+OCT DOWN	octave down
+GRANULAR	granular
+ADDITIVE	additive
+SUPERSAW	supersaw
+FM	F M
+BOWED	bowed
+FORMANT	formant
+WAVEFOLD	wavefold
+WAVETABLE	wavetable
+FM 4-OP	F M four operator
+SYNC	sync
+HARMONICS	harmonics
+ODD/EVEN	odd and even
+CUTOFF	cutoff
+DETUNE	detune
+FM AMOUNT	F M amount
+BRIGHTNESS	brightness
+BOW NOISE	bow noise
+VOWEL	vowel
+BREATH	breath
+INHARMONIC	inharmonic
+STRIKE	strike
+CENTER	center
+RISE/FALL	rise and fall
+POSITION	wavetable position
+UNISON	unison
+PATCH	patch
+FEEDBACK	feedback
+RING MOD	ring modulation
+BANDWIDTH	bandwidth
+CHROMATIC	chromatic
+PHRYGIAN	phrygian
+MIXOLYDIAN	mixolydian
+MAJ PENTA	major pentatonic
+MIN PENTA	minor pentatonic
+WHOLE TONE	whole tone
+HARM MINOR	harmonic minor

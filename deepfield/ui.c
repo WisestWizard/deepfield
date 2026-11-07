@@ -30,17 +30,17 @@ typedef struct {
 } page_t;
 static const page_t PAGES[PG_COUNT] = {
     {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
-    {"BODY", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
+    {"OSC", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
     {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},   /* TEXTURE, GUST, DUCK, WIDTH: the scene's */
     {"ENVELOPE", "ENV", {P_SWELL, P_FADE, P_PRESS, P_GLIDE}},
     {"LEAD", "ENV", {P_LD_ATTACK, P_LD_RELEASE, P_LD_LIFT, P_LD_LEVEL}},   /* the keys with LATCH off */
-    {"MOTION", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},   /* SPREAD, CROSS, TIMBRE, SWAY: the scene's */
+    {"LFO", "LFO", {P_TIDE_RATE, P_WOBBLE, P_WALK, P_WIDTH}},   /* SPREAD, CROSS, TIMBRE, SWAY: the scene's */
     {"ENSEMBLE", "FX", {P_ENS, P_ENS_MIX, PID_NONE, PID_NONE}},   /* the effects, in the order of the FX keys */
     {"DELAY", "FX", {P_DLY_TYPE, P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX}},
     {"DELAY 2", "FX", {P_DLY_COLOUR, P_DLY_DIFF, P_DLY_WOW, P_DLY_CHOP}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
-    {"ORBIT", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
-    {"ORBIT 2", "ARP", {P_GRAVITY, P_ARP_OCT, P_ARP_RHYTHM, P_ARP_DIV}},   /* RHYTHM and DIV: the runner's */
+    {"GEN", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
+    {"GEN 2", "ARP", {P_GRAVITY, P_ARP_OCT, P_ARP_RHYTHM, P_ARP_DIV}},   /* RHYTHM and DIV: the runner's */
     {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_MORPH, PID_NONE}},
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
     {"USB", "GLO", {PID_SPEAKER, PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE}},   /* recording and clock over the cable */
@@ -50,28 +50,28 @@ typedef struct {
     uint8_t kind;
 } pmeta_t;
 static const pmeta_t PM[PID_COUNT] = {
-    [P_MODEL] = {"MODEL", K_MODEL},     [P_MASS] = {"MASS", K_HZ},          [P_DRIFT] = {"DRIFT", K_PCT},
-    [P_SPACE] = {"SPACE", K_PCT},       [P_TIDE] = {"TIDE", K_PCT},         [P_SHAPE] = {"SHAPE", K_PCT},
-    [P_SUB] = {"SUB", K_PCT},           [P_AIR] = {"AIR", K_PCT},           [P_SWELL] = {"SWELL", K_TIME},
-    [P_FADE] = {"FADE", K_TIME},        [P_PRESS] = {"PRESS", K_PCT},       [P_GLIDE] = {"GLIDE", K_GLIDE},
-    [P_TIDE_RATE] = {"TIDE RATE", K_PCT}, [P_WOBBLE] = {"WOBBLE", K_PCT},   [P_WALK] = {"WALK", K_PCT},
-    [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"REV SIZE", K_PCT}, [P_REV_DAMP] = {"REV DAMP", K_PCT},
+    [P_MODEL] = {"MODEL", K_MODEL},     [P_MASS] = {"TIMBRE", K_HZ},          [P_DRIFT] = {"DRIFT", K_PCT},
+    [P_SPACE] = {"REVERB", K_PCT},       [P_TIDE] = {"TREMOLO", K_PCT},         [P_SHAPE] = {"SHAPE", K_PCT},
+    [P_SUB] = {"SUB", K_PCT},           [P_AIR] = {"NOISE", K_PCT},           [P_SWELL] = {"ATTACK", K_TIME},
+    [P_FADE] = {"RELEASE", K_TIME},        [P_PRESS] = {"AFTERTOUCH", K_PCT},       [P_GLIDE] = {"GLIDE", K_GLIDE},
+    [P_TIDE_RATE] = {"TREM RATE", K_PCT}, [P_WOBBLE] = {"VIBRATO", K_PCT},   [P_WALK] = {"RANDOM", K_PCT},
+    [P_WIDTH] = {"WIDTH", K_PCT},       [P_REV_SIZE] = {"DECAY", K_PCT}, [P_REV_DAMP] = {"DAMPING", K_PCT},
     [P_SHIMMER] = {"SHIMMER", K_PCT},   [P_DLY_MIX] = {"DLY MIX", K_PCT},   [P_DLY_TIME] = {"DLY TIME", K_DLYTIME},
     [P_DLY_FDBK] = {"DLY FDBK", K_PCT}, [P_ENS] = {"ENSEMBLE", K_ENS},      [P_ENS_MIX] = {"ENS MIX", K_PCT},
-    [P_DLY_DIFF] = {"DIFFUSE", K_PCT}, [P_DLY_COLOUR] = {"COLOUR", K_PCT}, [P_DLY_TYPE] = {"TYPE", K_DTYPE},
-    [P_DLY_WOW] = {"WOW", K_PCT},      [P_DLY_CHOP] = {"CHOP", K_PCT},
-    [P_ORB_PERIOD] = {"EVERY", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"STEPS UP TO", K_STEPS},
-    [P_GRAVITY] = {"HOME PULL", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOUR", K_PCT},
-    [P_NZ_WIND] = {"WIND", K_PCT},      [P_NZ_BAND] = {"BAND", K_PCT},
-    [P_LD_ATTACK] = {"ATTACK", K_ATTACK}, [P_LD_RELEASE] = {"RELEASE", K_RELEASE}, [P_LD_LIFT] = {"LIFT", K_SEMI},
-    [P_LD_LEVEL] = {"LEVEL", K_PCT},    [P_ORB_MODE] = {"MODE", K_OMODE},   [P_ORB_DIST] = {"DISTANCE", K_DIST},
-    [P_ORB_BODIES] = {"BODIES", K_BODIES}, [P_ARP_RATE] = {"RATE", K_BPM},  [P_ARP_GATE] = {"GATE", K_PCT},
-    [P_ARP_ORDER] = {"ORDER", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
-    [P_NZ_TEXTURE] = {"TEXTURE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
+    [P_DLY_DIFF] = {"DIFFUSION", K_PCT}, [P_DLY_COLOUR] = {"TONE", K_PCT}, [P_DLY_TYPE] = {"TYPE", K_DTYPE},
+    [P_DLY_WOW] = {"WOW", K_PCT},      [P_DLY_CHOP] = {"GATE", K_PCT},
+    [P_ORB_PERIOD] = {"RATE", K_ORBIT}, [P_ORB_CHANCE] = {"CHANCE", K_PCT}, [P_ORB_RANGE] = {"RANGE", K_STEPS},
+    [P_GRAVITY] = {"RETURN", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOR", K_PCT},
+    [P_NZ_WIND] = {"RATE", K_PCT},      [P_NZ_BAND] = {"BANDPASS", K_PCT},
+    [P_LD_ATTACK] = {"ATTACK", K_ATTACK}, [P_LD_RELEASE] = {"RELEASE", K_RELEASE}, [P_LD_LIFT] = {"TRANSPOSE", K_SEMI},
+    [P_LD_LEVEL] = {"LEVEL", K_PCT},    [P_ORB_MODE] = {"MODE", K_OMODE},   [P_ORB_DIST] = {"RANGE", K_DIST},
+    [P_ORB_BODIES] = {"VOICES", K_BODIES}, [P_ARP_RATE] = {"TEMPO", K_BPM},  [P_ARP_GATE] = {"GATE", K_PCT},
+    [P_ARP_ORDER] = {"PATTERN", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
+    [P_NZ_TEXTURE] = {"TYPE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
     [P_NZ_WIDTH] = {"WIDTH", K_PCT}, [P_ORB_PROG] = {"CHORDS", K_PROG},
-    [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS", K_PCT}, [P_TWALK] = {"TIMBRE", K_PCT}, [P_SWAY] = {"SWAY", K_PCT},
-    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"JUMPS", K_PCT}, [P_ORB_ROLL] = {"ROLL", K_PCT},
-    [P_ARP_RHYTHM] = {"RHYTHM", K_RHYTHM}, [P_ARP_DIV] = {"DIV", K_DIV},
+    [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS MOD", K_PCT}, [P_TWALK] = {"TIMBRE DRIFT", K_PCT}, [P_SWAY] = {"PAN DRIFT", K_PCT},
+    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT}, [P_ORB_ROLL] = {"SPEED", K_PCT},
+    [P_ARP_RHYTHM] = {"EUCLID", K_RHYTHM}, [P_ARP_DIV] = {"DIV", K_DIV},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
@@ -276,12 +276,14 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static const char *const OMODE_NAME[OM_COUNT] = {"WANDER", "CHORD", "SCATTER", "ARP", "CYCLE", "ECHO", "PULSE"};
+static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP", "STRUM"};
 static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI IV", "I VI III VII", "I IV I V",
                                                 "I II V", "I III VI IV", "I VII IV"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
-static const char *const DTYPE_NAME[DT_COUNT] = {"PING", "TAPE", "HEADS", "REVERSE", "RISE", "FALL", "GRAINS"};
-static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are the mode's */
+static const char *const DTYPE_NAME[DT_COUNT] = {"PING PONG", "TAPE", "MULTI TAP", "REVERSE", "OCT UP", "OCT DOWN", "GRANULAR"};
+static const char *param_label(uint32_t id);
+static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the mode's; a knob the model
+                                                     * doesn't use is empty */
 {
     if (pg == PG_ORBIT && k) {
         static const uint8_t BY_MODE[OM_COUNT][3] = {
@@ -295,7 +297,7 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* ORBIT: knobs 2-4 are th
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
-    return PAGES[pg].p[k];
+    return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
 static uint32_t value_of(uint32_t id)
 {
@@ -634,18 +636,30 @@ static int32_t knob_shown(uint32_t id, int32_t v, int32_t e)
     default: return i == 7 ? 127 : (i * 127 + 6) / 7;
     }
 }
-static const char *param_label(uint32_t id)   /* SHAPE is the voice on DX and the table on SCAN */
+static const char *param_label(uint32_t id)   /* TIMBRE, SHAPE and NOISE name what they are on each model */
 {
-    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_DX)
-        return "VOICE";
-    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_SCAN)
-        return "TABLE";
-    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_TEAR)
-        return "RATIO";
-    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_TAPE)
-        return "SOURCE";
-    if (id == P_SHAPE && dr_scene.p[P_MODEL] == M_RESON)
-        return "MATERIAL";
+    static const char *const BY_MODEL[M_COUNT][3] = {
+        {"HARMONICS", "ODD/EVEN", ""},           /* ADDITIVE */
+        {"CUTOFF", "DETUNE", ""},                /* SUPERSAW */
+        {"FM AMOUNT", "RATIO", ""},              /* FM */
+        {"BRIGHTNESS", "", "BOW NOISE"},         /* BOWED */
+        {"FORMANT", "VOWEL", "BREATH"},          /* FORMANT */
+        {"BRIGHTNESS", "INHARMONIC", "STRIKE"},  /* BELL */
+        {"CENTER", "RISE/FALL", "NOISE"},        /* SHEPARD */
+        {"CUTOFF", "FOLD", "NOISE"},             /* WAVEFOLD */
+        {"CUTOFF", "POSITION", "UNISON"},        /* WAVETABLE */
+        {"FM AMOUNT", "PATCH", "FEEDBACK"},      /* FM 4-OP */
+        {"CUTOFF", "RATIO", "RING MOD"},         /* SYNC */
+        {"BANDWIDTH", "SOURCE", "HISS"},         /* TAPE */
+        {"BRIGHTNESS", "MATERIAL", "NOISE"},     /* RESONATOR */
+    };
+    uint32_t m = dr_scene.p[P_MODEL] % M_COUNT;
+    if (id == P_MASS)
+        return BY_MODEL[m][0];
+    if (id == P_SHAPE)
+        return BY_MODEL[m][1];
+    if (id == P_AIR)
+        return BY_MODEL[m][2];
     return PM[id].label;
 }
 static void knob(uint32_t id, int32_t e, int fast)
@@ -736,7 +750,7 @@ static void scene_go(uint32_t slot, int say, int chord)
     scene_dirty = 0;
     slot_title(set.scene, t);
     if (say)
-        ui_say(chord ? "SCENE + CHORD" : set.morph ? "MORPH" : "SCENE", t);
+        ui_say(chord ? "PRESET + CHORD" : set.morph ? "MORPH" : "PRESET", t);
     ui.redraw_head = ui.redraw_foot = 1;
 }
 
@@ -837,7 +851,7 @@ static void key_off(uint32_t k)
  * TONE, TUNE and ORBIT pin (several keys held: all of them, each from where it is); let go without a turn, however
  * slowly, and the body is let go. Out over MIDI as NRPN: MSB 1..4 the value, LSB the body's note, data
  * entry the value (LEVEL 0 muted, 1..31 = -24..+6 dB; TONE, TUNE 64 + the value; ORBIT 0 moves, 127 pinned) */
-static const char *const BE_LABEL[BE_COUNT] = {"LEVEL", "TONE", "TUNE", "ORBIT"};
+static const char *const BE_LABEL[BE_COUNT] = {"LEVEL", "TONE", "TUNE", "LOCK"};
 static void body_value_text(uint32_t what, int32_t x, char *b)
 {
     b[0] = 0;
@@ -859,7 +873,7 @@ static void body_value_text(uint32_t what, int32_t x, char *b)
         int_text(x, b + (x > 0));
         text_cat(b, what == BE_TONE ? "%" : " CT");
         break;
-    default: text_cat(b, x ? "PINNED" : "MOVES"); break;
+    default: text_cat(b, x ? "ON" : "OFF"); break;
     }
 }
 static uint32_t body_code(uint32_t what, int32_t x)   /* a value as NRPN data */
@@ -937,20 +951,19 @@ static void orbit_toggle(void)
             value_text(P_ARP_RATE, v);
             text_cat(t, v);
         } else {
-            text_cat(t, "EVERY ");
             value_text(P_ORB_PERIOD, v);
             text_cat(t, v);
         }
-        ui_say("ORBIT ON", t);
+        ui_say("GEN ON", t);
     } else
-        ui_say("ORBIT", "OFF");
+        ui_say("GEN", "OFF");
     ui.redraw_head = 1;
 }
 static void all_let_go(void)
 {
     dr_all_off();
     ui.redraw_head = 1;
-    ui_say("EVERY BODY", "LET GO");
+    ui_say("ALL NOTES", "OFF");
 }
 static void transpose_key(uint32_t k)    /* SEL held, a key: the lowest latched body to this key, the rest with it */
 {
@@ -1302,7 +1315,7 @@ static void input(void)
             ui.sel_slot = clamp(from + e, 0, (int32_t)NSLOTS - 1);
             ui.sel_t = now;
             slot_title((uint32_t)ui.sel_slot, t);
-            ui_say(!dr_latched() && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "SCENE + CHORD" : "SCENE", t);
+            ui_say(!dr_latched() && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "PRESET + CHORD" : "PRESET", t);
         } else if (k == EN_ALGO) {
             knob(P_MODEL, e, 0);
         } else if (k == EN_SELECT) {     /* the page before or after */
@@ -1834,7 +1847,8 @@ static int value_split(const char *t, char *num, char *unit)   /* "334MS": "334"
 }
 static void cell_value(int32_t x, int32_t y, const char *t)   /* a number large with its unit small, on one
                                                               * baseline, so the value never changes size with its
-                                                              * unit; a word in S (XS when wider than the cell) */
+                                                              * unit; a word in S (XS when wider than the cell, T
+                                                              * when wider still: MIXOLYDIAN, WAVETABLE) */
 {
     char num[16], unit[16];
     if (value_split(t, num, unit)) {
@@ -1842,8 +1856,8 @@ static void cell_value(int32_t x, int32_t y, const char *t)   /* a number large 
         int32_t nx = cv_text(x, f == &FONT_M ? y : y + 6, f, num, C_BRIGHT);
         cv_text(nx + 1, y + 10, &FONT_T, unit, C_LABEL);
     } else {
-        const felucca_font_t *f = text_w(&FONT_S, t) <= 56 ? &FONT_S : &FONT_XS;
-        cv_text(x, f == &FONT_S ? y + 6 : y + 8, f, t, C_BRIGHT);
+        const felucca_font_t *f = text_w(&FONT_S, t) <= 56 ? &FONT_S : text_w(&FONT_XS, t) <= 57 ? &FONT_XS : &FONT_T;
+        cv_text(x, f == &FONT_S ? y + 6 : f == &FONT_XS ? y + 8 : y + 10, f, t, C_BRIGHT);
     }
 }
 
@@ -2124,8 +2138,8 @@ static void draw_header(void)
     cv_text(x, 4, &FONT_T, t, overload_seen ? C_WARN : C_LABEL);
     pill(3, 54, transposing() ? "SEL TRANS" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
-        static const char *const PILL[OM_COUNT] = {"PLAY ORBIT", "PLAY CHORD", "PLAY SCATTER", "PLAY ARP", "PLAY CYCLE",
-                                                   "PLAY ECHO", "PLAY PULSE"};
+        static const char *const PILL[OM_COUNT] = {"PLAY GEN", "PLAY SHIFT", "PLAY RANDOM", "PLAY ARP", "PLAY PROG",
+                                                   "PLAY LOOP", "PLAY STRUM"};
         pill(61, 69, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
              plat_ms() - ui.orbit_flash_t < 300u);
     }
@@ -2174,7 +2188,7 @@ static void draw_footer(void)
     if (ui.dialog) {
         char n[24];
         slot_title(NFACTORY + ui.save_to, n);
-        cv_text(4, 0, &FONT_S, "SAVE SCENE TO", C_LABEL);
+        cv_text(4, 0, &FONT_S, "SAVE PRESET TO", C_LABEL);
         cv_text(4, 16, &FONT_M, n, C_BRIGHT);
         cv_text(4, 41, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
         cv_text(4, 57, &FONT_S, "PRESET PICKS THE SLOT", C_LABEL);
@@ -2192,7 +2206,7 @@ static void draw_footer(void)
             }
         cv_rect(0, 0, 240, 14, body_rgb(ui.keynote[kk], 1));
         t[0] = 0;
-        text_cat(t, "BODY ");
+        text_cat(t, "VOICE ");
         note_text((int32_t)ui.keynote[kk], v);
         text_cat(t, v);
         if (n > 1) {
@@ -2223,7 +2237,7 @@ static void draw_footer(void)
     if (ui.page > 0u)
         text_cat(t, "< ");
     text_cat(t, PAGES[ui.page].button);
-    if (ui.page != PG_HOME) {
+    if (ui.page != PG_HOME && ui.page != PG_MOTION) {   /* LFO opens LFO: named once */
         text_cat(t, "  ");
         text_cat(t, PAGES[ui.page].title);
     }
@@ -2263,7 +2277,7 @@ static void speak(void)
             value_text(id, v);
             text_cat(t, v);
         }
-        text_cat(t, ". BODIES ");          /* the status too: what the header shows */
+        text_cat(t, ". VOICES ");          /* the status too: what the header shows */
         int_text((int32_t)dr_bodies(), v);
         text_cat(t, v);
         text_cat(t, ". CPU ");

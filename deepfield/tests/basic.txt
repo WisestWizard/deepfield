@@ -669,7 +669,7 @@ tap EDIT
 wait 30
 where
 wait 100
-said BODY
+said OSC
 # ORBIT's modes (F3 GLASS ORBIT: four bodies). WANDER plans one move when a countdown starts (the destination key
 # glows) and makes it when it ends; CHORD moves every body the same way; ARP runs leads over the bed at RATE and
 # goes on after every body is let go; PLAY stops it and the memory goes
@@ -994,11 +994,11 @@ said TAPE
 expect p57 1
 spin K1 5
 wait 300
-said GRAINS
+said GRANULAR
 expect p57 6
 spin K1 -6
 wait 300
-said PING
+said PING PONG
 expect p57 0
 spin K2 70
 wait 300
@@ -1019,11 +1019,11 @@ wait 300
 expect page 8
 spin K1 5
 wait 300
-said COLOUR
+said TONE
 expect p56 >50
 spin K2 5
 wait 300
-said DIFFUSE
+said DIFFUSION
 expect p55 >25
 spin K3 5
 wait 300
@@ -1031,7 +1031,7 @@ said WOW
 expect p58 >40
 spin K4 5
 wait 300
-said CHOP
+said GATE
 expect p59 >0
 # CC 102 TYPE (seven equal parts), 103 WOW, 104 CHOP
 midi B0 66 7F
@@ -1353,7 +1353,7 @@ expect moves >5
 shot every_quick.png
 spin K1 5
 wait 300
-said ECHO
+said LOOP
 spin K2 1
 wait 300
 said 1.0S

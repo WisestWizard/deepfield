@@ -55,8 +55,8 @@ static scene_t factory[NFACTORY] PLAT_POOL;
 
 enum { SC_CHROMA, SC_MAJOR, SC_MINOR, SC_DORIAN, SC_PHRYGIAN, SC_LYDIAN, SC_MIXO, SC_PENTA_MAJ, SC_PENTA_MIN,
        SC_WHOLE, SC_HARM_MIN, SC_COUNT };
-static const char *const SCALE_NAME[SC_COUNT] = {"CHROMA", "MAJOR", "MINOR", "DORIAN", "PHRYGIA", "LYDIAN",
-                                                 "MIXO", "PENTA+", "PENTA-", "WHOLE", "HARM-"};
+static const char *const SCALE_NAME[SC_COUNT] = {"CHROMATIC", "MAJOR", "MINOR", "DORIAN", "PHRYGIAN", "LYDIAN",
+                                                 "MIXOLYDIAN", "MAJ PENTA", "MIN PENTA", "WHOLE TONE", "HARM MINOR"};
 #define SC(...) scale_mask_of((const uint8_t[]){__VA_ARGS__, 255})
 static uint32_t scale_mask_of(const uint8_t *d)
 {
@@ -83,8 +83,8 @@ static uint32_t scale_mask(uint32_t sc)
 }
 static void scale_apply(void) { dr_scale(scale_mask(set.scale), set.root); }
 
-static const char *const MODEL_NAME[M_COUNT] = {"SOLAR", "VOID", "GLASS", "STRING", "CHOIR", "BELL", "SHEPARD", "FOLD",
-                                                "SCAN", "DX", "TEAR", "TAPE", "RESONATOR"};
+static const char *const MODEL_NAME[M_COUNT] = {"ADDITIVE", "SUPERSAW", "FM", "BOWED", "FORMANT", "BELL", "SHEPARD", "WAVEFOLD",
+                                                "WAVETABLE", "FM 4-OP", "SYNC", "TAPE", "RESONATOR"};
 
 static void scene_name_set(scene_t *s, const char *name)
 {

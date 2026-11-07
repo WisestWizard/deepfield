@@ -2,9 +2,77 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: built, waiting for the flash: the delay's quiet types reworked, the views gone (2026-11-08; not flashed, not committed)
+## Start here: the last flash, standard names for every DEEP FIELD setting (flashed 2026-11-08; not committed)
 
-When Kyle asks "what's next", open with these and how to test them, then the flash below.
+Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`, the
+11:49 package, newer than every source); booted clean: the unit says DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%.
+DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%; the log `cpu 5% b0 ADDITIVE s0 x0`, no crash recorded. Site
+0.9 built locally (`deepfield/tools/publish_site.sh 0.9 --local`), not published.
+
+Kyle: "in any case where we use a non standard word for a setting I want to instead use the standard ... I don't
+care about the words fitting a theme". He took every default of the proposal and kept two words: CHANCE and PLAYED.
+The work below this section (the delay rework, the views cut) was committed first, apart, as 530340c; this build
+sits on top of it and carries it, so one flash brings both.
+
+What a player now sees, hears (words.tsv) and reads (manual, both cheat sheets, README, landing page, BUDGET):
+
+| Was | Now |
+| --- | --- |
+| body / bodies, scene, bed, runner, the four forces | voice / voices, preset, the held chord, the arpeggio, the four macros |
+| pages BODY, MOTION, ORBIT, ORBIT 2 | OSC, LFO (the band names it once), GEN, GEN 2 |
+| HOME: MASS, SPACE, TIDE (DRIFT kept) | TIMBRE, REVERB, TREMOLO |
+| ENVELOPE: SWELL, FADE, PRESS; LEAD: LIFT | ATTACK, RELEASE, AFTERTOUCH; TRANSPOSE |
+| LFO: TIDE RATE, WOBBLE, WALK | TREM RATE, VIBRATO, RANDOM |
+| NOISE: COLOUR, WIND, BAND; hidden TEXTURE | COLOR, RATE, BANDPASS; TYPE |
+| DELAY types PING, HEADS, RISE, FALL, GRAINS | PING PONG, MULTI TAP, OCT UP, OCT DOWN, GRANULAR |
+| DELAY 2: COLOUR, DIFFUSE, CHOP; REVERB: REV SIZE, REV DAMP, SPACE | TONE, DIFFUSION, GATE; DECAY, DAMPING, REVERB |
+| GEN modes WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE (ARP kept) | WALK, SHIFT, RANDOM, PROG, LOOP, STRUM |
+| GEN knobs EVERY, ARP's RATE, STEPS UP TO, DISTANCE, BODIES, ORDER, JUMPS, ROLL | RATE, TEMPO, RANGE, RANGE, VOICES, PATTERN, OCT JUMP, SPEED |
+| GEN 2: HOME PULL, RHYTHM | RETURN, EUCLID |
+| a voice's ORBIT MOVES / PINNED | LOCK OFF / ON |
+| hidden CROSS, TIMBRE, SWAY | CROSS MOD, TIMBRE DRIFT, PAN DRIFT |
+| models SOLAR, VOID, GLASS, STRING, CHOIR, FOLD, SCAN, DX, TEAR (BELL, SHEPARD, TAPE, RESONATOR kept) | ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC |
+| scales CHROMA, PHRYGIA, MIXO, PENTA+, PENTA-, WHOLE, HARM- | CHROMATIC, PHRYGIAN, MIXOLYDIAN, MAJ PENTA, MIN PENTA, WHOLE TONE, HARM MINOR |
+| messages EVERY BODY LET GO, ORBIT ON, SCENE + CHORD, SAVE SCENE TO, pill PLAY ORBIT | ALL NOTES OFF, GEN ON, PRESET + CHORD, SAVE PRESET TO, PLAY GEN (PLAY SHIFT ... by mode) |
+
+Calls made in the build (Kyle's "per model" pick for the model-dependent knobs):
+- TIMBRE, SHAPE and the OSC page's NOISE are named on the screen for what they do on each model (`param_label`'s
+  BY_MODEL table in ui.c): HARMONICS / ODD/EVEN on ADDITIVE, CUTOFF / DETUNE on SUPERSAW, FM AMOUNT / RATIO on FM,
+  BRIGHTNESS / BOW NOISE on BOWED, FORMANT / VOWEL / BREATH, BRIGHTNESS / INHARMONIC / STRIKE on BELL, CENTER /
+  RISE/FALL / NOISE on SHEPARD, CUTOFF / FOLD / NOISE, CUTOFF / POSITION / UNISON on WAVETABLE, FM AMOUNT / PATCH /
+  FEEDBACK on FM 4-OP, CUTOFF / RATIO / RING MOD on SYNC, BANDWIDTH / SOURCE / HISS on TAPE, BRIGHTNESS / MATERIAL /
+  NOISE on RESONATOR. The docs and MIDI call them TIMBRE, SHAPE and NOISE.
+- A knob a model doesn't use is now empty and does nothing (`page_param`): NOISE on ADDITIVE, SUPERSAW and FM, SHAPE
+  on BOWED. Before, AIR and SHAPE showed a value there that changed nothing. CC 71 still sets SHAPE's stored value.
+- DX's SHAPE read VOICE; with voice now meaning a sounding note it reads PATCH.
+- GEN's start message drops the word: WALK 5.1S (was WANDER EVERY 5.1S), as ARP's reads ARP 120 BPM.
+- Names a page shares: ATTACK and RELEASE (ENVELOPE, LEAD), RATE (NOISE, GEN), GATE (DELAY 2, ARP); the manual says
+  so where COLOUR's note was.
+- A word too wide for its knob cell in the XS font now falls to FONT_T (`cell_value`): MIXOLYDIAN, HARM MINOR,
+  WAVETABLE, RESONATOR (RESONATOR overflowed into SHAPE's cell before).
+- Code identifiers (P_MASS, OM_WANDER, PG_ORBIT ...), comments, factory preset names (GLASS ORBIT, VOID TIDE ...),
+  the screenshot file names and research.md keep the old words. Prose keeps British spelling; only the COLOR knob
+  is American, as panels print it.
+- Measured: 598 checks (seven spoken-word checks renamed), all 16 renders match golden, sanitizer clean but
+  fastmath.h:58, every page and the longest names rendered and checked by eye (no label or value overruns).
+
+How to test (numbered for the unit):
+
+1. Switch on: HOME reads HARMONICS, DRIFT, REVERB, TREMOLO on F1 FIRST LIGHT (ADDITIVE). Turn ALGORITHM to SUPERSAW:
+   KNOB 1 reads CUTOFF in Hz.
+2. Tap EDIT: the band reads EDIT OSC, knobs MODEL, ODD/EVEN, SUB and an empty fourth. ALGORITHM through the models:
+   the second and fourth knobs rename (VOWEL / BREATH on FORMANT, PATCH / FEEDBACK on FM 4-OP); BOWED's SHAPE is empty.
+3. Tap LFO: the band reads LFO once; TREM RATE, VIBRATO, RANDOM, WIDTH.
+4. Latch C4 E4 G4, tap ARP: MODE WALK, RATE, CHANCE, RANGE. PLAY: the pill reads PLAY GEN, the screen GEN ON WALK and
+   the rate. KNOB 1 to SHIFT, RANDOM, ARP (TEMPO, GATE, PATTERN), PROG, LOOP, STRUM.
+5. Hold E4 and turn KNOB 4: the band reads VOICE E4, the fourth knob LOCK OFF / ON.
+6. GLO, KNOB 1 to MIXOLYDIAN: the word fits its cell in a smaller face. Hold SEL a second: ALL NOTES OFF.
+
+Then the delay and views below: that build, with the SPACE fix (turning an effect's knob switches it back on), went to the unit first (the Transpose session's 11:44 package, under the old names); this flash carries it.
+
+## The flash before: the delay's quiet types reworked, the views gone (2026-11-08; committed 530340c, flashed from the Transpose session)
+
+Its test steps are below.
 
 - **The delay** (Kyle: "rise and fall you can really hear and ping is ok but the rest I can't hear at all"). Measured
   first: on a short note with nothing held, TAPE, HEADS and REVERSE echoed as loud as PING; over a held chord they
@@ -37,11 +105,11 @@ When Kyle asks "what's next", open with these and how to test them, then the fla
 
 How to test (numbered for the unit):
 
-1. Hold SEL a second, tap SEL (LATCH off), SPACE down. FX, SELECT once (DELAY): DLY TIME about 500 MS, FDBK 70 %, MIX full.
-   Tap C4 with each TYPE: TAPE wavers and darkens, HEADS taps three times, REVERSE swells backwards, GRAINS scatters
-   pieces at octaves and a fifth.
-2. Tap SEL (LATCH on), hold C4 E4 G4, step TYPE again: TAPE beats against the chord, HEADS pulses left-centre-right,
-   REVERSE breathes in each DLY TIME, GRAINS glitters.
+1. Hold SEL a second, tap SEL (LATCH off), REVERB down. FX, SELECT once (DELAY): DLY TIME about 500 MS, FDBK 70 %, MIX full.
+   Tap C4 with each TYPE: TAPE wavers and darkens, MULTI TAP taps three times, REVERSE swells backwards, GRANULAR
+   scatters pieces at octaves and a fifth (the names as renamed in the build above).
+2. Tap SEL (LATCH on), hold C4 E4 G4, step TYPE again: TAPE beats against the chord, MULTI TAP pulses
+   left-centre-right, REVERSE breathes in each DLY TIME, GRANULAR glitters.
 3. GLO: the GLOBAL page reads SCALE, ROOT, MORPH; nothing on KNOB 4; the screen is always BEAMS.
 
 ## The last flash, the bed 3 dB down, ORBIT's audit fixed, GLIDE 0.13 s, HOME held (flashed 2026-11-08; not committed)
