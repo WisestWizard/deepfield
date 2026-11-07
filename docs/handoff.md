@@ -8,9 +8,9 @@ When Kyle asks "what's next", open with a short review of this flash and how to 
 Kyle's six asks of 2026-11-06 ("Build all six"), each as the expert pass proposed it. Flashed on his word ("Flash
 it") with `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes` (through first time);
 booted clean: FIRST LIGHT in silence, 0 bodies, 5 % CPU, nothing in the log. Not yet heard, device CPU not read with
-SCAN or DX. Not committed: the site went up as 0.4 (`deepfield/tools/publish_site.sh 0.4`, release package
-FM-1_14000400) and names the last commit, while the public source is still the 11-06 code. The 11-06 flash's delay
-types (below) were never heard either; they are in this build.
+SCAN or DX. Committed as 878f35f and pushed; the site went up as 0.4 just before (`deepfield/tools/publish_site.sh
+0.4`, release package FM-1_14000400), so its publish note names ca3e6b1, but it is this code. The 11-06 flash's
+delay types (below) were never heard either; they are in this build.
 
 - **A body's own values.** LATCH on, hold a latched body's key a third of a second (it blinks; a knob turn opens it
   at once): the footer reads BODY and its note, the four knobs are its LEVEL (-24..+6 dB a dB a click, MUTE below),
