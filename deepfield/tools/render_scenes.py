@@ -3,7 +3,8 @@
 # Copyright (C) 2026 Kyle McCann
 """Render every factory scene of DEEP FIELD to WAV in the host simulator, for auditioning on the Mac and as a
 regression check: the simulator is deterministic, so the renders' SHA-256 hashes only change when the sound does.
-Each scene plays its own bodies for 14 s (MASTER full), then every body is let go and the tail runs 6 s.
+Each scene lands with its own chord (SEL held while PRESET turns, as a player brings a scene's chord in) and plays
+it for 14 s (MASTER full), then every body is let go and the tail runs 6 s.
 Run from the repository after ./build.sh deepfield --host.
   python3 deepfield/tools/render_scenes.py              renders into deepfield/build/renders/ and compares with
                                                         deepfield/tests/golden.txt
@@ -21,7 +22,8 @@ def script():
     s = ["wait 300", "master 4096", "turn SELECT -1", "wait 200"]
     for i, name in enumerate(SCENES):
         fn = f"{i + 1:02d}-{name.replace(' ', '_')}.wav"
-        s += [f"midi C0 {i:02X}", "wait 300", f"wav {fn}", "wait 14000", "midi B0 7B 00", "wait 6000", "wavstop", "wait 200"]
+        s += ["press SEL", "wait 30", "spin PRESET 1"] + (["spin PRESET -1"] if i == 0 else []) + ["wait 30", "release SEL",
+              "wait 300", f"wav {fn}", "wait 14000", "midi B0 7B 00", "wait 6000", "wavstop", "wait 200"]
     return "\n".join(s) + "\n"
 
 def levels(path):

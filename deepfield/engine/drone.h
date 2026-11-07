@@ -13,7 +13,10 @@
 #define DR_NL 4u                         /* leads: the keys with LATCH off, the scene's model struck short */
 #define DR_ARENA_BYTES (235u * 1024u)    /* what dr_init wants from the app's pool: lines, tables, mix and hall buffers */
 
-enum { M_SOLAR, M_VOID, M_GLASS, M_STRING, M_CHOIR, M_BELL, M_SHEPARD, M_FOLD, M_COUNT };
+enum { M_SOLAR, M_VOID, M_GLASS, M_STRING, M_CHOIR, M_BELL, M_SHEPARD, M_FOLD, M_SCAN, M_DX, M_COUNT };
+#define DR_DX_VOICES 8u                  /* DX: SHAPE picks one of eight four-operator voices */
+extern const char *const DR_DX_NAME[DR_DX_VOICES];
+extern const char *const DR_SCAN_NAME[3];   /* SCAN: the three tables SHAPE sweeps through */
 enum { ENS_OFF, ENS_CHORUS1, ENS_CHORUS2, ENS_ENSEMBLE, ENS_COUNT };
 enum {
     P_MODEL, P_MASS, P_DRIFT, P_SPACE, P_TIDE,                    /* the model, and the four forces (HOME) */
@@ -34,27 +37,37 @@ enum {
     P_DLY_DIFF,                                                   /* the delay's repeats smeared into a cloud */
     P_DLY_COLOUR,                                                 /* the delay's repeats dark and full to bright and thin */
     P_DLY_TYPE, P_DLY_WOW, P_DLY_CHOP,                            /* the delay's kind, its tape's wander, its input in slices */
+    P_ARP_RHYTHM, P_ARP_DIV,                                      /* ARP: the runner's pattern of hits and rests, its step */
     P_COUNT
 };
 enum { DT_PING, DT_TAPE, DT_HEADS, DT_REVERSE, DT_RISE, DT_FALL, DT_GRAINS, DT_COUNT };   /* P_DLY_TYPE, the index */
 enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_PULSE, OM_COUNT };   /* P_ORB_MODE, the index */
 enum { AO_UP, AO_DOWN, AO_UPDOWN, AO_RANDOM, AO_PLAYED, AO_COUNT };   /* P_ARP_ORDER, the index; P_ARP_OCT: 0..2 = 1..3 octaves */
+#define DR_RHYTHMS 8u                    /* P_ARP_RHYTHM, the index: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16 */
+#define DR_DIVS 9u                       /* P_ARP_DIV, the index: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR */
+extern const char *const DR_RHYTHM_NAME[DR_RHYTHMS];
+extern const char *const DR_DIV_NAME[DR_DIVS];
 
 #define SCENE_NAME 12u
+#define DR_LVL_MUTE (-25)               /* a body's LEVEL: -24 .. +6 dB, or muted (still latched, still played by ARP) */
 typedef struct {
     char name[SCENE_NAME];
     uint8_t p[P_COUNT];                  /* every parameter 0..127 */
     uint8_t note[DR_NV], vel[DR_NV];     /* the bodies latched when it was saved (vel 0: none) */
     uint8_t fx_off;                      /* the effect switches off (DR_FX_* bits), saved with the scene */
-    uint8_t rsv[3];
+    uint8_t pins;                        /* bit k: body k is pinned (ORBIT and the arp leave it alone) */
+    uint8_t root;                        /* the ROOT its chord stands in, + 1 (0: the chord as it is, never moved) */
+    uint8_t rsv;
+    int8_t lvl[DR_NV], tone[DR_NV], tune[DR_NV];   /* each body's own LEVEL (dB), TONE (MASS, %) and TUNE (cents) */
 } scene_t;
 
 extern scene_t dr_scene;                 /* the live scene: the UI writes it, the render reads it */
 
 int dr_init(void *arena, uint32_t bytes);           /* 0 = ok, -1 = arena too small */
 void dr_param(uint32_t id, uint32_t v);             /* a knob: the scene's value, heard at once (no morph) */
-void dr_load(const scene_t *s, float seconds);      /* a scene: its values morph in over seconds, its bodies swell
-                                                     * in and the others fade (0 s: at once) */
+/* a scene: its values morph in over seconds (0: at once), and each body sounding crosses into its model over them;
+ * chord: its bodies too, struck with their own values, the latched ones not in it let go (else the bodies stay) */
+void dr_load(const scene_t *s, float seconds, int chord);
 int dr_morphing(void);
 float dr_morph_pos(void);                            /* 0..1 */
 /* a blend by hand (GLO held, a key leaned on): from the values heard when the hold began toward a scene's, held
@@ -82,6 +95,12 @@ void dr_latch_hold(void);                           /* SEL: the bodies sounding 
                                                      * body is let go */
 uint32_t dr_latched(void);                          /* bodies latched */
 int dr_body_latched(uint32_t note);                 /* the body struck at this note is latched */
+/* a latched body's own values, by the note it was struck at: LEVEL (dB, DR_LVL_MUTE), TONE (-50..50 % of MASS),
+ * TUNE (-50..50 cents), PIN (1: ORBIT, PULSE and the arp leave it where it is; TRANSPOSE still moves it) */
+enum { BE_LEVEL, BE_TONE, BE_TUNE, BE_PIN, BE_COUNT };
+void dr_body_edit(uint32_t note, uint32_t what, int32_t v);       /* the keys (main loop, queued) */
+void dr_body_edit_now(uint32_t note, uint32_t what, int32_t v);   /* MIDI NRPN, from the render */
+int32_t dr_body_value(uint32_t note, uint32_t what);             /* 0 when there is no such body */
 void dr_pressure(uint32_t note, uint32_t v);        /* poly aftertouch, 0..127: brighter, more wobble */
 void dr_channel_pressure(uint32_t v);
 void dr_wheel(uint32_t v);                          /* CC 1: wobble */
@@ -103,9 +122,9 @@ uint32_t dr_orbit_cycle_pos(void);                  /* CYCLE: the progression's 
 int32_t dr_arp_note(void);                          /* ARP: the note of the step sounding now, -1 none */
 int dr_arp_running(void);                           /* ARP runs and has notes (its own, or remembered) */
 int dr_echo_running(void);                          /* ECHO runs and holds a phrase */
-/* MIDI clock (from the render, app.c): while clocks come, the runner steps every twelve (an eighth) and ORBIT
- * counts its period in beats; two seconds without one and the knobs' own time returns. Clock out: while the runner
- * runs from RATE, 24 a beat (and start / stop) through dr_realtime_out */
+/* MIDI clock (from the render, app.c): while clocks come, the runner steps at its DIV in clocks and ORBIT counts
+ * its period in beats (a quarter and a half beat below one); two seconds without one and the knobs' own time
+ * returns. Clock out: while the runner runs from RATE, 24 a beat (and start / stop) through dr_realtime_out */
 void dr_clock(void);
 void dr_clock_start(void);
 void dr_clock_stop(void);
@@ -113,8 +132,8 @@ int dr_clock_ext(void);                             /* following MIDI clock now 
 float dr_clock_bpm(void);                           /* the tempo followed (0 none) */
 void dr_clock_out(int on);
 void dr_realtime_out(void (*fn)(uint32_t status));   /* F8 / FA / FC out (render context) */
-uint32_t dr_arp_steps(void);                        /* ARP: steps so far */
-float dr_arp_bpm(uint32_t p);                       /* RATE as BPM (a step is an eighth) */
+uint32_t dr_arp_steps(void);                        /* ARP: notes played so far (the RHYTHM's rests not counted) */
+float dr_arp_bpm(uint32_t p);                       /* RATE as BPM (a beat; a step is DIV of it) */
 void dr_freeze(int on);                             /* the reverb holds what it has, for as long as it is on */
 int dr_frozen(void);
 #define DR_FX_ENS 1u
@@ -144,6 +163,8 @@ typedef struct {
     float pitch;                         /* where it is now, MIDI note (ORBIT and glide move it) */
     float level;                         /* 0..1, what is heard */
     float spark;                         /* its breathing, 0..1 */
+    int8_t lvl, tone, tune;              /* its own values (dr_body_edit) */
+    uint8_t pinned;
 } dr_body_t;
 uint32_t dr_bodies(void);                /* bodies sounding */
 int dr_body(uint32_t i, dr_body_t *b);   /* body i (0..7): 0 = silent */
@@ -155,7 +176,7 @@ float dr_bus_level(void);
 void dr_scope(const int16_t **l, const int16_t **r, uint32_t *n);   /* the last block's output, for a scope */
 uint32_t dr_harmonics(uint32_t i, float *amp);     /* body i's 8 harmonic levels (SOLAR; the others approximated) */
 float dr_time_s(uint32_t p);             /* the UI shows the engine's own mappings */
-float dr_orbit_s(uint32_t p);
+float dr_orbit_s(uint32_t p);           /* EVERY: 0.1 .. 60 s */
 float dr_dly_time_s(uint32_t p);                    /* DLY TIME below 100: free, 50 to 800 ms */
 int32_t dr_dly_div(uint32_t p);                     /* DLY TIME from 100: a division of the beat (DR_DLY_DIV_NAME), else -1 */
 #define DR_DLY_MAX_S 0.8f

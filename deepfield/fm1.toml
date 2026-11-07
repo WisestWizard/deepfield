@@ -5,6 +5,7 @@ usb_manufacturer = "Deep Field"
 usb_product = "DEEP FIELD FM-1"
 include = ["engine"]
 o2 = ["engine/drone.c", "engine/fx.c"]   # the drone engine and the effects: their own units at -O2
+gen = ["tools/gen_wt.py {gen}/df_wt.h"]   # SCAN's wavetables, from Pocket Poly's spectra (flash, 61 KB)
 words = "words.tsv"
 ble = true                     # Bluetooth MIDI with a computer, phone or tablet (JieLi's stack; --no-ble builds without it)
 ble_central = true             # and the FM-1 connects to Bluetooth MIDI keyboards and controllers too

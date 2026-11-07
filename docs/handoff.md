@@ -2,10 +2,80 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash (DEEP FIELD, flashed 2026-11-06 evening; site 0.3 published the same night)
+## Start here: the last flash (DEEP FIELD, flashed 2026-11-07 early; site 0.4 published the same night)
 
-When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order
-below. Flashed on his word ("update the device now") with `/usr/bin/python3 base/tools/fm1_install.py
+When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order.
+Kyle's six asks of 2026-11-06 ("Build all six"), each as the expert pass proposed it. Flashed on his word ("Flash
+it") with `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes` (through first time);
+booted clean: FIRST LIGHT in silence, 0 bodies, 5 % CPU, nothing in the log. Not yet heard, device CPU not read with
+SCAN or DX. Not committed: the site went up as 0.4 (`deepfield/tools/publish_site.sh 0.4`, release package
+FM-1_14000400) and names the last commit, while the public source is still the 11-06 code. The 11-06 flash's delay
+types (below) were never heard either; they are in this build.
+
+- **A body's own values.** LATCH on, hold a latched body's key a third of a second (it blinks; a knob turn opens it
+  at once): the footer reads BODY and its note, the four knobs are its LEVEL (-24..+6 dB a dB a click, MUTE below),
+  TONE (its own MASS ±50 %), TUNE (±50 cents) and ORBIT (MOVES / PINNED). A tap still lets a body go, now at the
+  release. Several keys held: all of them, each from where it is. Pinned: ORBIT, PULSE and the arp leave it alone,
+  TRANSPOSE still moves it, a white bar at its beam's foot. Saved with the scene (bank SCN5, older banks read), out
+  and in as NRPN (99 = 1..4, 98 = the body's note, 6 = the value).
+- **Arp RHYTHM and DIV** (ORBIT 2, knobs 3 and 4): Euclidean 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16 (the notes move on
+  only at a hit), and the step 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of RATE's beat; MIDI clock steps at DIV
+  too (it was stuck on eighths). CHANCE, CHORDS, ACCENT and RATCHET from the same proposal are not built.
+- **EVERY from 0.1 s** on the same curve (old scenes moved onto it: new = 0.64 old + 46), tenths shown below 10 s;
+  ECHO never under 1 s; under MIDI clock a half and a quarter beat below one; no destination drawn under 0.5 s.
+- **Knob steps.** Time-based acceleration: a detent within 40 ms of the last moves 8, else 3 (43 a sweep, Kyle's
+  25 % finer); 2 for VOID's MASS, a free DLY TIME and ATTACK; 1 for RATE; one shown value a click for LIFT, STEPS UP
+  TO, DISTANCE, BODIES, the delay's divisions and DX's voices. SWELL, FADE and GLIDE show ms below a second. (Before,
+  the device never used its fast step: every knob moved a flat 4.)
+- **SCAN and DX**, from Pocket Poly. SCAN: its three wavetables as one 48-frame sweep under SHAPE, generated at build
+  time into flash (`deepfield/tools/gen_wt.py`, 61 KB), MASS a filter that follows the note, a loudness gain per
+  frame and per MASS so the sweep and MASS keep the level (within 1.5 dB of SOLAR, the bright GLASS end at high MASS
+  3.8 dB under), AIR a second copy elsewhere. DX: four-operator FM, SHAPE one of eight voices (GLASS PAD, BRASS, ORGAN,
+  BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER), envelopes at SWELL's pace, AIR the feedback; each voice within 0.8 dB
+  of SOLAR at F1's MASS. TEAR (sync and ring) and more polyphony were not built.
+- **A scene is a sound.** Landing on a scene morphs the sound over MORPH under the chord being played; each body
+  crosses into the new model through a twin (with eight bodies, one restarts at a time); LATCH, ORBIT (and its page
+  while it runs), FREEZE, octave and scale stay; a delay or hall switched off rings out (spillover, also on the FX
+  keys); power-on loads the sound in silence; PRESET's 0.7 s rest is a bar filling under the name. SEL held while
+  PRESET turns brings the scene's chord in at SEL's release (LATCH on, its ORBIT values). Every factory chord now
+  stands on C and plays in ROOT (VOID TIDE, GLASS ORBIT, BOWED SKY, PULSAR, DEEP VOID, GAMELAN, ICE BELLS and
+  TIDE POOL moved the nearer way; NEBULA and DESCENT up, so their beams stay on the strip); a saved chord keeps its
+  ROOT. Program change = the sound. The GLO crossfade is unchanged.
+
+How to test (numbered for the unit):
+
+1. Switch on: F1's sound, nothing playing, SEL lit.
+2. Tap C4, E4, G4 (the white keys 5, 7 and 9 from the left): three bodies. Tap E4 again quickly: it fades as you let go.
+   Tap it back in.
+3. Hold E4: it blinks, then the footer reads BODY E4. Turn KNOB 1 left a few clicks (quieter, its beam lower), KNOB 3
+   to -14 CT (the third goes pure). Let go: the HOME page is back and E4 keeps its values.
+4. Hold C4, turn KNOB 4 right: PINNED (a white bar under its beam). Tap ARP, KNOB 1 to CHORD, tap PLAY: the chord
+   moves over C4, which stays. Tap PLAY to stop.
+5. Turn PRESET one click: the bar fills under F2 VOID TIDE, then your chord keeps playing as it crosses into VOID over
+   four seconds.
+6. Hold SEL, turn PRESET one click forward and one back, let go of SEL: F2's own chord comes in (on C).
+7. ARP: KNOB 1 to ARP, tap PLAY. Turn SELECT once (ORBIT 2): KNOB 3 RHYTHM to 3/8, then 5/16; KNOB 4 DIV to 1/16, then
+   1/4T. Tap PLAY to stop.
+8. ORBIT page, KNOB 1 to WANDER, KNOB 2 (EVERY) all the way left: 0.1S. PLAY: the chord warbles inside the scale. Up
+   to 0.5S: a slow melody. PLAY off.
+9. Knob feel: turn KNOB 1 slowly (small steps), then fast (big jumps).
+10. ALGO to SCAN (ninth): EDIT, KNOB 2 (SHAPE) from ANALOG 1 through VOX to GLASS 16. ALGO to DX: SHAPE one click at a
+    time through the eight voices. On F6 NEBULA's long SWELL, DX's voices evolve slowly.
+11. FX held + G3 with a delay on a held chord: the echoes ring out instead of stopping.
+
+Questions to ask after: is the 40 ms threshold right for fast turning; do the factory chords on C (and following
+ROOT) suit; which DX voices and which SCAN regions earn their place; whether LEVEL needs more than +6 dB.
+
+Measured: 499 simulator checks (377 before, every older one passing again after the scene changes), the sanitizer
+run clean but the known fastmath.h:58 note, the 16 scene renders within 0.7 dB of the committed build's on their
+settled 6-14 s (new goldens), the hand-over equal-power (eight bodies: the deepest 50 ms dip 2.1 dB against its
+second). Host CPU, eight bodies: SCAN about SOLAR, DX about CHOIR (LOW CHOIR reads 47 % on the unit); device CPU
+not read. Device build: image 389 KB of the 568 KB slot, RAM 81,036 of 98,304, pool 13.2 KB spare (all checks ok).
+The browser emulator builds.
+
+## The flash before (DEEP FIELD, flashed 2026-11-06 evening; site 0.3 published the same night)
+
+Superseded by the flash above, which carries all of this. Flashed on his word ("update the device now") with `/usr/bin/python3 base/tools/fm1_install.py
 deepfield/build/deepfield.fwsc --yes` (the first try died at CoreMIDI client creation, -304, before writing anything;
 the second went through). Booted clean: FIRST LIGHT, 3 bodies, 31 % CPU, no xruns, no crash. Not yet heard by Kyle;
 device CPU at full load not read. Committed as acbd7d7 (not pushed). The site went up as 0.3 the same night
@@ -508,7 +578,7 @@ case is gone); each step's body age is kept (`arp_age`) so a changed chord carri
 ORDER now also apply to the remembered notes. basic.txt ends with the check (G4 C4 A4 E4 out in that order; it fails
 on 22d5ce3). Left: letting go the very body that just sounded can skip one step once.
 
-**Proposals of 2026-11-06 (expert passes on Kyle's asks; nothing built):**
+**Proposals of 2026-11-06 (expert passes on Kyle's asks; built 2026-11-07 as "Start here" says, except the arp's CHANCE, CHORDS, ACCENT and RATCHET, TEAR, more polyphony, and the GLO crossfade's changes):**
 
 - *Per-body edit* (musician): hold a latched key past a third of a second (or turn a knob while holding) and the
   footer becomes BODY <note> with LEVEL (MUTE, -24..+6 dB), TONE (its own MASS ±50 %), TUNE (±50 cents) and ORBIT

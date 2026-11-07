@@ -2,6 +2,13 @@
 #   deepfield/build/host/deepfield_host deepfield/tests/screens.txt deepfield/docs/img
 wait 300
 midi C0 05
+wait 300
+press SEL
+wait 30
+spin PRESET 1
+spin PRESET -1
+wait 30
+release SEL
 wait 9000
 shot screen-home.png
 tap GLO
@@ -64,6 +71,11 @@ shot screen-orbit.png
 spin SELECT 1
 wait 1500
 shot screen-orbit2.png
+spin K3 2
+wait 1500
+shot screen-rhythm.png
+spin K3 -2
+wait 30
 tap GLO
 wait 1500
 shot screen-global.png
@@ -83,8 +95,42 @@ key 9 up
 key 14 up
 tap SEL
 wait 500
+# a body's own values: its key held (D4, one of NEBULA's), the four knobs its LEVEL, TONE, TUNE and ORBIT pin
+tap HOME
+wait 500
+key 9 down
+wait 400
+turn K1 -4
+turn K3 6
+wait 1600
+shot screen-body-edit.png
+key 9 up
+wait 500
+# PRESET browsing: the candidate's name, the bar filling until it lands
+spin PRESET 1
+wait 350
+shot screen-browse.png
+spin PRESET -1
+wait 6000
+# DX: SHAPE names its voice
+tap EDIT
+spin ALGO 9
+wait 30
+turn K2 1
+wait 300
+shot screen-dx.png
+spin ALGO -9
+tap HOME
+wait 1000
 # where ORBIT is taking the chord: CHORD mode, every body with a line to its destination
 midi C0 02
+wait 300
+press SEL
+wait 30
+spin PRESET 1
+spin PRESET -1
+wait 30
+release SEL
 wait 5000
 tap ARP
 wait 30

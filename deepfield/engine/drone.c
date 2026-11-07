@@ -11,6 +11,7 @@
 #include "plat.h"                        /* the second core only: plat_cpu2_* */
 #include "drone.h"
 #include "fx.h"
+#include "df_wt.h"                       /* SCAN's wavetables (tools/gen_wt.py, at build time) */
 
 #define FS DR_FS
 #define CTL DR_CTL
@@ -29,6 +30,13 @@ typedef struct {
     uint8_t home;                        /* the note it was struck at: the key that lets it go */
     uint8_t model;                       /* the model it sounds in (a change restarts it) */
     uint8_t lead, held;                  /* a lead (LATCH off): held while its key is down, then it releases */
+    int8_t ed_lvl, ed_tone, ed_tune;     /* its own LEVEL (dB), TONE (% of MASS), TUNE (cents): dr_body_edit */
+    uint8_t pinned;                      /* ORBIT, PULSE and the arp leave it where it is */
+    uint8_t xf_out;                      /* handing over to its twin in the scene's new model: no note off, no restart */
+    uint8_t dxs[4];                      /* DX: each operator's envelope stage, 1..3 toward L1..L3, 4 holding L3 */
+    float ed_gain;                       /* LEVEL as a gain (0: muted) */
+    float xf;                            /* a hand-over's crossfade: the envelope's step a tick, up (the twin) or down */
+    float dxl[4];                        /* DX: each operator's envelope level, 0..99 */
     float mboost;                        /* a lead cuts: a little MASS of its own */
     float sp_det, sp_mass, sp_tide, sp_pan;   /* its own small differences (SPREAD): detune, MASS, tide rate, pan */
     float twalk, sway_ph, pan_live;      /* the timbre's walk, the sway's phase, the pan heard */
@@ -85,6 +93,16 @@ static uint8_t echo_note[8];
 static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count, arp_due;
 static uint32_t arp_age[NV * 3u];        /* each step's body, by its age: the chord changing, the arp goes on from it */
 static uint32_t arp_mem[NV], arp_mem_age[NV], arp_mem_n;   /* the latched notes as struck, kept once the bed is let go */
+static int8_t arp_mem_tune[NV], arp_tune[NV * 3u];   /* each note's own TUNE: the step sounds where its body does */
+static uint32_t arp_hits;                /* notes played (the RHYTHM's rests not counted) */
+/* RHYTHM: the runner's hits over a pattern of steps, spread as evenly as they go (Euclid); a rest waits, and the
+ * notes move on only at a hit. DIV: a step's length in MIDI clocks (24 a beat) */
+const char *const DR_RHYTHM_NAME[DR_RHYTHMS] = {"8/8", "5/8", "3/8", "7/12", "5/12", "4/9", "7/16", "5/16"};
+static const uint8_t RHY[DR_RHYTHMS][2] = {{8, 8}, {5, 8}, {3, 8}, {7, 12}, {5, 12}, {4, 9}, {7, 16}, {5, 16}};
+const char *const DR_DIV_NAME[DR_DIVS] = {"1/16", "1/16T", "1/8", "1/8T", "1/8D", "1/4", "1/4T", "1/2", "1 BAR"};
+static const uint8_t DIV_CLK[DR_DIVS] = {6, 4, 12, 8, 18, 24, 16, 48, 96};
+static uint32_t arp_rhythm(void) { return dr_scene.p[P_ARP_RHYTHM] < DR_RHYTHMS ? dr_scene.p[P_ARP_RHYTHM] : 0u; }
+static uint32_t arp_div_clk(void) { return DIV_CLK[dr_scene.p[P_ARP_DIV] < DR_DIVS ? dr_scene.p[P_ARP_DIV] : 2u]; }
 static uint32_t clk_now, clk_last, clk_period, clk_count, clk_ext, clk_out, orbit_clk_left, orbit_clk_per;
 static float clk_acc;
 static void (*rt_out)(uint32_t);
@@ -106,10 +124,17 @@ static int32_t newest_note = -1;
 
 static struct { uint8_t note, vel, on, kind; } q[NQ];   /* main loop -> render; kind 1: SEL's latch / release,
                                                          * 2: a latched strike, 3: unlatch, 4: every body let go,
-                                                         * 5: a lead, 6: the latched bodies transposed */
+                                                         * 5: a lead, 6: the latched bodies transposed, 7: a body's
+                                                         * own value (on: which, vel: the value) */
 static volatile uint32_t q_head, q_tail;
-static scene_t load_scene;               /* a scene loaded: its bodies are struck and let go by the render */
+static scene_t load_scene;               /* a scene loaded with its chord: its bodies are struck and let go by the render */
 static volatile uint32_t load_pending;
+/* a scene landing in another model: each body sounding hands over to a twin in the new model, the twin rising as
+ * the old one falls over the morph; low to high, as voices free up (with eight bodies, one restarts at a time) */
+static volatile uint32_t xf_seq, xf_kind;  /* the main loop's request (kind 1: hand over, 0: no more), counted */
+static volatile float xf_req_s;
+static uint32_t xf_on, xf_seen, xf_wait;
+static float xf_secs;
 
 static inline float p01(uint32_t id) { return pcur[id]; }
 static inline float clamp01(float x) { return x < 0.0f ? 0.0f : x > 1.0f ? 1.0f : x; }
@@ -129,7 +154,7 @@ static inline float frand(uint32_t *rng)  /* -1..1 */
 }
 
 float dr_time_s(uint32_t p) { return 0.03f * fm_exp2f((float)(p & 127u) * (9.4f / 127.0f)); }       /* 0.03 .. 20 s */
-float dr_orbit_s(uint32_t p) { return fm_exp2f((float)(p & 127u) * (5.9f / 127.0f)); }              /* 1 .. 60 s */
+float dr_orbit_s(uint32_t p) { return 0.1f * fm_exp2f((float)(p & 127u) * (9.2288187f / 127.0f)); }   /* 0.1 .. 60 s */
 float dr_dly_time_s(uint32_t p)
 {
     p &= 127u;
@@ -144,10 +169,11 @@ float dr_hz(uint32_t p) { return 60.0f * fm_exp2f((float)(p & 127u) * (7.6f / 12
 static float glide_s(float p) { return 0.02f * fm_exp2f(p * 8.6f); }                                  /* 0.02 .. 7.8 s */
 float dr_attack_s(uint32_t p) { return 0.001f * fm_exp2f((float)(p & 127u) * (11.0f / 127.0f)); }    /* 1 ms .. 2 s */
 float dr_release_s(uint32_t p) { return 0.03f * fm_exp2f((float)(p & 127u) * (8.0f / 127.0f)); }     /* 30 ms .. 7.7 s */
-static inline float vmass(const voice_t *v, const blk_t *b)   /* a voice's MASS: the force, pressure, a lead's boost */
+static inline float vmass(const voice_t *v, const blk_t *b)   /* a voice's MASS: the force, pressure, a lead's boost,
+                                                               * its own TONE */
 {
     return clamp01(b->mass + v->press * b->press_amt * 0.6f + v->mboost + v->sp_mass * b->spread * 0.15f
-                   + v->twalk * b->twalk_depth * 0.25f);
+                   + v->twalk * b->twalk_depth * 0.25f + (float)v->ed_tone * 0.01f);
 }
 
 /* ------------------------------------------------------------------ the scale --- */
@@ -188,6 +214,10 @@ static void voice_osc_init(voice_t *v, uint32_t model)
     for (i = 0; i < 6u; i++)
         v->fs[i] = 0.0f;
     v->gp = 0.0f;
+    for (i = 0; i < 4u; i++) {           /* DX: every operator's envelope from silence */
+        v->dxl[i] = 0.0f;
+        v->dxs[i] = 1;
+    }
     if (model == M_STRING) {
         int16_t *ln = lines + (v - vc) * LINE_LEN;
         for (i = 0; i < LINE_LEN; i++)
@@ -209,6 +239,11 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->midi = (uint8_t)midi;
     v->lead = v->held = 0;
     v->mboost = 0.0f;
+    v->ed_lvl = v->ed_tone = v->ed_tune = 0;
+    v->pinned = 0;
+    v->ed_gain = 1.0f;
+    v->xf = 0.0f;
+    v->xf_out = 0;
     v->home = (uint8_t)note;
     v->target = v->pitch = (float)note;
     if (!steal)
@@ -245,12 +280,12 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     newest_note = (int32_t)note;
 }
 
-static voice_t *find_body(uint32_t note, int fading_too)
+static voice_t *find_body(uint32_t note, int fading_too)   /* a body handing over is never the key's: its twin is */
 {
     uint32_t i;
     voice_t *best = 0;
     for (i = 0; i < NV; i++)
-        if (vc[i].on && vc[i].home == note && (fading_too || !vc[i].fading))
+        if (vc[i].on && vc[i].home == note && !vc[i].xf_out && (fading_too || !vc[i].fading))
             if (!best || vc[i].age > best->age)
                 best = &vc[i];
     return best;
@@ -279,6 +314,8 @@ static void let_go(voice_t *v)
 {
     if (v->on && !v->fading) {
         v->fading = 1;
+        if (v->xf > 0.0f)                /* a twin let go before it had risen: an ordinary fade from where it is */
+            v->xf = 0.0f;
         v->latched = 0;
         v->sustained = 0;
         if (note_out && v->midi == 0u)
@@ -421,6 +458,39 @@ void dr_latch_hold(void) { queue_put(0, 0, 0, 1); }
 void dr_note_latched(uint32_t note, uint32_t vel) { queue_put(note, vel, 1, 2); }
 void dr_unlatch(uint32_t note) { queue_put(note, 0, 0, 3); }
 void dr_transpose_to(uint32_t note) { queue_put(note, 0, 0, 6); }
+static void body_set(voice_t *v, uint32_t what, int32_t x)   /* one of a body's own values, within its range */
+{
+    switch (what) {
+    case BE_LEVEL:
+        x = x < DR_LVL_MUTE ? DR_LVL_MUTE : x > 6 ? 6 : x;
+        v->ed_lvl = (int8_t)x;
+        v->ed_gain = x == DR_LVL_MUTE ? 0.0f : fm_exp2f((float)x * (1.0f / 6.0206f));
+        break;
+    case BE_TONE: v->ed_tone = (int8_t)(x < -50 ? -50 : x > 50 ? 50 : x); break;
+    case BE_TUNE: v->ed_tune = (int8_t)(x < -50 ? -50 : x > 50 ? 50 : x); break;
+    case BE_PIN:
+        v->pinned = x != 0;
+        if (v->pinned)
+            pend_to[v - vc] = 0;         /* a move already planned for it is dropped */
+        break;
+    default: break;
+    }
+}
+static void body_edit(uint32_t note, uint32_t what, int32_t x)
+{
+    voice_t *v = find_body(note & 127u, 0);
+    if (v && v->latched)
+        body_set(v, what, x);
+}
+void dr_body_edit(uint32_t note, uint32_t what, int32_t v) { queue_put(note, (uint32_t)(uint8_t)(int8_t)v, what, 7); }
+void dr_body_edit_now(uint32_t note, uint32_t what, int32_t v) { body_edit(note, what, v); }
+int32_t dr_body_value(uint32_t note, uint32_t what)
+{
+    const voice_t *v = find_body(note & 127u, 0);
+    if (!v)
+        return 0;
+    return what == BE_LEVEL ? v->ed_lvl : what == BE_TONE ? v->ed_tone : what == BE_TUNE ? v->ed_tune : v->pinned;
+}
 void dr_note_now(uint32_t note, uint32_t vel, int on) { note_event(note, vel, on != 0, 0, 1); }
 void dr_lead(uint32_t note, uint32_t vel, int on) { queue_put(note, vel, on != 0, 5); }
 void dr_lead_now(uint32_t note, uint32_t vel, int on) { lead_event(note, vel, on != 0, 1); }
@@ -474,6 +544,8 @@ static void drain_queue(void)
             lead_event(q[t].note, q[t].vel, q[t].on, 0);
         else if (q[t].kind == 6u)
             transpose_to(q[t].note);
+        else if (q[t].kind == 7u)
+            body_edit(q[t].note, q[t].on, (int32_t)(int8_t)q[t].vel);
         else
             note_event(q[t].note, q[t].vel, q[t].on, 0, 0);
         q_tail = (t + 1u) % NQ;
@@ -552,10 +624,12 @@ float dr_orbit_next(void)
 {
     if (!orbit_on)
         return 0.0f;
-    if (dr_orbit_mode() == OM_ARP) {     /* through the bar: eight steps */
+    if (dr_orbit_mode() == OM_ARP) {     /* through the RHYTHM's pattern */
+        uint32_t len = RHY[arp_rhythm()][1];
         if (clk_ext)
-            return (float)(clk_count % 96u) * (1.0f / 96.0f);
-        return arp_step ? ((float)(arp_count % 8u) + 1.0f - (float)arp_left / (float)arp_step) * 0.125f : 0.0f;
+            return (float)(clk_count % (len * arp_div_clk())) / (float)(len * arp_div_clk());
+        return arp_step ? ((float)((arp_count + len - 1u) % len) + 1.0f - (float)arp_left / (float)arp_step) / (float)len
+                        : 0.0f;
     }
     if (clk_ext)
         return orbit_clk_per ? 1.0f - (float)orbit_clk_left / (float)orbit_clk_per : 0.0f;
@@ -614,11 +688,20 @@ void dr_param(uint32_t id, uint32_t v)
         return;
     dr_scene.p[id] = (uint8_t)(v & 127u);
     pcur[id] = pstart[id] = ptarget[id] = (float)(v & 127u) * (1.0f / 127.0f);
+    if (id == P_MODEL) {                 /* ALGO: a hard cut, every body restarts in the new model */
+        xf_kind = 0;
+        xf_seq++;
+    }
 }
-void dr_load(const scene_t *s, float seconds)
+void dr_load(const scene_t *s, float seconds, int chord)
 {
-    uint32_t i;
+    uint32_t i, model_was = dr_scene.p[P_MODEL];
     dr_scene = *s;
+    if (s->p[P_MODEL] != model_was) {    /* the bodies cross into it over the morph; at once: they restart */
+        xf_req_s = seconds;
+        xf_kind = seconds > 0.01f;
+        xf_seq++;
+    }
     for (i = 0; i < P_COUNT; i++) {
         pstart[i] = pcur[i];
         ptarget[i] = (float)(s->p[i] & 127u) * (1.0f / 127.0f);
@@ -632,13 +715,16 @@ void dr_load(const scene_t *s, float seconds)
         for (i = 0; i < P_COUNT; i++)
             pcur[i] = ptarget[i];
     }
+    if (!chord)
+        return;
     load_pending = 0;                    /* down while the copy is torn, up once it has landed */
     __asm__ volatile("" ::: "memory");
     load_scene = *s;
     __asm__ volatile("" ::: "memory");
     load_pending = 1;
 }
-static void load_bodies(void)            /* render: the scene's bodies swell in; the latched ones not in it fade */
+static void load_bodies(void)            /* render: the scene's bodies swell in with their own values; the latched
+                                          * ones not in it fade */
 {
     const scene_t *s = &load_scene;
     uint32_t i, k;
@@ -653,12 +739,95 @@ static void load_bodies(void)            /* render: the scene's bodies swell in;
                 let_go(&vc[i]);
         }
     for (k = 0; k < NV; k++)
-        if (s->vel[k] && !find_body(s->note[k], 0)) {
-            voice_t *v;
-            note_event(s->note[k], s->vel[k], 1, 1, 0);
-            if ((v = find_body(s->note[k], 0)) != 0)
+        if (s->vel[k]) {
+            voice_t *v = find_body(s->note[k], 0);
+            if (!v) {
+                note_event(s->note[k], s->vel[k], 1, 1, 0);
+                v = find_body(s->note[k], 0);
+            }
+            if (v) {
                 v->latched = 1;
+                body_set(v, BE_LEVEL, s->lvl[k]);
+                body_set(v, BE_TONE, s->tone[k]);
+                body_set(v, BE_TUNE, s->tune[k]);
+                body_set(v, BE_PIN, (int32_t)(s->pins >> k & 1u));
+            }
         }
+}
+static voice_t *free_body(void)          /* a voice not sounding, within the overload's count; 0 none */
+{
+    uint32_t i, sounding = 0;
+    for (i = 0; i < NV; i++)
+        sounding += vc[i].on != 0;
+    if (sounding < voices_max)
+        for (i = 0; i < NV; i++)
+            if (!vc[i].on)
+                return &vc[i];
+    return 0;
+}
+static void twin(voice_t *v, voice_t *t, uint32_t model)   /* body v hands over to t, the same body in the new model */
+{
+    float k = xf_secs > 0.05f ? (float)CTL / (xf_secs * FS) : 1.0f;
+    *t = *v;                             /* its note, glide, age, its own values, its breathing's phases */
+    voice_osc_init(t, model);
+    t->env = t->lvl_s = 0.0f;
+    t->xf = k;
+    t->xf_out = 0;
+    t->restart = t->quick = 0;
+    t->fading = 0;
+    pend_to[t - vc] = pend_to[v - vc];
+    pend_to[v - vc] = 0;
+    v->xf = -(v->env > 0.001f ? v->env : 0.001f) * k;   /* from where it is to silence in the same time */
+    v->xf_out = 1;
+    v->fading = 1;                       /* out of ORBIT's and the arp's reach; its note goes on in the twin */
+    v->latched = v->sustained = 0;
+}
+static void handover(uint32_t model, uint32_t n)
+{
+    uint32_t i, j, need = 0, busy = 0;
+    voice_t *cand[NV];
+    if (xf_seq != xf_seen) {
+        xf_seen = xf_seq;
+        xf_on = xf_kind;
+        xf_secs = xf_req_s;
+        xf_wait = 0;
+    }
+    if (!xf_on)
+        return;
+    for (i = 0; i < NV; i++) {
+        voice_t *v = &vc[i];
+        if (!v->on)
+            continue;
+        if (v->xf_out)
+            busy++;
+        else if (!v->fading && !v->restart && v->model != model) {
+            for (j = need++; j && cand[j - 1u]->pitch > v->pitch; j--)   /* low to high */
+                cand[j] = cand[j - 1u];
+            cand[j] = v;
+        }
+    }
+    if (!need) {
+        xf_on = 0;
+        return;
+    }
+    if (xf_wait > n) {
+        xf_wait -= n;
+        return;
+    }
+    xf_wait = 0;
+    for (i = 0; i < need; i++) {
+        voice_t *t = free_body();
+        if (t) {
+            twin(cand[i], t, model);
+            continue;
+        }
+        if (!busy) {                     /* every voice sounding and none on its way out: this one restarts where
+                                          * it is (a moment's dip), the next a little later */
+            cand[i]->restart = 1;
+            xf_wait = (uint32_t)(xf_secs * FS / (float)need);
+        }
+        break;
+    }
 }
 int dr_morphing(void) { return morph_pos < 1.0f; }
 static uint8_t hold_on;
@@ -730,6 +899,17 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
             v->quick = 1;                /* back in a few ms, whatever SWELL says */
             v->fading = (uint8_t)was_fading;
         }
+    } else if (v->xf != 0.0f) {          /* a hand-over: the twin rises as the old one falls, over the morph */
+        v->env += v->xf;
+        if (v->xf > 0.0f && v->env >= 1.0f) {
+            v->env = 1.0f;
+            v->xf = 0.0f;
+        } else if (v->xf < 0.0f && v->env <= 0.0f) {
+            v->on = 0;
+            v->env = 0.0f;
+            v->xf = 0.0f;
+            v->xf_out = 0;
+        }
     } else if (v->lead) {                /* a lead: up at ATTACK while held, then down at RELEASE */
         if (v->held) {
             v->env += v->quick ? 0.12f : b->attack_k;
@@ -775,7 +955,8 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
     /* pitch: the glide, the random walk, the wobble */
     v->pitch += (v->target - v->pitch) * b->glide_k;
     v->walk += frand(&v->rng) * 0.012f - v->walk * 0.0015f;
-    cents = v->walk * b->walk_depth * 40.0f + v->sp_det * b->spread * 14.0f;   /* SPREAD: up to 14 cents apart */
+    cents = v->walk * b->walk_depth * 40.0f + v->sp_det * b->spread * 14.0f   /* SPREAD: up to 14 cents apart */
+          + (float)v->ed_tune;
     v->twalk += frand(&v->rng) * 0.003f - v->twalk * 0.0006f;   /* the timbre's own slow walk */
     v->twalk = fm_clampf(v->twalk, -1.0f, 1.0f);
     v->sway_ph += b->sway_inc * (0.8f + 0.4f * v->sp_tide);
@@ -802,7 +983,8 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
         v->tide_ph -= 1.0f;
     v->spark = 0.5f + 0.5f * tsin(v->tide_ph);
     tide = v->lead ? 1.0f : 1.0f - b->tide_depth * v->spark;   /* a lead does not breathe */
-    lvl = v->env * v->vel * tide * (v->lead ? b->lead_level : 1.0f);
+    lvl = v->env * (v->xf != 0.0f ? 2.0f - v->env : 1.0f)    /* a hand-over: equal power, the pair 0.5 dB up midway */
+        * v->vel * tide * (v->lead ? b->lead_level : v->ed_gain);
     *lvl_out = lvl;
     v->breath_ph += b->breath_inc;
     if (v->breath_ph >= 1.0f)
@@ -1296,6 +1478,236 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->lvl_s = lvl;
 }
 
+/* SCAN: Pocket Poly's three wavetables (ANALOG, VOX, GLASS) as one sweep of 48 frames under SHAPE, each body's
+ * place wandering with DRIFT and TIMBRE, a band-limited copy for its pitch, MASS a low-pass, AIR a second copy
+ * detuned at another place, SUB the sine */
+const char *const DR_SCAN_NAME[3] = {"ANALOG", "VOX", "GLASS"};
+#define SCAN_FR (DF_WT_TABLES * DF_WT_FRAMES)
+static inline const int16_t *scan_frame(uint32_t g, uint32_t mip)   /* frame g (0..47) of the sweep */
+{
+    uint32_t t = g / DF_WT_FRAMES;
+    return DF_WT + ((t * DF_WT_MIPS + mip) * DF_WT_FRAMES + g % DF_WT_FRAMES) * DF_WT_LEN;
+}
+static inline float scan_read(const int16_t *a, const int16_t *c, float fr, float ph)
+{
+    uint32_t i0 = (uint32_t)ph, i1 = (i0 + 1u) & (DF_WT_LEN - 1u);
+    float t = ph - (float)i0, x = (float)a[i0] + (float)(a[i1] - a[i0]) * t, y = (float)c[i0] + (float)(c[i1] - c[i0]) * t;
+    return x + (y - x) * fr;
+}
+static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
+{
+    float mass = vmass(v, b), fc = f * 3.0f * fm_exp2f(mass * 6.0f), c, pos, fr, pos2, fr2;   /* MASS follows the
+                                         * note: 3 to 192 times it, the same brightness all along the keys */
+    float inc = f / FS * (float)DF_WT_LEN, inc2 = inc * (1.0f + (0.3f + b->drift) * 0.004f), ph = v->ph, ph2 = v->ph2;
+    float air = b->air * 0.8f, sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, lp = v->lp1,
+          l = v->lvl_s, dl = (lvl - l) / (float)m, k = 1.0f / 32768.0f;
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
+    const int16_t *a0, *a1, *c0, *c1;
+    uint32_t i, g0, g2, mip = 0;
+    while (mip < DF_WT_MIPS - 1u && (float)(64u >> mip) * f > 19000.0f)   /* the copy with as many harmonics as fit */
+        mip++;
+    v->hb[0] += b->hinc * (0.5f + 0.13f * (float)(v - vc));   /* its own wander through the frames */
+    if (v->hb[0] >= 1.0f)
+        v->hb[0] -= 1.0f;
+    pos = b->shape * (float)(SCAN_FR - 1u) + b->drift * 5.0f * tsin(v->hb[0]) + v->twalk * b->twalk_depth * 8.0f;
+    pos = fm_clampf(pos, 0.0f, (float)(SCAN_FR - 1u) - 0.001f);
+    g0 = (uint32_t)pos;
+    fr = pos - (float)g0;
+    pos2 = pos < (float)SCAN_FR * 0.5f ? pos + 7.0f : pos - 7.0f;   /* AIR's copy: another place in the sweep */
+    g2 = (uint32_t)pos2;
+    fr2 = pos2 - (float)g2;
+    {                                    /* every frame as loud, whatever MASS (DF_WT_GAIN, at five of its settings) */
+        float mp = mass * 3.999f, mf = mp - (float)(uint32_t)mp, ga, gb;
+        uint32_t mi = (uint32_t)mp, g1 = g0 + 1u < SCAN_FR ? g0 + 1u : g0;
+        ga = DF_WT_GAIN[g0][mi] + (DF_WT_GAIN[g0][mi + 1u] - DF_WT_GAIN[g0][mi]) * mf;
+        gb = DF_WT_GAIN[g1][mi] + (DF_WT_GAIN[g1][mi + 1u] - DF_WT_GAIN[g1][mi]) * mf;
+        k *= ga + (gb - ga) * fr;
+    }
+    a0 = scan_frame(g0, mip);
+    a1 = scan_frame(g0 + 1u < SCAN_FR ? g0 + 1u : g0, mip);
+    c0 = scan_frame(g2, mip);
+    c1 = scan_frame(g2 + 1u < SCAN_FR ? g2 + 1u : g2, mip);
+    c = 1.0f - fm_expf(-6.2831853f * fc / FS);
+    if (c > 0.95f)
+        c = 0.95f;
+    for (i = 0; i < m; i++) {
+        float s;
+        ph += inc;
+        if (ph >= (float)DF_WT_LEN)
+            ph -= (float)DF_WT_LEN;
+        s = scan_read(a0, a1, fr, ph);
+        if (air > 0.01f) {
+            ph2 += inc2;
+            if (ph2 >= (float)DF_WT_LEN)
+                ph2 -= (float)DF_WT_LEN;
+            s += scan_read(c0, c1, fr2, ph2) * air;
+        }
+        lp += (s * k - lp) * c;
+        sph += sinc;
+        if (sph >= 1.0f)
+            sph -= 1.0f;
+        s = lp + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* level-matched by render */
+        l += dl;
+        s *= l;
+        ml[i] += s * gl;
+        mr[i] += s * gr;
+    }
+    v->ph = ph;
+    v->ph2 = ph2 >= 0.0f && ph2 < (float)DF_WT_LEN ? ph2 : 0.0f;
+    v->sub_ph = sph;
+    v->lp1 = fm_flush(lp);
+    v->lvl_s = lvl;
+}
+
+/* DX: four-operator FM after Pocket Poly's six (fm.c), SHAPE picking one of eight voices made to sustain. Each
+ * operator has a DX envelope (rates and levels 0..99, up to L3 and holding there) run at SWELL's pace; MASS brightens
+ * the modulators, DRIFT breathes them and spreads the detune, AIR is the feedback, SUB the sine. FADE stays the body's */
+typedef struct { uint8_t r[3], l[3], coarse, fine; int8_t det; uint8_t level; } dx_op_t;
+typedef struct { dx_op_t op[4]; uint8_t alg, fb; } dx_voice_t;
+enum { DXA_STACK, DXA_PAIRS, DXA_FAN, DXA_ADD };
+#define DB(k) (1u << (k))
+static const uint8_t DX_CAR[4] = {       /* each algorithm's carriers (render_dx runs its routing) */
+    DB(0),                               /* STACK: 4 > 3 > 2 > 1 */
+    DB(0) | DB(2),                       /* PAIRS: 2 > 1, 4 > 3 */
+    DB(0) | DB(1) | DB(2),               /* FAN: 4 > 1, 2, 3 */
+    DB(0) | DB(1) | DB(2) | DB(3),       /* ADD: four sines */
+};
+#define DXOP(r1, r2, r3, l1, l2, l3, co, fi, de, lv) {{r1, r2, r3}, {l1, l2, l3}, co, fi, de, lv}
+static const dx_voice_t DX_V[DR_DX_VOICES] = {
+    {{DXOP(55, 40, 30, 99, 95, 92, 1, 0, 0, 99), DXOP(45, 35, 30, 99, 70, 64, 1, 0, 4, 68),     /* GLASS PAD */
+      DXOP(55, 40, 30, 99, 95, 92, 1, 0, -4, 95), DXOP(45, 35, 30, 99, 72, 66, 3, 0, 0, 58)}, DXA_PAIRS, 2},
+    {{DXOP(60, 50, 50, 99, 95, 92, 1, 0, 0, 99), DXOP(38, 45, 50, 99, 80, 74, 1, 0, 0, 84),     /* BRASS */
+      DXOP(60, 50, 50, 99, 95, 92, 1, 0, 2, 95), DXOP(34, 45, 50, 99, 82, 76, 1, 0, -1, 78)}, DXA_PAIRS, 6},
+    {{DXOP(99, 99, 99, 99, 99, 99, 0, 0, 0, 99), DXOP(99, 99, 99, 99, 99, 99, 1, 0, 1, 92),     /* ORGAN */
+      DXOP(99, 99, 99, 99, 99, 99, 2, 0, -1, 84), DXOP(99, 99, 99, 99, 99, 99, 3, 0, 0, 74)}, DXA_ADD, 0},
+    {{DXOP(99, 25, 20, 99, 85, 80, 1, 0, 0, 99), DXOP(99, 25, 15, 99, 60, 45, 3, 50, 0, 72),    /* BELL PAD */
+      DXOP(99, 20, 15, 99, 80, 75, 2, 0, 5, 85), DXOP(99, 25, 15, 99, 55, 40, 7, 1, 0, 62)}, DXA_PAIRS, 3},
+    {{DXOP(95, 28, 20, 99, 88, 80, 1, 0, 0, 99), DXOP(99, 45, 25, 99, 60, 30, 14, 0, 0, 52),    /* E.PIANO */
+      DXOP(95, 30, 22, 99, 88, 80, 1, 0, 3, 92), DXOP(99, 50, 28, 99, 65, 50, 1, 0, 0, 70)}, DXA_PAIRS, 6},
+    {{DXOP(99, 35, 25, 99, 85, 80, 1, 0, 0, 99), DXOP(99, 45, 30, 99, 40, 30, 4, 0, 0, 70),     /* WOOD */
+      DXOP(99, 35, 25, 99, 85, 80, 2, 0, 2, 60), DXOP(99, 50, 30, 99, 35, 25, 10, 0, 0, 45)}, DXA_PAIRS, 0},
+    {{DXOP(45, 40, 40, 99, 96, 94, 1, 0, 0, 99), DXOP(40, 40, 40, 99, 90, 86, 1, 0, -3, 78),    /* STRINGS */
+      DXOP(45, 40, 40, 99, 96, 94, 1, 0, 6, 97), DXOP(40, 40, 40, 99, 88, 84, 1, 0, 3, 76)}, DXA_PAIRS, 5},
+    {{DXOP(70, 40, 30, 99, 92, 90, 1, 0, 0, 95), DXOP(70, 40, 30, 99, 92, 90, 1, 41, 0, 88),    /* CLUSTER */
+      DXOP(70, 40, 30, 99, 90, 86, 2, 82, 0, 80), DXOP(60, 40, 30, 99, 80, 74, 1, 41, 0, 62)}, DXA_FAN, 4},
+};
+static const float DX_GAIN[DR_DX_VOICES] = {1.459f, 1.301f, 1.924f, 1.619f, 1.410f, 1.619f, 1.315f, 2.314f};   /* each
+                                         * voice as loud as SOLAR at F1's settings (measured) */
+const char *const DR_DX_NAME[DR_DX_VOICES] = {"GLASS PAD", "BRASS", "ORGAN", "BELL PAD", "E.PIANO", "WOOD", "STRINGS",
+                                             "CLUSTER"};
+static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
+{
+    uint32_t vi = (uint32_t)(b->shape * ((float)DR_DX_VOICES - 0.01f));
+    const dx_voice_t *dv = &DX_V[vi];
+    uint32_t car = DX_CAR[dv->alg], i, k, nc = 0;
+    float inc[4], amp[4], ph[4], fb1 = v->z[0], fb2 = v->z[1], mass = vmass(v, b);
+    float rate_x = fm_clampf(1.5f / dr_time_s((uint32_t)(p01(P_SWELL) * 127.0f)), 0.05f, 8.0f) * ((float)CTL / FS);
+    float bright = (mass - 0.5f) * 40.0f + b->drift * 10.0f * tsin(v->breath_ph), fbv, fbg, cg;
+    float sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
+    fbv = fm_clampf((float)dv->fb + b->air * 4.0f, 0.0f, 7.0f) * (1.0f / 7.0f);
+    fbg = fbv * fbv * 0.75f * 0.5f;
+    ph[0] = v->ph;
+    ph[1] = v->ph2;
+    ph[2] = v->mph;
+    ph[3] = v->ph3[0];
+    for (k = 0; k < 4u; k++) {           /* each operator's envelope a tick, its level and its step */
+        const dx_op_t *o = &dv->op[k];
+        uint32_t st = v->dxs[k];
+        float L;
+        if (st >= 1u && st <= 3u) {      /* toward its stage's level at its rate; the third holds */
+            float tgt = (float)o->l[st - 1u], step = 99.0f / (0.004f * fm_exp2f((99.0f - (float)o->r[st - 1u]) * (1.0f / 7.5f)))
+                                                     * rate_x;
+            if (v->dxl[k] < tgt) {
+                v->dxl[k] += step;
+                if (v->dxl[k] >= tgt) {
+                    v->dxl[k] = tgt;
+                    st++;
+                }
+            } else {
+                v->dxl[k] -= step;
+                if (v->dxl[k] <= tgt) {
+                    v->dxl[k] = tgt;
+                    st++;
+                }
+            }
+            v->dxs[k] = (uint8_t)st;
+        }
+        L = (float)o->level;
+        if (!(car >> k & 1u))            /* a modulator: brighter with MASS, breathing with DRIFT */
+            L = fm_clampf(L + bright, 0.0f, 99.0f);
+        else
+            nc++;
+        L -= 99.0f - v->dxl[k];
+        amp[k] = L > 0.0f ? fm_exp2f((L - 99.0f) * (0.75f / 6.0206f)) : 0.0f;
+        inc[k] = f / FS * (o->coarse ? (float)o->coarse : 0.5f) * (1.0f + (float)o->fine * 0.01f)
+               * (1.0f + (float)o->det * (1.0f + b->drift) * (3.0f / 1200.0f * 0.6931472f));   /* a few cents: 1 + x ln 2 */
+        if (inc[k] > 0.45f)
+            inc[k] = amp[k] = 0.0f;      /* past the top: silent, its phase still */
+    }
+    cg = nc ? 2.0f / (1.0f + (float)nc * fm_rsqrtf((float)nc)) * DX_GAIN[vi] : 0.0f;   /* between a coherent and a
+                                                                                       * random sum */
+    cg *= 0.8f;
+#define DXS(p) sintab[(uint32_t)(((p) + 64.0f) * (float)SIN_N) & SIN_MASK]   /* the modulation reaches a few turns */
+#define DXPH(k)                                                                                                     \
+    do {                                                                                                            \
+        ph[k] += inc[k];                                                                                            \
+        if (ph[k] >= 1.0f)                                                                                          \
+            ph[k] -= 1.0f;                                                                                          \
+    } while (0)
+    for (i = 0; i < m; i++) {            /* each algorithm straight through: a modulator is always a higher operator */
+        float s, o0, o1, o2, o3;
+        DXPH(0);
+        DXPH(1);
+        DXPH(2);
+        DXPH(3);
+        o3 = DXS(ph[3] + (fb1 + fb2) * fbg) * amp[3];
+        switch (dv->alg) {
+        case DXA_STACK:
+            o2 = DXS(ph[2] + o3) * amp[2];
+            o1 = DXS(ph[1] + o2) * amp[1];
+            o0 = DXS(ph[0] + o1) * amp[0];
+            s = o0;
+            break;
+        case DXA_FAN:
+            o0 = DXS(ph[0] + o3) * amp[0];
+            o1 = DXS(ph[1] + o3) * amp[1];
+            o2 = DXS(ph[2] + o3) * amp[2];
+            s = o0 + o1 + o2;
+            break;
+        case DXA_ADD:
+            s = DXS(ph[0]) * amp[0] + DXS(ph[1]) * amp[1] + DXS(ph[2]) * amp[2] + o3;
+            break;
+        default:                         /* PAIRS */
+            o2 = DXS(ph[2] + o3) * amp[2];
+            o1 = DXS(ph[1]) * amp[1];
+            o0 = DXS(ph[0] + o1) * amp[0];
+            s = o0 + o2;
+            break;
+        }
+        fb2 = fb1;
+        fb1 = o3;
+        sph += sinc;
+        if (sph >= 1.0f)
+            sph -= 1.0f;
+        s = s * cg + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* level-matched by render */
+        l += dl;
+        s *= l;
+        ml[i] += s * gl;
+        mr[i] += s * gr;
+    }
+#undef DXS
+#undef DXPH
+    v->ph = ph[0];
+    v->ph2 = ph[1];
+    v->mph = ph[2];
+    v->ph3[0] = ph[3];
+    v->z[0] = fm_flush(fb1);
+    v->z[1] = fm_flush(fb2);
+    v->sub_ph = sph;
+    v->lvl_s = lvl;
+}
+
 static void render_voices(uint32_t lo, uint32_t hi, uint32_t n, float *ml, float *mr)   /* added to ml, mr */
 {
     uint32_t i, k;
@@ -1317,6 +1729,8 @@ static void render_voices(uint32_t lo, uint32_t hi, uint32_t n, float *ml, float
             case M_BELL: render_bell(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
             case M_SHEPARD: render_shepard(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
             case M_FOLD: render_fold(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
+            case M_SCAN: render_scan(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
+            case M_DX: render_dx(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
             default: render_string(v, &g_blk, f, lvl, m, ml + i, mr + i); break;
             }
         }
@@ -1365,7 +1779,7 @@ int dr_orbit_pending(uint32_t i, uint32_t *to)
 }
 int32_t dr_arp_note(void) { return orbit_on && dr_orbit_mode() == OM_ARP ? arp_held : -1; }
 int dr_arp_running(void) { return orbit_on && dr_orbit_mode() == OM_ARP && arp_n > 0u; }
-uint32_t dr_arp_steps(void) { return arp_count; }
+uint32_t dr_arp_steps(void) { return arp_hits; }
 
 static int note_held_by_other(const voice_t *v, int32_t note)   /* another body sits (or is going) there */
 {
@@ -1398,8 +1812,8 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
     if ((orbit_rng >> 8) % 100u >= chance)
         return;
-    for (i = 0; i < NV; i++)
-        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart)
+    for (i = 0; i < NV; i++)             /* a pinned body is a pedal: never moved, never dipped */
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned)
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
@@ -1512,7 +1926,7 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
         if (!nxt)
             continue;
         pend_to[i] = 0;
-        if (!v->on || v->fading || !v->latched || v->restart)
+        if (!v->on || v->fading || !v->latched || v->restart || v->pinned)
             continue;
         cur = (int32_t)(v->target + 0.5f);
         if (nxt == cur)
@@ -1531,14 +1945,17 @@ static void arp_gather(uint32_t played)  /* the latched notes as struck (none: t
                                           * PLAYED, then OCTAVES up */
 {
     uint32_t i, j, n = 0, oct = 1u + (dr_scene.p[P_ARP_OCT] < 3u ? dr_scene.p[P_ARP_OCT] : 2u), notes[NV], age[NV];
-    for (i = 0; i < NV; i++)
-        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart) {
+    int8_t tune[NV];
+    for (i = 0; i < NV; i++)             /* a pinned body is the pedal under the runner, not one of its notes */
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned) {
             for (j = n++; j && arp_mem_age[j - 1u] > vc[i].age; j--) {
                 arp_mem_age[j] = arp_mem_age[j - 1u];
                 arp_mem[j] = arp_mem[j - 1u];
+                arp_mem_tune[j] = arp_mem_tune[j - 1u];
             }
             arp_mem_age[j] = vc[i].age;
             arp_mem[j] = (uint32_t)(vc[i].target + 0.5f);
+            arp_mem_tune[j] = vc[i].ed_tune;
         }
     if (n)
         arp_mem_n = n;
@@ -1547,15 +1964,18 @@ static void arp_gather(uint32_t played)  /* the latched notes as struck (none: t
         for (j = i; j && !played && notes[j - 1u] > arp_mem[i]; j--) {
             notes[j] = notes[j - 1u];
             age[j] = age[j - 1u];
+            tune[j] = tune[j - 1u];
         }
         notes[j] = arp_mem[i];
         age[j] = arp_mem_age[i];
+        tune[j] = arp_mem_tune[i];
     }
     arp_n = 0;
     for (j = 0; j < oct; j++)
         for (i = 0; i < n; i++)
             if (notes[i] + 12u * j <= 108u) {
                 arp_age[arp_n] = age[i];
+                arp_tune[arp_n] = tune[i];
                 arp_notes[arp_n++] = notes[i] + 12u * j;
             }
 }
@@ -1577,21 +1997,28 @@ static void arp_tick(uint32_t n)
             arp_release();
         }
     }
-    if (clk_ext) {                       /* following: the clock says when (dr_clock), the step is twelve clocks */
+    if (clk_ext) {                       /* following: the clock says when (dr_clock), the step is DIV in clocks */
         if (!arp_due)
             return;
         arp_due = 0;
-        arp_step = clk_period * 12u;
+        arp_step = clk_period * arp_div_clk();
     } else {
         if (arp_left > n) {
             arp_left -= n;
             return;
         }
-        arp_step = (uint32_t)(30.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS);   /* an eighth at RATE */
+        arp_step = (uint32_t)((float)arp_div_clk() * (2.5f / dr_arp_bpm(dr_scene.p[P_ARP_RATE])) * FS);   /* DIV at
+                                                                                                        * RATE */
         arp_left = arp_step;
     }
-    arp_count++;
-    arp_release();
+    {                                    /* RHYTHM: this step a hit or a rest */
+        uint32_t r = arp_rhythm(), len = RHY[r][1], at = arp_count % len;
+        arp_count++;
+        arp_release();
+        if ((at * RHY[r][0]) % len >= RHY[r][0])
+            return;
+    }
+    arp_hits++;
     {
         uint32_t k, l_age = arp_pos < arp_n ? arp_age[arp_pos] : 0u, l_note = arp_pos < arp_n ? arp_notes[arp_pos] : 0u;
         arp_gather(order == AO_PLAYED);
@@ -1640,6 +2067,11 @@ static void arp_tick(uint32_t n)
         lead_machine = 1;
         lead_event(note, 100, 1, 0);
         lead_machine = 0;
+        {
+            voice_t *ld = find_lead(note);
+            if (ld)
+                ld->ed_tune = arp_tune[arp_pos];
+        }
         arp_held = (int32_t)note;
         /* GATE: the lead let go that far through the step; at the top, legato, at the next step */
         arp_gate_left = gate >= 125u ? 0u : (uint32_t)((float)arp_step * (0.05f + 0.95f * (float)gate / 127.0f));
@@ -1650,7 +2082,7 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
     uint32_t i;
     for (i = 0; i < NV; i++)
         pend_to[i] = 0;
-    arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = 0;
+    arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = arp_hits = 0;
     arp_pos = ~0u;                       /* before the first step: it lands on the first note (DOWN: the top) */
     cyc_pos = 0;
     for (i = 0; i < 8u; i++)
@@ -1660,10 +2092,22 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
     if (arp_held >= 0)
         arp_release();
 }
-static uint32_t orbit_beats(void)        /* EVERY as whole beats at the clock's tempo */
+static float orbit_period_s(void)        /* EVERY; ECHO's phrase needs a second at least */
 {
-    float bpm = dr_clock_bpm(), b = dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) * (bpm > 0.0f ? bpm : 120.0f) / 60.0f + 0.5f;
-    return b < 1.0f ? 1u : (uint32_t)b;
+    float s = dr_orbit_s(dr_scene.p[P_ORB_PERIOD]);
+    return dr_orbit_mode() == OM_ECHO && s < 1.0f ? 1.0f : s;
+}
+static uint32_t orbit_clocks(void)       /* EVERY in clocks at the clock's tempo: whole beats, below one a half or a
+                                          * quarter of one */
+{
+    float bpm = dr_clock_bpm(), b = orbit_period_s() * (bpm > 0.0f ? bpm : 120.0f) / 60.0f;
+    if (dr_orbit_mode() != OM_ECHO) {
+        if (b < 0.375f)
+            return 6u;
+        if (b < 0.75f)
+            return 12u;
+    }
+    return (b < 1.5f ? 1u : (uint32_t)(b + 0.5f)) * 24u;
 }
 void dr_clock(void)
 {
@@ -1673,14 +2117,14 @@ void dr_clock(void)
     clk_last = clk_now;
     clk_ext = 1;
     if (orbit_on && mode == OM_ARP) {
-        if (clk_count % 12u == 0u)
+        if (clk_count % arp_div_clk() == 0u)
             arp_due = 1;
     } else if (orbit_on) {
         if (orbit_clk_left)
             orbit_clk_left--;
         if (!orbit_clk_left) {
             orbit_apply();
-            orbit_clk_left = orbit_clk_per = orbit_beats() * 24u;
+            orbit_clk_left = orbit_clk_per = orbit_clocks();
             orbit_plan();
         }
     }
@@ -1763,7 +2207,7 @@ static void orbit_tick(uint32_t n)
     orbit_apply();
     {                                    /* the next countdown: the period, give or take a quarter (a half in SCATTER) */
         float j = mode == OM_SCATTER ? 0.5f : 0.25f;
-        float per = dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) * (1.0f + j * frand(&orbit_rng));
+        float per = orbit_period_s() * (1.0f + j * frand(&orbit_rng));
         orbit_left = orbit_per = (uint32_t)(per * FS);
     }
     orbit_plan();
@@ -2118,9 +2562,16 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     b->sway = p01(P_SWAY);
     b->sway_inc = b->sway > 0.0f ? (1.0f / 50.0f + b->sway * (1.0f / 4.0f)) * ((float)CTL / FS) : 0.0f;   /* a swing in 50 s to 3 s */
     b->n = n;
-    for (i = 0; i < NV_ALL; i++)         /* a voice in another model than the scene's restarts */
-        if (vc[i].on && vc[i].model != b->model && !vc[i].restart)
-            vc[i].restart = 1;
+    handover(b->model, n);
+    for (i = 0; i < NV_ALL; i++) {       /* a voice in another model than the scene's restarts, but a body fading away
+                                          * fades in its own, and a body being handed over is the hand-over's */
+        voice_t *v = &vc[i];
+        if (!v->on || v->model == b->model || v->restart)
+            continue;
+        if (i < NV ? v->fading || v->xf_out || xf_on : !v->held)
+            continue;
+        v->restart = 1;
+    }
     for (i = NV; i < NV_ALL; i++)        /* a held lead follows LIFT as it turns */
         if (vc[i].on && vc[i].held)
             vc[i].target = (float)vc[i].home + b->lift;
@@ -2158,6 +2609,18 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     fx.shimmer = p01(P_SHIMMER);
     fx.freeze = frozen;
     fx.bypass = fx_bypass & (FX_BYP_ENS | FX_BYP_DLY | FX_BYP_REV | FX_BYP_SHIM);
+    {                                    /* a delay or a hall switched off rings out (its send closed) and rests
+                                          * before it is skipped; a frozen hall is cut, as it would hold for ever */
+        uint32_t run = fx_running();
+        if ((fx.bypass & FX_BYP_DLY) && (run & 2u)) {
+            fx.bypass &= ~FX_BYP_DLY;
+            fx.dly_send = 0.0f;
+        }
+        if ((fx.bypass & FX_BYP_REV) && (run & 4u) && !frozen) {
+            fx.bypass = (fx.bypass & ~FX_BYP_REV) | FX_BYP_SHIM;   /* and no new octave up into the tail */
+            fx.rev_send = 0.0f;
+        }
+    }
     g_fxp = fx;
     job_n = n;
     /* the hall runs a block behind the bus (its wet is a pre-delay anyway): on the second core beside two bodies
@@ -2243,8 +2706,14 @@ int dr_body(uint32_t i, dr_body_t *b)
     b->latched = v->latched;
     b->home = v->home;
     b->pitch = v->pitch;
-    b->level = v->on ? v->env * v->vel : 0.0f;
+    b->level = v->on ? v->env * v->vel * v->ed_gain : 0.0f;
+    if (b->level > 1.0f)
+        b->level = 1.0f;
     b->spark = v->spark;
+    b->lvl = v->ed_lvl;
+    b->tone = v->ed_tone;
+    b->tune = v->ed_tune;
+    b->pinned = v->pinned;
     return v->on;
 }
 uint32_t dr_leads(void)
@@ -2267,6 +2736,8 @@ int dr_lead_body(uint32_t i, dr_body_t *b)
     b->pitch = v->pitch;
     b->level = v->on ? v->env * v->vel : 0.0f;
     b->spark = 0.0f;
+    b->lvl = b->tone = b->tune = 0;
+    b->pinned = 0;
     return v->on;
 }
 int32_t dr_newest_note(void)

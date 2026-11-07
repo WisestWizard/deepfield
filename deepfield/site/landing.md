@@ -2,7 +2,8 @@
 
 DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Each key you press starts a *body*: one voice that
 swells in, keeps sounding, slowly breathes and drifts, and fades out when you stop it. Up to eight play at once.
-Four knobs shape every body at the same time, ORBIT moves them to nearby notes on its own, and the reverb can
+Four knobs shape every body at the same time, a held key sets one body apart, ORBIT moves them to nearby notes or
+runs an arpeggio over them, ten models range from breathing harmonics to wavetables and FM, and the reverb can
 freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth.
 
 ## Play it in your browser
@@ -10,14 +11,15 @@ freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes
 No FM-1 needed: [open DEEP FIELD in your browser](emu/). Headphones help. Chrome, Edge, Firefox and Safari all
 work; on a phone, turn it sideways.
 
-1. Press Switch on. The scene FIRST LIGHT loads and its notes swell in.
+1. Press Switch on. The scene FIRST LIGHT loads in silence: nothing plays until you play.
 2. Click a few keys, one at a time, or type them: Q to I and A to K are the white keys, 1 to 0 and the minus key
    the black ones. Each note swells in and keeps sounding.
 3. Click a lit key again: that note fades out.
 4. Drag KNOB 1 to KNOB 4 up or down. They set the brightness, the wander, the reverb and the slow rise and fall of
    every note at once.
 5. Press PLAY (or the P key): the notes start moving to nearby notes on their own.
-6. Turn PRESETS to change the scene; the one you stop on blends in over a few seconds.
+6. Turn PRESETS to change the scene: its sound blends in over a few seconds under the notes you are playing.
+   Shift-click SEL to hold it while you turn, and the scene brings its own chord when you let SEL go.
 7. Hold SEL for a second to stop every note.
 
 The [cheat sheet](cheatsheet/) has every control on one page, and the [manual](manual/) has the rest.

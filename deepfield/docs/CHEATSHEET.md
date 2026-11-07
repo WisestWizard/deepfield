@@ -6,7 +6,8 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 ## Keys
 | Do | Result |
 | --- | --- |
-| LATCH on (SEL lit, the default) | A key strikes a body that stays. The same key again lets it go. |
+| LATCH on (SEL lit, the default) | A key strikes a body that stays. A tap on the same key lets it go (as you let go). |
+| Hold a latched body's key (⅓ s; it blinks) | BODY opens: KNOB 1–4 = its own LEVEL (−24..+6 dB, MUTE) · TONE (its MASS ±50 %) · TUNE (±50 cents) · ORBIT (MOVES / PINNED: never moved, out of the arp, a pedal). Several keys: all of them. Let go: back to the page; saved with the scene; out as NRPN |
 | LATCH off (SEL dark, the screen says KEYS PLAY) | The bed stays; a key plays a lead over it: the scene's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its body (an accent). |
 | Lean on a key | Brighter, more wobble, while you lean. |
 | Hold SEL for a second | Every body let go (and TRANSPOSE ends). |
@@ -23,7 +24,7 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | FX | The effects pages: ENSEMBLE, then SELECT for DELAY, DELAY 2 and REVERB | Keys F3 G3 A3 B3 = ensemble, delay, reverb, shimmer on / off on every scene (one at zero comes in at a usable amount), C4 = the noise layer, shown large (saved with the scene) |
 | ARP | ORBIT page (SELECT for ORBIT 2) | |
 | GLO | GLOBAL page (SELECT for MIDI, again for USB) | Lean on a key: its pressure crossfades toward the next scene (push after the key settles; D5 up read no lean: held, the blend climbs to full in 2 s); let go and the blend stays |
-| SEL | LATCH on / off (lit while on); from TRANSPOSE, LATCH on | 1 s: every body let go; with a key touched: TRANSPOSE |
+| SEL | LATCH on / off (lit while on); from TRANSPOSE, LATCH on | 1 s: every body let go; with a key touched: TRANSPOSE; with PRESET turned: the scene lands with its chord as SEL lets go |
 | PLAY | ORBIT on / off; its colour is the MODE: green WANDER (one body moves), orange CHORD, SCATTER and CYCLE (the chord moves: along the scale, scattered, or through a progression), red ARP (a runner of leads over the bed, on after the bed is let go), orange ECHO (your last notes replayed, fading) and PULSE (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | ORBIT page |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
@@ -38,9 +39,9 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | Encoder | Does |
 | --- | --- |
 | SELECT | The page before or after (HOME, BODY, NOISE, NOISE 2, ENVELOPE, LEAD, MOTION, MOTION 2, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, ORBIT, ORBIT 2, GLOBAL, MIDI, USB) |
-| PRESET | Scroll the scenes (the presets); the one you stop on morphs in over MORPH seconds |
-| ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD |
-| KNOB 1–4 | The page's four values (below), shown in a row under the knobs |
+| PRESET | Scroll the scenes (a bar fills under the name); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each body crossing into its model; LATCH, ORBIT (and its page while it runs), FREEZE stay. SEL held: + CHORD |
+| ALGO | Model (the algorithm): SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, SCAN, DX (a hard cut) |
+| KNOB 1–4 | The page's four values (below), shown in a row under the knobs. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); RATE 1 BPM a click; few-value knobs one value a click |
 | MASTER | Volume |
 
 ## Pages (KNOB 1 · 2 · 3 · 4)
@@ -50,7 +51,7 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | BODY | MODEL | SHAPE | SUB | AIR |
 | NOISE | LEVEL (0 = off) | COLOUR (brown → white) | WIND (how fast the band wanders; how often a gust) | BAND (wide bed → narrow on the newest note → past half, breath on every body) |
 | NOISE 2 | TEXTURE (hiss → rain → crackle) | GUST (the weather's depth) | DUCK (back under a chord) | WIDTH |
-| ENVELOPE | SWELL | FADE | PRESS | GLIDE |
+| ENVELOPE | SWELL (ms below 1 s) | FADE | PRESS | GLIDE |
 | LEAD | ATTACK | RELEASE | LIFT (semitones up) | LEVEL |
 | MOTION | TIDE RATE | WOBBLE | WALK | WIDTH |
 | MOTION 2 | SPREAD (the bodies unlike each other) | CROSS (pairs bend each other) | TIMBRE (each body's MASS walks) | SWAY (each body drifts across the field) |
@@ -58,8 +59,8 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | FX DELAY | TYPE: PING (left, right), TAPE (centre, worn), HEADS (three a time), REVERSE (swells), RISE (octaves up), FALL (octaves down), GRAINS (pieces scattered) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from the runner's RATE or the MIDI clock, halved when too long; GRAINS: how often a piece) | DLY FDBK | DLY MIX |
 | FX DELAY 2 | COLOUR (repeats dark and full to bright and thin) | DIFFUSE (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | CHOP (only a slice of each DLY TIME goes in: a held chord pulses) |
 | FX REVERB | REV SIZE (decay 0.6–8 s) | REV DAMP | SHIMMER | SPACE (the send, as on HOME) |
-| ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE: EVERY; ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE; ECHO: DECAY | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS; ECHO: JUMPS; PULSE: ROLL |
-| ORBIT 2 | HOME PULL | OCTAVES (ARP) | – | – |
+| ORBIT | MODE | WANDER, CHORD, SCATTER, CYCLE, ECHO, PULSE: EVERY (0.1–60 s; ECHO from 1 s; no destination shown under 0.5 s); ARP: RATE (BPM, EXT on MIDI clock) | CHANCE; SCATTER: BODIES; ARP: GATE; ECHO: DECAY | STEPS UP TO; CHORD: DISTANCE; ARP: ORDER; CYCLE: CHORDS; ECHO: JUMPS; PULSE: ROLL |
+| ORBIT 2 | HOME PULL | OCTAVES (ARP) | RHYTHM (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of RATE's beat) |
 | GLOBAL | SCALE | ROOT | VIEW | MORPH |
 | MIDI | IN CH | OUT CH | LOCAL | VELOCITY |
 | USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while the runner runs from RATE) | – |
@@ -75,10 +76,13 @@ orange SCATTER winking at each move, red ARP winking at each step. SAVE blinks i
 | BELL | 4 breathing partials | upper partials brighter | harmonic → bell ratios (AIR = strike hiss) |
 | SHEPARD | 6 octaves under a moving window: the endless rise | where the window leans | falling ← still → rising, and how fast |
 | FOLD | a sine through a wavefolder | the filter after the fold | how hard it folds (AIR = noise into the fold) |
+| SCAN | Pocket Poly's wavetables, one sweep of 48 frames | a filter that follows the note (level kept) | ANALOG 1 → VOX → GLASS 16 (AIR = a second copy elsewhere in the sweep) |
+| DX | 4-op FM, its envelopes at SWELL's pace | FM depth | the voice: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER (AIR = feedback) |
 
 ## Views (VIEW on the GLOBAL page)
 BEAMS (the default): every body a beam rising from the key that struck it, its level the height, a white cap when
-latched, dim while it fades; ORBIT slides a beam to the neighbouring key and marks where it was struck. A body
+latched, dim while it fades, a white bar at its foot when pinned, framed while open; ORBIT slides a beam to the
+neighbouring key and marks where it was struck. A body
 below or above the keys stands at the edge. The noise layer is a soft wide beam where its band sits, brown to white.
 MOUTH: an RX bottle tumbles out a pill per body; the pills hang over their keys; a let-go pill flies into the mouth.
 ORBITS: planets = bodies (radius = pitch, size = level, colour = pitch class), sun = output.
@@ -93,14 +97,16 @@ View: the bodies, in the view chosen; every knob or button large over it for a m
 over their keys.
 Keys strip: the 27 keys as they are lit (sounding, fading, in the scale, a yellow frame when latched).
 Footer: the page band (the button that opened the page, its name, the SELECT arrows; model and scale at the
-right), then the four knobs in a row: name, big value, bar.
+right), then the four knobs in a row: name, big value, bar. A body open: BODY and its note, its four values.
 
 ## Factory scenes
 F1 FIRST LIGHT · F2 VOID TIDE · F3 GLASS ORBIT (made for ORBIT) · F4 BOWED SKY · F5 PULSAR · F6 NEBULA ·
 F7 DEEP VOID · F8 STARLIGHT · F9 CATHEDRAL · F10 LOW CHOIR · F11 GAMELAN (made for ORBIT) · F12 ICE BELLS ·
-F13 ASCENT · F14 DESCENT · F15 FOLDED SUN · F16 TIDE POOL. U1..U16 are yours.
+F13 ASCENT · F14 DESCENT · F15 FOLDED SUN · F16 TIDE POOL. U1..U16 are yours. Every factory chord stands on C and
+plays in ROOT. Switching on is silent: the last scene's sound, no chord.
 
 ## MIDI
 In: notes hold while on (CC 64 keeps them), any channel by default. Out: key down = note on, let go = note off (later if latched), ORBIT moves too.
 CC 16–19 MASS DRIFT SPACE TIDE · 20 NOISE LEVEL · 74 MASS · 71 SHAPE · 72 FADE · 73 SWELL · 91 SPACE · 93 ENS MIX · 94 DLY MIX · 102 DLY TYPE · 103 WOW · 104 CHOP · 1 wobble · 7 volume · 123 all off.
-Program change 0–15 = F1–F16, 16–31 = U1–U16.
+NRPN (99 · 98 = the body's note · 6), in and out: 1 LEVEL (0 MUTE, 1–31 = −24..+6 dB) · 2 TONE (64 ± 50) · 3 TUNE (64 ± 50 cents) · 4 ORBIT (64 up PINNED).
+Program change 0–15 = F1–F16, 16–31 = U1–U16: the sound, as PRESET.

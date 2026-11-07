@@ -162,3 +162,37 @@ FALL	fall
 GRAINS	grains
 WOW	wow
 CHOP	chop
+SCAN	scan
+DX	D X
+ANALOG	analog
+VOX	vox
+GLASS PAD	glass pad
+BRASS	brass
+ORGAN	organ
+BELL PAD	bell pad
+E.PIANO	electric piano
+WOOD	wood
+STRINGS	strings
+CLUSTER	cluster
+RHYTHM	rhythm
+DIV	step length
+1/16T	sixteenth triplet
+1/8T	eighth triplet
+1 BAR	one bar
+8/8	eight of eight
+5/8	five of eight
+3/8	three of eight
+7/12	seven of twelve
+5/12	five of twelve
+4/9	four of nine
+7/16	seven of sixteen
+5/16	five of sixteen
+SCENE + CHORD	scene and its chord
+BODY	body
+TONE	tone
+TUNE	tune
+PINNED	pinned
+MOVES	moves
+MUTE	muted
+CT	cents
+LET GO: BACK	let go to go back

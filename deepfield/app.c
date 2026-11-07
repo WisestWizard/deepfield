@@ -36,7 +36,10 @@ static void t_crumb_init(void) { crumb_log(); }
 
 /* the CC map (render context): 1 wheel, 7 volume, 64 sustain, 16-19 the four forces, 20 NOISE LEVEL, 74 MASS, 71 SHAPE, 72 FADE,
  * 73 SWELL, 91 SPACE, 93 ENS MIX, 94 DLY MIX, 102 DLY TYPE (the 128 values in seven equal parts), 103 WOW, 104 CHOP,
- * 120 all sound off, 121 reset controllers, 123 all notes off */
+ * 120 all sound off, 121 reset controllers, 123 all notes off; NRPN (99 MSB, 98 LSB, 6 data): a body's own values,
+ * MSB 1 LEVEL (0 muted, 1..31 = -24..+6 dB), 2 TONE and 3 TUNE (64 + the value), 4 ORBIT (64 up: pinned), LSB the
+ * note the body was struck at */
+static uint8_t nrpn_msb, nrpn_lsb;
 static void midi_param(uint32_t id, uint32_t v)
 {
     dr_param(id, v & 127u);
@@ -64,6 +67,16 @@ static void midi_cc(uint32_t cc, uint32_t v)
     case 102: midi_param(P_DLY_TYPE, (v & 127u) * DT_COUNT / 128u); break;
     case 103: midi_param(P_DLY_WOW, v); break;
     case 104: midi_param(P_DLY_CHOP, v); break;
+    case 99: nrpn_msb = (uint8_t)(v & 127u); break;
+    case 98: nrpn_lsb = (uint8_t)(v & 127u); break;
+    case 6:
+        if (nrpn_msb >= 1u && nrpn_msb <= BE_COUNT) {
+            uint32_t w = nrpn_msb - 1u;
+            int32_t x = w == BE_LEVEL ? (v ? (int32_t)v - 25 : DR_LVL_MUTE) : w == BE_PIN ? v >= 64u : (int32_t)v - 64;
+            dr_body_edit_now(nrpn_lsb, w, x);
+            scene_dirty = 1;
+        }
+        break;
     case 120: dr_panic(); break;
     case 121:
         dr_wheel(0);
@@ -169,7 +182,7 @@ void app_init(void)
     dr_note_out(orbit_note_out);
     dr_realtime_out(realtime_out);
     dr_clock_out(set.clock_out);
-    dr_load(slot_scene(set.scene), 0.0f);    /* the scene's bodies swell in from power-on */
+    dr_load(slot_scene(set.scene), 0.0f, 0);   /* the scene's sound, in silence: nothing plays until a key does */
     dr_fx_bypass(slot_scene(set.scene)->fx_off);   /* and its effect switches */
     scene_dirty = 0;
 }
@@ -252,6 +265,32 @@ int app_expect(const char *what, int *got)
         *got = (int)dr_fx_active();
     else if (!strcmp(what, "shift"))         /* TRANSPOSE: the keys move the latched bodies */
         *got = df_shift();
+    else if (!strcmp(what, "moves")) {      /* ORBIT's moves so far */
+        uint32_t f, t;
+        *got = (int)dr_orbit_moved(&f, &t);
+    } else if (!strcmp(what, "fxrun"))       /* the effect stages still sounding: 1 ensemble, 2 delay, 4 hall */
+        *got = (int)fx_running();
+    else if (!strcmp(what, "bodyopen")) {    /* bodies open under held keys (their own values on the knobs) */
+        uint32_t k;
+        *got = 0;
+        for (k = 0; k < NKEYS; k++)
+            *got += (int)(ui.bk_open >> k & 1u);
+    } else if (!strncmp(what, "blvl", 4))    /* "blvl60": the body struck at 60, its LEVEL (dB; -25 muted) */
+        *got = (int)dr_body_value((uint32_t)atoi(what + 4), BE_LEVEL);
+    else if (!strncmp(what, "btone", 5))
+        *got = (int)dr_body_value((uint32_t)atoi(what + 5), BE_TONE);
+    else if (!strncmp(what, "btune", 5))
+        *got = (int)dr_body_value((uint32_t)atoi(what + 5), BE_TUNE);
+    else if (!strncmp(what, "bpin", 4))
+        *got = (int)dr_body_value((uint32_t)atoi(what + 4), BE_PIN);
+    else if (!strncmp(what, "pitch", 5)) {   /* "pitch60": where the body struck at 60 stands now (its target, rounded) */
+        uint32_t i;
+        dr_body_t b;
+        *got = -1;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && !b.fading && b.home == (uint32_t)atoi(what + 5))
+                *got = (int)(b.pitch + 0.5f);
+    }
     else if (!strncmp(what, "fxon", 4))      /* one effect heard: fxon0 ensemble .. fxon3 shimmer */
         *got = (int)(dr_fx_active() >> atoi(what + 4) & 1u);
     else if (!strncmp(what, "sounding", 8))

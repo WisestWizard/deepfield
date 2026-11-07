@@ -31,8 +31,11 @@ typedef struct {
 static settings_t set;
 static uint8_t set_dirty, scene_dirty;   /* changed since the last save: SAVE is lit */
 
-#define BANK_MAGIC 0x344E4353u           /* "SCN4": the LEAD page's four values */
-#define BANK_MAGIC_V3 0x334E4353u        /* "SCN3" (the noise layer) and "SCN2": read and brought up to date */
+#define BANK_MAGIC 0x354E4353u           /* "SCN5": each body's own values, the pins and the chord's ROOT; EVERY from
+                                          * 0.1 s */
+#define BANK_MAGIC_V4 0x344E4353u        /* "SCN4" (the LEAD page), "SCN3" (the noise layer) and "SCN2": read and
+                                          * brought up to date */
+#define BANK_MAGIC_V3 0x334E4353u
 #define BANK_MAGIC_V2 0x324E4353u
 #define P_COUNT_V3 32u
 #define P_COUNT_V2 28u
@@ -45,7 +48,7 @@ typedef struct {
     scene_t u[NUSER];
 } bank_t;
 /* a scene as an older bank stored it: the same layout with fewer parameters (name, p[old], notes, vels, fx_off,
- * three spare bytes) */
+ * three spare bytes) and no per-body values after them */
 #define OLD_SCENE_SIZE(np) (SCENE_NAME + (np) + 2u * DR_NV + 4u)
 static bank_t bank PLAT_POOL;
 static scene_t factory[NFACTORY] PLAT_POOL;
@@ -82,7 +85,8 @@ static void scale_apply(void) { dr_scale(scale_mask(set.scale), set.root); }
 
 enum { VIEW_BEAMS, VIEW_MOUTH, VIEW_ORBITS, VIEW_NEBULA, VIEW_SCOPE, VIEW_COUNT };
 static const char *const VIEW_NAME[VIEW_COUNT] = {"BEAMS", "MOUTH", "ORBITS", "NEBULA", "SCOPE"};
-static const char *const MODEL_NAME[M_COUNT] = {"SOLAR", "VOID", "GLASS", "STRING", "CHOIR", "BELL", "SHEPARD", "FOLD"};
+static const char *const MODEL_NAME[M_COUNT] = {"SOLAR", "VOID", "GLASS", "STRING", "CHOIR", "BELL", "SHEPARD", "FOLD",
+                                                "SCAN", "DX"};
 
 static void scene_name_set(scene_t *s, const char *name)
 {
@@ -102,7 +106,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_TIDE_RATE] = 40, [P_WOBBLE] = 20, [P_WALK] = 30, [P_WIDTH] = 70,
         [P_REV_SIZE] = 70, [P_REV_DAMP] = 40, [P_SHIMMER] = 0, [P_DLY_MIX] = 0,
         [P_DLY_TIME] = 60, [P_DLY_FDBK] = 45, [P_ENS] = 0, [P_ENS_MIX] = 40,
-        [P_ORB_PERIOD] = 50, [P_ORB_CHANCE] = 70, [P_ORB_RANGE] = 40, [P_GRAVITY] = 30,
+        [P_ORB_PERIOD] = 78, [P_ORB_CHANCE] = 70, [P_ORB_RANGE] = 40, [P_GRAVITY] = 30,   /* EVERY 78: 5 s */
         [P_NZ_LEVEL] = 0, [P_NZ_COLOUR] = 50, [P_NZ_WIND] = 40, [P_NZ_BAND] = 30,
         [P_LD_ATTACK] = 30, [P_LD_RELEASE] = 55, [P_LD_LIFT] = 0, [P_LD_LEVEL] = 75,
         [P_ORB_MODE] = OM_WANDER, [P_ORB_DIST] = 40, [P_ORB_BODIES] = 60,
@@ -113,14 +117,17 @@ static void scene_init(scene_t *s, const char *name)
         [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50,
         [P_DLY_DIFF] = 25, [P_DLY_COLOUR] = 50,
         [P_DLY_TYPE] = DT_PING, [P_DLY_WOW] = 40, [P_DLY_CHOP] = 0,   /* WOW 40: the wander the delay always had */
+        [P_ARP_RHYTHM] = 0, [P_ARP_DIV] = 2,                          /* every step a note, an eighth: as before */
     };
     uint32_t i;
     for (i = 0; i < P_COUNT; i++)
         s->p[i] = INIT[i];
-    for (i = 0; i < DR_NV; i++)
+    for (i = 0; i < DR_NV; i++) {
         s->note[i] = s->vel[i] = 0;
+        s->lvl[i] = s->tone[i] = s->tune[i] = 0;
+    }
     s->fx_off = 0;
-    s->rsv[0] = s->rsv[1] = s->rsv[2] = 0;
+    s->pins = s->root = s->rsv = 0;
     scene_name_set(s, name);
 }
 
@@ -136,6 +143,7 @@ static void scene_make(scene_t *s, const char *name, const change_t *c, const ui
         s->note[i] = notes[i];
         s->vel[i] = (uint8_t)vel;
     }
+    s->root = 1;                         /* every factory chord stands on C, and follows ROOT when it is recalled */
 }
 
 static void factory_build(void)
@@ -147,46 +155,46 @@ static void factory_build(void)
                                          {P_SHAPE, 60}, {P_SUB, 70}, {P_SWELL, 25}, {P_FADE, 85}, {P_TIDE_RATE, 30},
                                          {P_WALK, 45}, {P_REV_SIZE, 85}, {P_REV_DAMP, 55}, {P_ENS, ENS_ENSEMBLE},
                                          {P_ENS_MIX, 55}, END};
-    static const uint8_t VOID_TIDE_N[] = {33, 40, 45, 59, 0};
+    static const uint8_t VOID_TIDE_N[] = {36, 43, 48, 62, 0};
     static const change_t GLASS_ORBIT[] = {{P_MODEL, M_GLASS}, {P_MASS, 42}, {P_DRIFT, 45}, {P_SPACE, 62}, {P_TIDE, 40},
                                            {P_SHAPE, 50}, {P_SUB, 20}, {P_SWELL, 30}, {P_FADE, 80}, {P_GLIDE, 75},
                                            {P_WOBBLE, 25}, {P_SHIMMER, 30}, {P_DLY_MIX, 40}, {P_DLY_TIME, 114},
-                                           {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70}, {P_ORB_PERIOD, 40}, {P_ORB_CHANCE, 90}, END};
-    static const uint8_t GLASS_ORBIT_N[] = {50, 57, 62, 69, 0};
+                                           {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70}, {P_ORB_PERIOD, 71}, {P_ORB_CHANCE, 90}, END};
+    static const uint8_t GLASS_ORBIT_N[] = {48, 55, 60, 67, 0};
     static const change_t BOWED_SKY[] = {{P_MODEL, M_STRING}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
                                          {P_AIR, 40}, {P_SUB, 25}, {P_SWELL, 30}, {P_FADE, 85}, {P_WOBBLE, 30},
                                          {P_WIDTH, 90}, {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35}, END};
-    static const uint8_t BOWED_SKY_N[] = {50, 57, 62, 66, 0};
+    static const uint8_t BOWED_SKY_N[] = {48, 55, 60, 64, 0};
     static const change_t PULSAR[] = {{P_MODEL, M_GLASS}, {P_MASS, 68}, {P_DRIFT, 60}, {P_SPACE, 55}, {P_TIDE, 85},
                                       {P_SHAPE, 30}, {P_SUB, 40}, {P_SWELL, 20}, {P_FADE, 70}, {P_TIDE_RATE, 95},
                                       {P_WOBBLE, 35}, {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 105},
                                       {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 65}, {P_CROSS, 35}, END};
-    static const uint8_t PULSAR_N[] = {45, 52, 64, 0};
+    static const uint8_t PULSAR_N[] = {48, 55, 67, 0};
     static const change_t NEBULA[] = {{P_SHAPE, 22}, {P_MASS, 55}, {P_DRIFT, 70}, {P_SPACE, 88}, {P_TIDE, 45},
                                       {P_SUB, 25}, {P_SWELL, 95}, {P_FADE, 100}, {P_TIDE_RATE, 25}, {P_WALK, 60},
                                       {P_WOBBLE, 15}, {P_WIDTH, 100}, {P_REV_SIZE, 95}, {P_REV_DAMP, 30},
                                       {P_SHIMMER, 60}, {P_DLY_MIX, 25}, {P_DLY_TIME, 92}, {P_DLY_FDBK, 50},
                                       {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 35},
                                       {P_NZ_WIND, 45}, {P_NZ_BAND, 15}, {P_NZ_GUST, 50}, END};
-    static const uint8_t NEBULA_N[] = {41, 48, 55, 62, 0};
+    static const uint8_t NEBULA_N[] = {48, 55, 62, 69, 0};   /* on C up (not down): its beams stay on the strip */
     static const change_t DEEP_VOID[] = {{P_MODEL, M_VOID}, {P_MASS, 34}, {P_DRIFT, 30}, {P_SPACE, 50}, {P_TIDE, 20},
                                          {P_SHAPE, 35}, {P_SUB, 100}, {P_SWELL, 35}, {P_FADE, 80}, {P_WALK, 20},
                                          {P_WIDTH, 50}, {P_REV_SIZE, 75}, {P_REV_DAMP, 70}, {P_DLY_MIX, 55},
                                          {P_DLY_TIME, 99}, {P_DLY_FDBK, 75}, {P_DLY_DIFF, 85}, {P_DLY_COLOUR, 30}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 20},
                                          {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 85}, {P_NZ_GUST, 25}, END};
-    static const uint8_t DEEP_VOID_N[] = {40, 47, 0};
+    static const uint8_t DEEP_VOID_N[] = {36, 43, 0};
     static const change_t STARLIGHT[] = {{P_MODEL, M_STRING}, {P_MASS, 85}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
                                          {P_AIR, 70}, {P_SUB, 10}, {P_SWELL, 25}, {P_FADE, 78}, {P_TIDE_RATE, 50},
                                          {P_WIDTH, 100}, {P_ENS, ENS_ENSEMBLE}, {P_ENS_MIX, 40}, {P_SHIMMER, 20},
                                          {P_REV_SIZE, 72}, {P_REV_DAMP, 25}, END};
     static const uint8_t STARLIGHT_N[] = {60, 64, 67, 71, 0};
     scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, 100);
-    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 100);
+    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 127);   /* on C: as loud as on A */
     scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, 96);
-    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, 100);
+    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, 84);
     scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, 100);
-    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, 100);
-    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 110);
+    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, 77);   /* up on C3: as loud as before */
+    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 127);
     scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, 92);
     {                                    /* F9 .. F16: the four later models, two scenes each */
         static const change_t CATHEDRAL[] = {{P_MODEL, M_CHOIR}, {P_MASS, 32}, {P_DRIFT, 35}, {P_SPACE, 60}, {P_TIDE, 30},
@@ -204,14 +212,14 @@ static void factory_build(void)
                                            {P_SHAPE, 85}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 15}, {P_FADE, 75},
                                            {P_TIDE_RATE, 55}, {P_WOBBLE, 10}, {P_WIDTH, 90}, {P_REV_SIZE, 70},
                                            {P_SHIMMER, 30}, {P_DLY_MIX, 35}, {P_DLY_TIME, 102}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 0}, {P_DLY_COLOUR, 75},
-                                           {P_ORB_PERIOD, 35}, {P_ORB_CHANCE, 85}, {P_ORB_RANGE, 60}, END};
-        static const uint8_t GAMELAN_N[] = {55, 62, 67, 74, 0};
+                                           {P_ORB_PERIOD, 68}, {P_ORB_CHANCE, 85}, {P_ORB_RANGE, 60}, END};
+        static const uint8_t GAMELAN_N[] = {60, 67, 72, 79, 0};
         static const change_t ICE_BELLS[] = {{P_MODEL, M_BELL}, {P_MASS, 75}, {P_DRIFT, 30}, {P_SPACE, 70}, {P_TIDE, 40},
                                              {P_SHAPE, 50}, {P_SUB, 5}, {P_AIR, 35}, {P_SWELL, 20}, {P_FADE, 85},
                                              {P_TIDE_RATE, 35}, {P_WOBBLE, 8}, {P_WIDTH, 100}, {P_REV_SIZE, 90},
                                              {P_REV_DAMP, 15}, {P_SHIMMER, 45}, {P_NZ_LEVEL, 18}, {P_NZ_COLOUR, 95},
                                              {P_NZ_WIND, 50}, {P_NZ_BAND, 25}, {P_NZ_TEXTURE, 55}, {P_NZ_GUST, 35}, END};
-        static const uint8_t ICE_BELLS_N[] = {67, 74, 79, 86, 0};
+        static const uint8_t ICE_BELLS_N[] = {72, 79, 84, 91, 0};
         static const change_t ASCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 50}, {P_DRIFT, 30}, {P_SPACE, 65}, {P_TIDE, 20},
                                           {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 15}, {P_SWELL, 40}, {P_FADE, 85},
                                           {P_WOBBLE, 10}, {P_WIDTH, 80}, {P_REV_SIZE, 85}, {P_REV_DAMP, 40},
@@ -222,7 +230,7 @@ static void factory_build(void)
                                            {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
                                            {P_REV_DAMP, 55}, {P_DLY_MIX, 25}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 50}, {P_DLY_DIFF, 70}, {P_DLY_COLOUR, 40},
                                            {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25}, {P_NZ_BAND, 5}, {P_NZ_GUST, 65}, END};
-        static const uint8_t DESCENT_N[] = {41, 48, 53, 0};
+        static const uint8_t DESCENT_N[] = {48, 55, 60, 0};   /* on C up, as NEBULA */
         static const change_t FOLDED_SUN[] = {{P_MODEL, M_FOLD}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 55}, {P_TIDE, 45},
                                               {P_SHAPE, 55}, {P_SUB, 35}, {P_AIR, 10}, {P_SWELL, 25}, {P_FADE, 80},
                                               {P_TIDE_RATE, 40}, {P_WOBBLE, 20}, {P_WIDTH, 80}, {P_REV_SIZE, 75},
@@ -233,10 +241,10 @@ static void factory_build(void)
                                              {P_TIDE_RATE, 45}, {P_WOBBLE, 25}, {P_WALK, 40}, {P_WIDTH, 90},
                                              {P_REV_SIZE, 80}, {P_REV_DAMP, 50}, {P_DLY_MIX, 45}, {P_DLY_TIME, 89},
                                              {P_DLY_FDBK, 60}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 55}, END};
-        static const uint8_t TIDE_POOL_N[] = {43, 50, 57, 62, 0};
+        static const uint8_t TIDE_POOL_N[] = {48, 55, 62, 67, 0};
         scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, 84);
         scene_make(&factory[9], "LOW CHOIR", LOW_CHOIR, LOW_CHOIR_N, 115);
-        scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, 96);
+        scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, 76);
         scene_make(&factory[11], "ICE BELLS", ICE_BELLS, ICE_BELLS_N, 92);
         scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, 100);
         scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, 100);
@@ -326,7 +334,7 @@ static void project_load(void)
     }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
-        uint32_t oldp = (bank.magic == BANK_MAGIC || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2)
+        uint32_t oldp = (bank.magic == BANK_MAGIC_V4 || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2)
                         && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0) ? bank.ssize - OLD_SCENE_SIZE(0) : 0u;   /* an older
                          * record of any of our magics: its size says how many parameters it held */
         if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
@@ -354,6 +362,8 @@ static void project_load(void)
                     d->vel[j] = o[SCENE_NAME + oldp + DR_NV + j];
                 }
                 d->fx_off = o[SCENE_NAME + oldp + 2u * DR_NV];
+                d->p[P_ORB_PERIOD] = (uint8_t)((d->p[P_ORB_PERIOD] * 6393u + 457100u + 5000u) / 10000u);   /* EVERY
+                                         * from 0.1 s: the same seconds on the new curve */
             }
             bank.magic = BANK_MAGIC;
             bank.ssize = (uint8_t)sizeof(scene_t);
@@ -379,11 +389,20 @@ static void project_load(void)
             bank.u[i].p[P_ORB_PROG] = 0;
         if (bank.u[i].p[P_DLY_TYPE] >= DT_COUNT)
             bank.u[i].p[P_DLY_TYPE] = DT_PING;
+        if (bank.u[i].p[P_ARP_RHYTHM] >= DR_RHYTHMS)
+            bank.u[i].p[P_ARP_RHYTHM] = 0;
+        if (bank.u[i].p[P_ARP_DIV] >= DR_DIVS)
+            bank.u[i].p[P_ARP_DIV] = 2;
         for (k = 0; k < DR_NV; k++) {
             bank.u[i].note[k] &= 127u;
             bank.u[i].vel[k] &= 127u;
+            bank.u[i].lvl[k] = (int8_t)clamp(bank.u[i].lvl[k], DR_LVL_MUTE, 6);
+            bank.u[i].tone[k] = (int8_t)clamp(bank.u[i].tone[k], -50, 50);
+            bank.u[i].tune[k] = (int8_t)clamp(bank.u[i].tune[k], -50, 50);
         }
         bank.u[i].fx_off &= 15u;
+        if (bank.u[i].root > 12u)
+            bank.u[i].root = 0;
     }
     set_dirty = scene_dirty = 0;
 }
@@ -398,7 +417,7 @@ static int project_save(void)            /* the settings and the bank: 0 = ok */
     return 0;
 }
 
-/* the live scene into a user slot, with the bodies latched now */
+/* the live scene into a user slot, with the bodies latched now, their own values, and the ROOT they stand in */
 static void scene_capture(scene_t *s)
 {
     uint32_t i, n = 0;
@@ -406,11 +425,19 @@ static void scene_capture(scene_t *s)
     *s = dr_scene;
     for (i = 0; i < DR_NV; i++) {
         s->note[i] = s->vel[i] = 0;
+        s->lvl[i] = s->tone[i] = s->tune[i] = 0;
     }
+    s->pins = 0;
     for (i = 0; i < DR_NV; i++)
         if (dr_body(i, &b) && !b.fading) {
+            float lv = b.lvl == DR_LVL_MUTE || b.level <= 0.0f ? 0.0f : b.level / fm_exp2f((float)b.lvl * (1.0f / 6.0206f));
             s->note[n] = b.home;
-            s->vel[n] = (uint8_t)(b.level > 0.0f ? clamp((int32_t)(b.level * 127.0f), 40, 127) : 100);
+            s->vel[n] = (uint8_t)(lv > 0.0f ? clamp((int32_t)(lv * 127.0f), 40, 127) : 100);
+            s->lvl[n] = b.lvl;
+            s->tone[n] = b.tone;
+            s->tune[n] = b.tune;
+            s->pins |= (uint8_t)(b.pinned << n);
             n++;
         }
+    s->root = (uint8_t)(set.root + 1u);
 }
