@@ -629,8 +629,38 @@ music that starts as the normal songs and gets more IDM / house / acid as the le
   only inline on the host; the tearing of a 21 ms full-screen write on invert/strobe/cycling needs a finger test on
   the unit; the transcriptions are from memory (Hungarian Dance, the later bars of Alla Turca and the Can-Can are
   "that tune at tempo"); the ACID bass slide was fixed twice on integration (it now glides and gates) and only re-rendered by number.
+- **Pre-flash bug pass, 2026-11-04 late (uncommitted):** three reviewers (engine, UI, simulator play) plus my own
+  read; 20 bugs fixed and each re-checked in the simulator or a harness: early eats at stages 1–2 cut to the
+  guide's level (a BN_SOFT note no longer retriggers a sounding eat), STAB ignored BN_NOTEOFF_SELF (boss and BURP
+  pad/hoover notes stuck, MIDI too), a REC tap toggled Bluetooth on even ms, buttons in the demo acted on the title,
+  a whole-screen flash on every PERFECT from stage 1 (now trip ≥ 700, ≤ 2/s, two frames), FLASH OFF missed the kick
+  pulse, the device seed was fixed, MIDI play did not count as activity, an AUTO note sounded after a miss, the
+  count-in's HOME quit, pause during FREEZE kept its stutter, FREEZE's stutter half a bar under 109 BPM, lead osc-2
+  and ensemble-mode clicks, a flash write on HOME from GAME OVER, two stash keys in one block, K3 replacing the
+  title bell, density-4 chain floods, FB (continue) instead of FA on resume, reader state announcements. Host
+  CPU against DEEP FIELD by the same simulator figure (0.5 % at stage 8 vs 0.3 % for DEEP FIELD at 33–40 % on the
+  unit) puts stage 8 near 55–80 % of core 1: read it first; the fallback is the drums on core 2 beside the hall.
+- **Design pass built, 2026-11-04 late (uncommitted, Kyle picked the top six):** (1) a wrong key: a lane press
+  that eats nothing while a mushroom is due in another lane, or beside one a key just ate, plays a sour note, ends
+  the combo, costs a third of a miss, shows OOPS (judged after CHORD's and WIDE's extra lanes; never under FREEZE);
+  at stage 1 honest play makes 0, a neighbour with every note keeps every eat at 29 % of the score, slapping all
+  seven keys comes down in two seconds. (2) `BP_TRIP`: below trip 400 a low-pass on the band bus closes toward
+  700 Hz and the hats then the stabs drop out at bar lines; above 700 the delay, hall and shimmer sends rise; lead,
+  bass and kick untouched (stage 2 recorded: the band's high end falls from 0.35 to under 0.05 of its level between
+  trip 280 and 160). (3) Difficulty: an on-ramp (the gap 1.5× over TUNE's first two bars, 1.25× the next two), the
+  Canon's gap 250, Bumblebee and Can-Can at density 2, Bumblebee's death caps 8, a bar's rest between chains
+  (Bumblebee 31 chains → 12); presses a second by stage 2.25 2.04 2.06 2.36 2.37 3.16 4.02 3.76, the finale with
+  the busiest two seconds (6/s) and the most death caps; the first five tunes play every note they have, so only
+  the last three climb. (4) Readability: messages in play on a line under the HUD, AUTO notes as grey outlines, a
+  dithered dark track behind each lane from stage 5, lane letters lighter with a shadow. (5) Tunes: Mountain King's
+  second bar (♯4 2 ♯4 | 4 ♭2 4) and its answer, Korobeiniki A1 A2 A1 A2, Alla Turca's B A G♯ A pair an octave up,
+  the Can-Can's own strain opening it, the Canon's first eight bars from the first violin's three entries (the last
+  two are the ones to judge by ear). (6) The stash slots stay on their keys. Verified: basic.txt, the clam and WIDE
+  harnesses, the stash fill and replace, levels.py (every stage −0.8 dBFS peak, RMS −17.9 … −11.9), screenshots
+  regenerated; device package 289,404 B, every check ok.
 - **Next (nothing decided yet):** flash on Kyle's word and read the device CPU per stage (`fm1_remote.py log`), listen to
-  stage 1's band and the acid line, finger-test strobe and invert for tearing, then fix the transcriptions he flags and
+  stage 1's band and the acid line, the tune fixes (the Canon's and Can-Can's openings above all), the band thinning as
+  the trip falls, finger-test strobe and invert for tearing, then fix the transcriptions he flags and
   the levels by ear; the design reviews' untaken ideas (a second stutter ring for the wet bus, an ensemble switch
   ramp) are in the review notes, not the code.
 - **Resume:** `./build.sh gnomnom --host && gnomnom/build/host/gnomnom_host gnomnom/tests/basic.txt
