@@ -2,12 +2,14 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash, standard names for every DEEP FIELD setting (flashed 2026-11-08; not committed)
+## Start here: the last flash, standard names for every DEEP FIELD setting (flashed 2026-11-08; committed 0b55c1b, site 0.9)
 
 Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`, the
 11:49 package, newer than every source); booted clean: the unit says DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%.
 DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%; the log `cpu 5% b0 ADDITIVE s0 x0`, no crash recorded. Site
-0.9 built locally (`deepfield/tools/publish_site.sh 0.9 --local`), not published.
+0.9 published on Kyle's "publish/ commit update all docs" (`deepfield/tools/publish_site.sh 0.9`, release
+FM-1_14000900), from 0b55c1b; Kyle played the unit after the flash (log: up to eight voices, 31 to 37 %, no
+xruns). Master is not pushed: origin/master still ends at db00f71, three commits behind (09384cf, 530340c, 0b55c1b).
 
 Kyle: "in any case where we use a non standard word for a setting I want to instead use the standard ... I don't
 care about the words fitting a theme". He took every default of the proposal and kept two words: CHANCE and PLAYED.
