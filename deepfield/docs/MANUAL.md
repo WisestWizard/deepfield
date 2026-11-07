@@ -7,7 +7,8 @@ once.
 - The four knobs on the HOME page shape every body at the same time.
 - Hold a body's key and the knobs set that body alone: its level, tone, tuning, and whether ORBIT may move it.
 - ORBIT moves the bodies to nearby notes on its own, or runs an arpeggio over them.
-- Ten models, from eight breathing harmonics to wavetables and four-operator FM.
+- Thirteen models, from eight breathing harmonics to wavetables, four-operator FM, hard sync, a worn tape loop and
+  a singing bowl.
 - The reverb can freeze and shimmer.
 - A scene is a sound: change scene and your chord keeps playing while the sound morphs under it.
 - MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth.
@@ -26,11 +27,10 @@ once.
 6. The pages
 7. ORBIT
 8. FREEZE and the effects
-9. Scenes: changing, saving, blending
-10. The views
-11. MIDI and Bluetooth
-12. The screen reader
-13. Troubleshooting
+9. Scenes: changing and saving
+10. MIDI and Bluetooth
+11. The screen reader
+12. Troubleshooting
 
 ---
 
@@ -56,22 +56,26 @@ Some of the FM-1's buttons do something other than their printed name: SEL is LA
 FREEZE, REC is Bluetooth, and ARP opens ORBIT's page (it doesn't start an arpeggio by itself). SEL is a button and
 SELECT is a knob: they are different controls.
 
-1. Switch on. The scene F1 FIRST LIGHT loads in silence: nothing plays until you press a key. SEL is lit, which
-   means LATCH is on: each key you press keeps sounding.
+1. Switch on. The name appears over a vortex and falls into it along a spiral, letter by letter; after about three
+   seconds the screen below takes over (press anything to skip it). The scene F1 FIRST LIGHT loads in silence:
+   nothing plays until you press a key. SEL is lit, which means LATCH is on: each key you press keeps sounding.
+
+   ![The boot: the vortex's violet and cyan arms round a white-hot eye, DEEP FIELD's first letters spiralling in](img/screen-boot.png "Switching on")
+
 2. Press a few keys, one at a time. Each one swells in and stays, shown on the screen as a beam over its key. Its
    key lights up and its beam rises.
-3. Tap one of those keys again. That body fades out as you let go, and its beam sinks. (Hold it instead and the
-   knobs set that body alone: section 4.)
+3. Tap one of those keys again. That body fades out as you let go, and its beam sinks. (Hold it and turn a knob
+   instead, and the knobs set that body alone: section 4.)
 4. Turn KNOB 1 (MASS): every body gets brighter or darker. Turn KNOB 3 (SPACE): they sink further into the
    reverb. The four boxes along the bottom of the screen are the four knobs.
 5. Press PLAY. ORBIT starts and PLAY lights green. Every few seconds one body slides to a nearby note in the
    scale: watch its beam move.
 6. Press SEQ. FREEZE turns on (FRZ lights): the reverb holds what it has. Press SEQ again to let it go.
 7. Turn PRESETS. The scene names scroll past with a line filling under them. Stop, and when the line is full the
-   scene's sound blends in over four seconds, under the chord you are playing. Hold SEL while you turn PRESETS to
-   bring in the scene's own chord as well (section 9).
-8. Hold SEL for a second: every body stops. Then tap SEL: LATCH turns off, and a key now sounds only while you
-   hold it.
+   scene's sound blends in over four seconds, under the chord you are playing. With nothing latched, the scene
+   brings its own chord as well (section 9).
+8. Hold SEL for a second: every body stops. Then tap SEL: LATCH turns off, and the keys play leads, notes that
+   sound only while you hold them (section 4).
 
 ---
 
@@ -90,18 +94,16 @@ dark. Each colour has one meaning:
 | Teal | An effect that is on |
 | Orange | Something to look at: unsaved changes, LOAD, a failed save |
 
-**Key lights** have three levels:
+**Key lights** have three levels, one meaning each:
 
-- **Bright:** what you are playing. A latched body's key, or a lead's key while you hold it (a lead is a note
-  played with LATCH off: section 4).
-- **Half:** what the machine is doing. A body fading out; the key a body started on before ORBIT moved it; the
-  latched bodies' keys while LATCH is off; a lead fading out; the lowest or highest key, standing in for a body
-  whose note is off the keyboard; and the key ORBIT will move a body to next, which blinks just before the move.
+- **Bright:** a body sounds on this key, and the key is how you reach it: tap it to stop the body, or hold it and
+  turn a knob to set the body alone (section 4). When ORBIT or SEL moves a body, its light moves with it. A lead's
+  key is bright while you hold it (a lead is a note played with LATCH off: section 4).
+- **Half:** sound that is going, or not yours to touch: a body fading out, the latched bodies (the bed) while LATCH
+  is off, a lead fading out.
 - **Glow:** a note in the scale. With the scale set to CHROMA, nothing glows.
 
-To stop a body, tap the key it started on. After ORBIT has moved a body, that is its half-lit key, not the bright
-one: pressing the bright key starts a second body there. A body's key you hold blinks for a third of a second, then
-its body opens (section 4).
+A body above or below the keys lights none of them.
 
 A lead's key blinks off for an instant each time it is struck, so you can see every step of an arpeggio, or an
 accent on a key that is already lit. While FX is held, the keys show the effect switches instead (section 8).
@@ -110,18 +112,20 @@ accent on a key that is already lit. While FX is held, the keys show the effect 
 
 - The open page's button is lit (half-lit while FX is held).
 - SEL is lit while LATCH is on, SEQ while FREEZE is on.
-- SAVE is lit while the sound or a setting has changed since the last save, and blinks in the save dialog.
+- SAVE is lit while the sound or a setting (GLOBAL, MIDI or USB page) has changed since the last save, and blinks
+  in the save dialog. Changing scene, LATCH or the octave doesn't light it, though a save keeps them too.
 - PLAY shows ORBIT's mode by its colour: green for WANDER, red for ARP, and orange (green and red together) for the
   others. It blinks at each SCATTER move and each ARP step.
 - OCT- or OCT+ is half-lit one octave from the middle, fully lit two octaves from it.
-- A button you hold blinks after a third of a second until its hold takes effect (SEL stops every body, PLAY opens
-  the ORBIT page, REC switches Bluetooth), so you can see it counting.
+- SEL held blinks after a third of a second until, at a second, it stops every body (unless you touched a key
+  meanwhile: section 4); HOME held blinks until, at a second, it puts the scene back as saved (section 9); REC held
+  blinks until it switches Bluetooth.
 
 | Part | What it shows |
 | --- | --- |
-| Header | The model's glyph, then the scene's slot (F1–F16, U1–U16) and name, with a small orange square after it while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 11); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many bodies are sounding; and how busy the processor is (LOAD in orange: see Troubleshooting). Below that, three pills named for their buttons, SEL LATCH, PLAY ORBIT and SEQ FRZ, filled while on, always in the same places (while ORBIT runs, a white line fills along the foot of its pill toward the next move); the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise); and a cyan line along the bottom edge while a scene blends in. |
-| The view | The bodies: as beams over their keys, or in one of the other views (section 10). Turning a knob shows its name, its value large and its bar here for a moment; the beams dim but stay in view behind it. Messages such as LATCH OFF, ORBIT ON or SAVED appear here too, and so does the list of scenes while PRESETS turns (section 9). While FX is held, the five effect switches are shown here in a row. |
-| The keys strip | All 27 keys as dark glass, lit only by sound: a sounding body's key glows in its colour, bright at the top and dimming down the key (dim while it fades), with a sun cap when latched; the keys of the scale are slightly lighter glass; a lead's key is white (grey as it fades); the key ORBIT will move a body to, and the key a moved body started on, show in the body's dim colour; the body you have open is framed white. |
+| Header | The model's glyph, then the scene's slot (F1–F16, U1–U16) and name, with a small orange square after it while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 10); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many bodies are sounding; and how busy the processor is (LOAD in orange: see Troubleshooting). Below that, three pills named for their buttons, SEL LATCH (SEL TRANS while SEL held is moving the chord), PLAY ORBIT and SEQ FRZ, filled while on, always in the same places (while ORBIT runs, a white line fills along the foot of its pill toward the next move); the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise); and a cyan line along the bottom edge while a scene blends in. |
+| The view | The bodies. Each body is a beam of light rising from its key, in its key's colour, brightest at its foot, with a white-hot head that marks its level: you see it swell in and sink as it fades (dim), and it breathes with the body. A latched beam has a sun spark over its head; a pinned one a sun bar across its foot; an open one (section 4) white frames, with the other beams dimmed. An ARP step flashes its body's head. When ORBIT moves a body, its beam slides to the new key and leaves a mark where it started, and before the move a line reaches from its head toward a dotted ghost at the key it is going to. A body above or below the keys (a MIDI note, or after an octave change) stands thin at the edge. The noise layer is a mound of mist where its band sits, warm when brown and pale when white, drifting with WIND and lifting with each gust. Stars drift at DRIFT's speed, each twinkling slowly on its own, over a faint horizon; FREEZE stills all of it and puts ice brackets in the corners. Turning a knob shows its name, its value large and its bar here for a moment; the beams dim but stay in view behind it. Messages such as LATCH OFF, ORBIT ON or SAVED appear here too, and so does the list of scenes while PRESETS turns (section 9). While FX is held, the five effect switches are shown here in a row. |
+| The keys strip | All 27 keys as dark glass, lit only by sound: a sounding body's key glows in its colour, bright at the top and dimming down the key (dim while it fades), with a sun cap when latched; the keys of the scale are slightly lighter glass; a lead's key is white (grey as it fades); the bed's keys are dim while LATCH is off; a body's key is the one it sounds on, so it moves when ORBIT or SEL moves the body; the body you have open is framed white. |
 | Footer | The page band: the icon of the button that opened the page, its name, the page's name, and `<` `>` where SELECT can go, with the model, the scale and its root on the right. Below it, the four knobs in the order of the real knobs: each name, its value (a number large with its unit small, or a word), and a bar that shows the kind of value: segments filling for an amount, one cell per choice for a list, two cells for an on/off switch, hits and rests for RHYTHM. On DX the SHAPE knob reads VOICE, on SCAN TABLE. While a body is open, the band reads BODY and its note in the body's colour, and the four knobs are its own (section 4). |
 
 ---
@@ -139,16 +143,17 @@ even. With it on, how hard you strike a key sets its body's level. MIDI notes al
 If you start a ninth body, one fades out quickly to make room: a body that is already fading if there is one, or
 else the oldest.
 
-**LATCH** (SEL, lit while on; on by default): a body keeps sounding after you let go of its key. Tap the same key
-again to stop it: it fades out over FADE seconds from when you let go. A latched key has a sun cap on the screen's
+**LATCH** (SEL, lit while on; on by default): a body keeps sounding after you let go of its key. Tap the key it
+sounds on to stop it (after ORBIT moves a body, its new, lit key): it fades out over FADE seconds from when you let
+go. However slowly you press, letting go stops the body, unless you turned a knob while the key was down. A latched key has a sun cap on the screen's
 keys strip, and its beam a sun spark over its head. Hold SEL for a second to stop every body (the screen says EVERY BODY LET GO). Bringing in a
 scene's chord (section 9) latches its bodies and turns LATCH on.
 
 **A body's own values.** With LATCH on, each latched body can be set apart from the others:
 
-1. Hold the key the body started on (after an ORBIT move, its half-lit key). The key blinks.
-2. After a third of a second the body opens: the footer reads BODY and its note, its beam and its key get a white
-   frame, and the other beams dim. (Turning a knob while the key is down opens it at once.)
+1. Hold the key the body sounds on (its lit key).
+2. Turn a knob. The body opens: the footer reads BODY and its note, its beam and its key get a white frame, and the
+   other beams dim. That first turn already sets the value.
 3. The four knobs are now that body's own:
    - **LEVEL**: -24 to +6 dB, one dB a click, and MUTE below -24. A muted body stays latched and silent, so ARP and
      ORBIT still use its note.
@@ -156,13 +161,13 @@ scene's chord (section 9) latches its bodies and turns LATCH on.
    - **TUNE**: -50 to +50 cents, a cent a click. A few cents on a fifth makes it beat slowly; -14 cents on a major
      third makes it pure.
    - **ORBIT**: turn right for PINNED, left for MOVES. ORBIT never moves a pinned body, PULSE never dips it, and ARP
-     leaves it out, so CHORD and CYCLE move the rest of the chord over it like a pedal note. TRANSPOSE still moves
-     it. A sun bar across the foot of its beam marks it.
-4. Let go of the key. The footer goes back to the page you were on, and the body keeps its values (and keeps
-   sounding: once a body is open, letting go never stops it). SAVE lights.
+     leaves it out, so CHORD and CYCLE move the rest of the chord over it like a pedal note. Moving the chord with
+     SEL still moves it. A sun bar across the foot of its beam marks it.
+4. Let go of the key. The footer goes back to the page you were on, and the body keeps its values and keeps
+   sounding. SAVE lights.
 
 Hold several latched keys and the knobs move all of those bodies together, each from where it is. The values travel
-with the body when ORBIT or TRANSPOSE moves it, and are saved with the scene. Over MIDI they go out as NRPN (section
+with the body when ORBIT or SEL moves it, and are saved with the scene. Over MIDI they go out as NRPN (section
 11), so a computer can record them.
 
 ![A body open: BODY D4 in the page band, LEVEL -4 DB, TONE 0%, TUNE +6 CT, ORBIT MOVES, its beam framed and the others dimmed](img/screen-body-edit.png "A body's own values")
@@ -178,16 +183,17 @@ MIDI notes work the same way: with LATCH on, a MIDI note plays a body that sound
 latches); with LATCH off, it plays a lead.
 
 The LEAD page (ENV, then SELECT) shapes the leads: ATTACK (1 ms to 2 s), RELEASE (30 ms to 7.7 s), LIFT (up to two
-octaves higher, in semitones) and LEVEL (59% matches a body; 100% is 6 dB louder).
+octaves higher, in semitones) and LEVEL (the default, 59%, sits about 2 dB over a body, so a lead stands out of the bed;
+50% matches a body; 100% is 9 dB louder).
 
 ![LATCH off: two leads as thin white beams over the bed's beams, their keys white on the keys strip](img/screen-leads.png "Leads over the bed")
 
-**Transposing the bed.** With some bodies latched, hold SEL and touch a key within a second (held longer, SEL stops
-every body). The pill reads SEL TRANS, and the keys stop starting bodies. Each key you play now moves the whole
-latched chord: its lowest note goes to that key, and the other notes keep their distance above it. The screen says
-TRANSPOSE and the note. The bodies glide there over GLIDE (ENVELOPE page), and the keys they started on move with
-them. Letting go of the key leaves the chord where it is. Over MIDI, the old notes are switched off and the new ones
-on. Tap SEL to go back to LATCH, or hold SEL for a second to stop every body, which also ends TRANSPOSE.
+**Moving the chord.** Hold SEL and touch a key: the whole latched chord moves there, its lowest note to that key and
+the other notes keeping their distance above it. While SEL is down, each key you touch moves it again; the pill
+reads SEL TRANS and the screen says TRANSPOSE and the note. The bodies glide over GLIDE (ENVELOPE page), and their
+lights move with them. Let go of SEL and the keys strike bodies again (or play leads, with LATCH off), LATCH as it
+was. Over MIDI, the old notes are switched off and the new ones on. Holding SEL for a second without touching a key
+stops every body instead; after that the keys strike again, even before you let go of SEL.
 
 **The scale.** SCALE on the GLOBAL page picks the scale: CHROMA, MAJOR, MINOR, DORIAN, PHRYGIA, LYDIAN, MIXO,
 PENTA+ (major pentatonic), PENTA- (minor pentatonic), WHOLE or HARM- (harmonic minor). ROOT picks its root note.
@@ -228,31 +234,28 @@ quickly, in big ones: 16 clicks end to end. VOID's MASS, a free DLY TIME and ATT
 RATE one BPM a click. A knob with only a few values (STEPS UP TO, DISTANCE, BODIES, LIFT, the delay's note lengths,
 DX's voices) moves one value a click at any speed.
 
-COLOUR is on both NOISE and DELAY 2, and WIDTH on both MOTION and NOISE 2: the page band tells you which one you are
-turning.
+COLOUR is on both NOISE and DELAY 2: the page band tells you which one you are turning.
 
 | Button | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- | --- | --- |
 | HOME | HOME | MASS | DRIFT | SPACE | TIDE |
 | EDIT | BODY | MODEL (also on ALGORITHM) | SHAPE | SUB | AIR |
 | EDIT, SELECT once | NOISE | LEVEL (0 is off) | COLOUR (brown to white) | WIND (how fast it moves, how often it gusts) | BAND (wide, narrow, or on the bodies: see below) |
-| EDIT, SELECT twice | NOISE 2 | TEXTURE (hiss, rain, crackle) | GUST (how far it swells and drops) | DUCK (how far it backs off under a chord) | WIDTH |
-| ENV | ENVELOPE | SWELL (fade-in, 30 ms to 20 s) | FADE (fade-out, 30 ms to 20 s) | PRESS (how much a lean brightens) | GLIDE (how long an ORBIT move or a transpose takes) |
+| ENV | ENVELOPE | SWELL (fade-in, 30 ms to 20 s) | FADE (fade-out, 30 ms to 20 s) | PRESS (how much a lean brightens) | GLIDE (how long an ORBIT move or a transpose takes; 0.13 s on the factory scenes) |
 | ENV, SELECT once | LEAD | ATTACK (1 ms to 2 s) | RELEASE (30 ms to 7.7 s) | LIFT (0 to +2 octaves, in semitones) | LEVEL |
 | LFO | MOTION | TIDE RATE | WOBBLE (vibrato) | WALK (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
-| LFO, SELECT once | MOTION 2 | SPREAD | CROSS | TIMBRE | SWAY |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest) | ENS MIX | – | – |
 | FX, SELECT once | DELAY | TYPE (PING, TAPE, HEADS, REVERSE, RISE, FALL, GRAINS) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
 | FX, SELECT twice | DELAY 2 | COLOUR (dark or bright repeats) | DIFFUSE (echoes blurred into a cloud) | WOW (how far the tape wanders) | CHOP (only slices of the sound go in) |
 | FX, SELECT three times | REVERB | REV SIZE (how long it rings, about 0.6 to 8 s) | REV DAMP (how fast the highs die away) | SHIMMER | SPACE (the same as on HOME) |
-| ARP, or hold PLAY | ORBIT | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
+| ARP | ORBIT | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
 | ARP, SELECT once | ORBIT 2 | HOME PULL | OCTAVES (ARP, 1 to 3) | RHYTHM (ARP: its hits and rests) | DIV (ARP: a step's length) |
-| GLO | GLOBAL | SCALE | ROOT | VIEW | MORPH (NOW, or 1 to 30 s) |
+| GLO | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | – |
 | GLO, SELECT once | MIDI | IN CH (OMNI or 1–16) | OUT CH (1–16) | LOCAL | VELOCITY |
 | GLO, SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (the recording's level, 0 to -18 dB) | CLOCK OUT | – |
 
-**The models** (turn ALGORITHM, or KNOB 1 on BODY). Turning ALGORITHM restarts the bodies in the new model with a
-short fade; a scene in another model crosses them over instead (section 9).
+**The models** (turn ALGORITHM, or KNOB 1 on BODY). A new model crosses every body over in under a second, the new
+sound rising as the old one fades, as a scene in another model does over MORPH (section 9).
 
 | Model | What it is | MASS | SHAPE |
 | --- | --- | --- | --- |
@@ -266,16 +269,21 @@ short fade; a scene in another model crosses them over instead (section 9).
 | FOLD | A sine through a wavefolder (DRIFT makes the fold breathe) | The filter after the fold | How hard it folds |
 | SCAN | Pocket Poly's three wavetables in one sweep: ANALOG (sine to saw, square and a narrow pulse), VOX (vowels), GLASS (a bright cluster that climbs). DRIFT lets each body's place wander. | A filter that follows the note; the level stays the same | Where in the sweep: the screen names the table and its frame (ANALOG 1 to GLASS 16) |
 | DX | Four-operator FM after Pocket Poly's FM engine. Its envelopes run at SWELL's pace, so a slow SWELL evolves the timbre slowly. DRIFT breathes the brightness. | The FM depth | The voice, one a click: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER |
+| TEAR | A saw hard-synced to the note (Pocket Poly's sync, with every edge smoothed so it stays clean up high): the snarl of a sync sweep. DRIFT breathes the ratio, so the sound's formant slides. | A filter that follows the note, and a little drive | RATIO, the synced saw's speed against the note: X1.0 to X8.0 |
+| TAPE | A loop on worn tape: wow (a slow sway in pitch, its own for each body), flutter, and now and then a dropout, the sound sinking and darkening for a third of a second. DRIFT is how worn it is: more wow, more dropouts. Everything saturates a little. | The tape's bandwidth | SOURCE, the sound on the tape: a soft organ (0%) to a saw (100%) |
+| RESONATOR | Noise played into five resonances over the note, like a singing bowl or a glass kept ringing: it sustains, shimmering as the noise moves through it. DRIFT adds a slow shimmer in their tuning. | How bright the upper resonances ring | MATERIAL: PURE (in tune with the note's harmonics), GLASS, BOWL, then BRONZE (a gong's crowded tones) |
 
 SUB adds an octave below on every model. AIR adds breath or noise: the bow's noise on STRING, breath on CHOIR, the
 hiss of the strike on BELL, a breath of noise on SHEPARD, and noise into the fold on FOLD. On SCAN it adds a second,
-detuned copy from another place in the sweep; on DX, feedback (grit). It does nothing on SOLAR, VOID or GLASS.
+detuned copy from another place in the sweep; on DX, feedback (grit). On TEAR it rings the sound with the note's
+sine (hollow, metallic, still in tune), on TAPE it is the hiss, on RESONATOR the scrape: raw noise, and the
+resonances wider. It does nothing on SOLAR, VOID or GLASS.
 
 ![DX on the BODY page: MODEL DX, SHAPE ORGAN](img/screen-dx.png "DX's voices")
 
 ![The BODY page: MODEL STRING, SHAPE, SUB, AIR](img/screen-body.png "The BODY page")
 
-**The noise layer** (EDIT, then SELECT for NOISE, and once more for NOISE 2) is a stereo noise under the bodies,
+**The noise layer** (EDIT, then SELECT for NOISE) is a stereo noise under the bodies,
 or on its own with no keys held: wind, sea, rain or breath.
 
 - **LEVEL** turns it on and sets how loud it is (0 is off).
@@ -283,13 +291,9 @@ or on its own with no keys held: wind, sea, rain or breath.
 - **WIND** sets how fast the noise moves and how often a gust comes.
 - **BAND**: at 0, a wide bed. Up to the middle, a band that narrows onto the newest note. Past the middle, narrow
   bands on the four loudest bodies, each as loud as its body, so the noise becomes air through the chord.
-- **TEXTURE**: hiss, then rain (dense drops), then crackle (sparse, dusty ticks), all at the same loudness. The
-  screen names the one you are in.
-- **GUST**: now and then (at WIND's pace, from every few seconds to every half minute) the noise swells louder,
-  brighter and higher over a second or three, then dies back over several. Between gusts it sits lower, by up to
-  18 dB as GUST goes up. The noise always comes in with a gust, and FREEZE holds the weather where it is.
-- **DUCK** backs the noise off under a chord, by up to 12 dB, so it fills the gaps instead of covering the bodies.
-- **WIDTH** is its stereo width.
+- Each scene also sets four noise values that have no page: its TEXTURE (hiss, rain or crackle), its GUSTs (now
+  and then, at WIND's pace, it swells louder, brighter and higher, sitting lower between; FREEZE holds the weather),
+  how far it DUCKs under a chord, and its WIDTH. A scene you save keeps those of the scene it came from.
 
 The four forces shape the noise too: MASS brightens it, DRIFT widens its wander, SPACE sends it to the reverb, and
 TIDE makes it breathe. Leaning on a key brightens it, and it fades in and out at SWELL and FADE like a body. Hold
@@ -299,33 +303,30 @@ on, and its beam on the screen rises with each gust. MIDI CC 20 sets its LEVEL.
 
 ![The NOISE page on F6 NEBULA: LEVEL, COLOUR, WIND, BAND, the wind bed as a soft beam over the keys](img/screen-noise.png "The NOISE page")
 
-**MOTION 2** (LFO, then SELECT) makes the eight bodies sound like eight separate voices instead of one sound at
-eight pitches.
+Each scene also sets, with no page, how unlike each other its bodies are: each body's own small detune, MASS and
+place in the stereo field (SPREAD), pairs bending each other's pitch (CROSS), each body's MASS wandering (TIMBRE)
+and each drifting across the stereo field (SWAY). A scene you save keeps those of the scene it came from.
 
-- **SPREAD** gives each body its own small differences for as long as it sounds: up to 14 cents of detune, a
-  little more or less MASS, its own breathing speed and its own place in the stereo field.
-- **CROSS** links the bodies in fixed pairs: as one swells, it bends the other's pitch.
-- **TIMBRE** lets each body's MASS wander slowly on its own, so the chord's colour shifts unevenly.
-- **SWAY** moves each body across the stereo field on its own slow cycle, from one swing every 50 s to one every
-  3 s.
-
-**The delay.** DLY FDBK sets how many repeats and DLY MIX how loud they are. **TYPE** (the first knob on DELAY)
-chooses what kind of delay it is:
+**The delay.** DLY FDBK sets how many repeats and DLY MIX how loud they are; above about 60 % DLY MIX climbs
+faster, so at full the first echo is about as loud as the note. **TYPE** (the first knob on DELAY) chooses what kind
+of delay it is:
 
 | TYPE | What you hear |
 |---|---|
 | PING | Left, then right, then left again, each repeat a little further away. The right-hand echo comes a little later than the left one, so the repeats never fall into a pattern. |
-| TAPE | One echo in the middle, darker and grittier each time round, its pitch wandering, so it beats against the drone. |
-| HEADS | Three echoes for every one: at a third, two thirds and the whole of DLY TIME, left, centre and right. One note becomes a rhythm. |
-| REVERSE | Each echo plays backwards: a note's echo swells up to where it started. |
+| TAPE | One echo in the middle, darker and grittier each time round, its pitch swaying (about 22 cents either way at WOW's default, more as WOW rises), so even over a held chord you hear it waver and beat. |
+| HEADS | Three echoes for every one: at a third, two thirds and the whole of DLY TIME, left, centre and right. One note becomes a rhythm; a held chord comes back as a pulsing triplet, left, centre, right, because only a slice of it goes in each DLY TIME (a note you play goes in whole). |
+| REVERSE | Each echo plays backwards: a note's echo swells up to where it started. Each backward swell rises and is cut, from alternate sides, so a held chord breathes in once every DLY TIME. |
 | RISE | Each echo an octave higher than the last, climbing out of the drone and thinning as it goes. |
 | FALL | Each echo an octave lower, sinking under the drone. |
-| GRAINS | Short pieces of the last two seconds, one every DLY TIME, scattered left and right: a held chord turns into a glittering cloud of itself. |
+| GRAINS | Short pieces (40 to 150 ms) of the last two seconds, two every DLY TIME, scattered left and right, each at the note, an octave up or down, or a fifth up: a held chord turns into a glittering cloud of itself, a played note comes back in pieces. |
 
 Turning TYPE fades the echoes out and starts the new kind fresh.
 
-A held drone hides its own echoes: an echo of a steady sound is the same steady sound. TAPE's wander, RISE and FALL's
-pitch, REVERSE's swell and GRAINS' pieces make them heard; on PING, and on all of them, CHOP and WOW help.
+A held drone hides a plain echo: an echo of a steady sound is the same steady sound. So each kind changes what comes
+back: PING moves left and right, TAPE wavers, HEADS pulses, REVERSE breathes, RISE and FALL change octave, GRAINS
+glitters. CHOP and WOW help on all of them. To hear a kind on its own, play short notes with LATCH off and no chord
+held, SPACE down.
 
 - Over most of its turn, **DLY TIME** is a time from 50 to 800 ms, and the screen shows it in ms. On PING the
   right-hand echo comes a little later than the left one, up to 1.1 s.
@@ -354,14 +355,14 @@ stay where they are. When it starts, the screen names the mode (WANDER EVERY 5.1
 PLAY pill fills up toward the next move and flashes when it comes. The pill is named for the mode: PLAY ORBIT for
 WANDER, PLAY CHORD, PLAY SCATTER and so on.
 
-Pick the mode with KNOB 1 (MODE) on the ORBIT page: press ARP, or hold PLAY. KNOB 2 to KNOB 4 change with the mode,
+Pick the mode with KNOB 1 (MODE) on the ORBIT page: press ARP. KNOB 2 to KNOB 4 change with the mode,
 and PLAY's colour shows it:
 
 | Mode | PLAY | KNOB 2, 3, 4 | What happens |
 | --- | --- | --- | --- |
 | WANDER | green | EVERY, CHANCE, STEPS UP TO | Every EVERY seconds (give or take a quarter), with a CHANCE, one body moves to a nearby note in the scale, up to STEPS UP TO scale steps away. It never moves onto a note another body is playing. |
 | CHORD | orange | EVERY, CHANCE, DISTANCE | All the bodies move together by the same number of scale steps, up to DISTANCE, so the whole chord shifts to a related one. |
-| SCATTER | orange | EVERY, BODIES, STEPS UP TO | Several bodies move at once, each its own way, with looser timing (give or take a half). BODIES sets how many: one at 0, all the latched bodies at full. |
+| SCATTER | orange | EVERY, BODIES, STEPS UP TO | Several bodies move at once, each its own way, with looser timing (give or take a half). BODIES sets how many: one at 0, all the latched bodies at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | RATE, GATE, ORDER | An arpeggio. The bodies keep droning while a lead (section 4) steps through their notes. RATE is the tempo (40 to 240 BPM) and DIV (ORBIT 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). ORDER is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). OCTAVES (ORBIT 2) spreads it over more octaves, and RHYTHM (ORBIT 2) puts rests between the notes. Add or let go a body while it runs and it carries on from the note it just played. ARP remembers the notes, in the same ORDER: stop every body (hold SEL) and it keeps playing until you press PLAY. A pinned body is left out: it drones under the runner. The pill fills over the RHYTHM's steps. |
 | CYCLE | orange | EVERY, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord. |
 | ECHO | orange | EVERY, DECAY, JUMPS | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every EVERY seconds, quieter each time, losing notes (DECAY) and jumping octaves (JUMPS) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. |
@@ -393,10 +394,9 @@ started. ORBIT leaves alone the bodies held over MIDI, the pinned bodies, and th
 a note on.
 
 **Seeing where it goes.** ORBIT picks each move when the countdown starts, so you can see it coming. A line grows
-from the top of the body's beam toward the key it is going to, and a faint ghost beam stands at that key. On the
-panel the key is half-lit and blinks just before the move; on the screen's keys strip it shows in the body's dim
-colour. When the move comes, the beam slides along the line and the key light follows it, while the starting key
-stays half-lit. On the ORBITS view, a planet's orbit grows or shrinks as it glides to the new pitch.
+from the top of the body's beam toward the key it is going to, and a faint ghost beam stands at that key. When the
+move comes, the beam slides along the line and the key's light moves with it: the body is now reached from its new
+key.
 
 ![CHORD mode mid-countdown: each beam with a line growing from its top toward a ghost beam at the destination key, PLAY CHORD filling](img/screen-orbit-going.png "Where the chord is going")
 
@@ -404,7 +404,9 @@ stays half-lit. On the ORBITS view, a planet's orbit grows or shrinks as it glid
 
 **MIDI clock.** While MIDI clock comes in (over USB, TRS or Bluetooth), ARP steps at DIV of it and RATE reads EXT;
 EVERY counts in whole beats of that tempo (or a half or a quarter of a beat, below one), so ORBIT's moves land in
-time. A MIDI start restarts ARP.
+time, and EVERY reads in beats (4 BEATS, 1/2 BEAT) instead of seconds. The clock is followed from one input only: the
+same clock arriving on a second one (a computer on USB and over Bluetooth at once) is not counted twice. The tempo is
+read over a whole beat, so a clock that comes in bursts (a Bluetooth link) keeps time. A MIDI start restarts ARP.
 After two seconds without clock, ORBIT goes back to its own timing. CLOCK OUT (USB page) sends clock, with start
 and stop, while ARP runs from RATE, so a drum machine can follow the FM-1.
 
@@ -438,7 +440,8 @@ taking in sound and let what they hold ring out, as a pedal's spillover does (a 
 effect the scene has at zero comes in at a useful amount: DLY MIX 27%, SPACE 35%, SHIMMER 23% (with the reverb), and ENSEMBLE CHOR I with ENS MIX at 31%. While
 FX is held, the screen shows the five switches in a row, each ON or OFF (the noise with its level), and the keys of
 the effects that are on light teal. The keys play no notes while FX is held. The switches are saved with the scene,
-and E D R S N in the header show which effects are on.
+and E D R S N in the header show which effects are on. While an effect is off, its amount reads OFF on its knob
+(SPACE, DLY MIX, ENS MIX, SHIMMER), and turning that knob switches the effect back on at the amount turned to.
 
 Tap FX without pressing a key to open the effects pages instead: ENSEMBLE, then turn SELECT for DELAY, DELAY 2 and
 REVERB, in the same order as the keys.
@@ -449,7 +452,7 @@ REVERB, in the same order as the keys.
 
 ---
 
-## 9. Scenes: changing, saving, blending
+## 9. Scenes: changing and saving
 
 A scene is a sound. It holds the values on the sound pages (HOME, BODY, NOISE, ENVELOPE, LEAD, MOTION, the effects
 and ORBIT) and the effect switches. It also keeps a chord: the bodies that were latched when it was saved, with
@@ -469,19 +472,25 @@ header shows the blend.
 - LATCH, ORBIT (PLAY, its colour, and while it runs its page's values too), FREEZE, the octave and the scale stay as
   they are.
 - A delay or reverb the new scene switches off rings out.
-- A MIDI program change does the same.
+- A MIDI program change does the same, but never brings a chord.
 
 ![Browsing: the candidate scene's name large, its neighbours, the 32 slots as a row of marks, the line filling](img/screen-browse.png "Browsing the scenes")
 
-**Bringing in a scene's chord.** Hold SEL and turn PRESETS: the screen says SCENE + CHORD (in the scene list,
-+ CHORD in sun under the name). Let go of SEL and the
-whole scene lands: its chord replaces yours (a note in both keeps sounding), LATCH turns on, and its ORBIT values
-come too. To bring in the chord of the scene you are on, turn PRESETS one click forward and back before you let go.
-A scene with no chord leaves your bodies alone. Every factory chord is stored on C and plays in ROOT (GLOBAL page);
+**Bringing in a scene's chord.** With nothing latched, PRESETS brings in the scene's chord with its sound: the screen
+says SCENE + CHORD (+ CHORD in sun under the name in the list). Its bodies come in latched, LATCH turns on, and its
+ORBIT values come too. With a chord latched, PRESETS changes only the sound; to hear another scene's chord, hold SEL
+for a second to stop yours first. To bring in the chord of the scene you are on, turn PRESETS one click forward and
+back. A scene with no chord leaves your bodies alone. Every factory chord is stored on C and plays in ROOT (GLOBAL page);
 a chord you save plays in the ROOT it was saved in, moved to today's.
 
+**Back to the scene as saved.** What you change on a scene stays until you save or change scene, and LATCH, ORBIT and
+FREEZE carry over from scene to scene. To put the scene you are on back as it was saved, hold HOME for a second (it
+blinks while it counts): its sound, its effect switches and its ORBIT values blend back in over MORPH, the screen says
+its name and AS SAVED, and SAVE goes dark. Your chord keeps playing, and LATCH, ORBIT on or off, FREEZE, the octave and
+the scale stay as they are. A tap on HOME still only opens the HOME page.
+
 **Switching on.** The scene you were on loads in silence: its sound is ready, and nothing plays until you press a
-key (or bring in its chord).
+key, or turn PRESETS to bring in a chord.
 
 **Saving.**
 
@@ -495,16 +504,9 @@ key (or bring in its chord).
 The saved scene takes the name of the scene you were playing, unless you save over the user slot you are on, which
 keeps its name.
 
-Every save also stores the settings: which scene you are on, the octave, scale, root, LATCH, VELOCITY, LOCAL, the
-view, MORPH, the MIDI channels, the USB page, and Bluetooth on or off. Nothing is stored until you save: switch off
+Every save also stores the settings: which scene you are on, the octave, scale, root, LATCH, VELOCITY, LOCAL,
+MORPH, the MIDI channels, the USB page, and Bluetooth on or off. Nothing is stored until you save: switch off
 without saving and all of it goes back to the last save.
-
-**Blending by hand.** Hold GLO and lean on a key: the harder you press, the further the sound blends toward the
-next scene (the slot after this one). The header's bar and the screen show which scene and how far. The lean is
-counted from where the key settles, so press the key, wait a moment, then push. The top seven keys (C#5 to G5)
-can't sense a lean: hold one under GLO and the blend climbs to full over two seconds. Let go of the key and the
-blend stays where it is, between the two scenes, until the next scene loads. The keys play no notes while GLO is
-held, and only the values blend: the bodies and the model stay as they are.
 
 **The factory scenes** (their chords stand on C, in ROOT):
 
@@ -529,32 +531,7 @@ held, and only the values blend: the bodies and the model stay as they are.
 
 ---
 
-## 10. The views
-
-VIEW on the GLOBAL page picks how the screen draws the bodies. BEAMS is the one to play by; the others are
-different pictures over the same keys.
-
-| View | What you see |
-| --- | --- |
-| BEAMS | Each body is a beam of light rising from its key, in its key's colour, brightest at its foot, with a white-hot head that marks its level: you see it swell in and sink as it fades (dim), and it breathes with the body. A latched beam has a sun spark over its head; a pinned one a sun bar across its foot; an open one (section 4) white frames, with the other beams dimmed. An ARP step flashes its body's head. When ORBIT moves a body, its beam slides to the new key and leaves a mark where it started, and before the move a line reaches from its head toward a dotted ghost at the key it is going to. A body above or below the keys (a MIDI note, or after an octave change) stands thin at the edge. The noise layer is a mound of mist where its band sits, warm when brown and pale when white, drifting with WIND and lifting with each gust. Stars drift at DRIFT's speed, each twinkling slowly on its own, over a faint horizon; FREEZE stills all of it and puts ice brackets in the corners. |
-| MOUTH | An orange pill bottle on the left pops its cap and tumbles out a pill for every new body. A mouth on the right opens with the sound. The pills hang over their keys, high notes higher, in two colours (the body's and white), outlined in sun once latched. A body you stop flies into the mouth and is eaten. Now and then the mouth snatches the pill of a body that is still sounding and spits it back out. |
-| ORBITS | A sun that pulses with the sound. Each body is a planet: its distance from the sun is its pitch, its speed follows its breathing, its size is its level, and its colour is its note. A latched planet has a sun ring; a fading one dims. Stars drift behind at DRIFT's speed. |
-| NEBULA | The bodies' harmonics as glows along a wavy band, low notes on the left and high on the right, coloured by body, with a mark under each body's note. |
-| SCOPE | A radar. Each body is a blip: its note sets the angle and its octave the distance from the centre, and it lights as the sweep passes. The sound's left channel against its right draws a figure; its shape shows the stereo width and the beating. |
-
-![MOUTH: the bottle, four pills over their keys, the mouth](img/screen-mouth.png "The MOUTH view")
-
-![ORBITS: four bodies as planets round the sun](img/screen-orbits.png "The ORBITS view")
-
-![NEBULA: the harmonics of four bodies as coloured glows](img/screen-nebula.png "The NEBULA view")
-
-![SCOPE: the radar with the bodies as blips and the output as a figure](img/screen-scope.png "The SCOPE view")
-
-Every view except MOUTH leaves fading trails as things move.
-
----
-
-## 11. MIDI and Bluetooth
+## 10. MIDI and Bluetooth
 
 **MIDI in** comes over USB, Bluetooth and the TRS jack, on IN CH (OMNI, any channel, by default). With LATCH on, a
 MIDI note plays a body until its note off; with LATCH off, it plays a lead (section 4). The sustain pedal (CC 64)
@@ -610,7 +587,7 @@ while you record:
 - **OFF**: the speaker stays silent, and the recording is set by USB LEVEL.
 
 The header says USB while a computer is recording. **USB LEVEL** sets the recording's level with AUTO and OFF,
-without touching the speaker. It is -6 dB by default, so a full chord peaks about 6 dB below the loudest the
+without touching the speaker. It is -6 dB by default, so a full chord peaks about 9 dB below the loudest the
 recording can go.
 
 **Bluetooth.** Bluetooth MIDI starts when the FM-1 does. A computer, phone or tablet can connect to it as DEEP FIELD
@@ -623,7 +600,7 @@ Hold REC for a second to turn Bluetooth off or on. Save a scene to keep that cho
 
 ---
 
-## 12. The screen reader
+## 11. The screen reader
 
 DEEP FIELD works with fm1-reader, a screen reader for the FM-1. It speaks every message the screen shows, and on
 request reads out the scene, the page and the page's four values. DEEP FIELD gives it the way to say each of its
@@ -631,22 +608,24 @@ screen words (`words.tsv` in the source code).
 
 ---
 
-## 13. Troubleshooting
+## 12. Troubleshooting
 
 | Problem | What to check |
 | --- | --- |
-| A key does nothing | LATCH is on (SEL lit) and that key's body was already sounding: a tap stops it as you let go, and holding it opens the body (section 4). Or TRANSPOSE is on (the pill reads SEL TRANS): tap SEL. Or LOCAL is off (MIDI page). Or FX or GLO is held: the keys play no notes then. |
-| A key didn't stop its body | You held it longer than a third of a second, which opens the body instead (BODY in the page band). Tap it. |
+| A key does nothing | SEL is held: the keys move the chord (the pill reads SEL TRANS). Or FX is held: the keys switch effects. Or LOCAL is off (MIDI page). |
+| A key didn't stop its body | A knob turned while it was down, which set the body instead (BODY in the page band). Tap it again. |
 | The knobs set one body instead of the page | A body's key is held (BODY in the page band). Let go. |
 | A body won't move with ORBIT | It is pinned: hold its key and turn KNOB 4 left (MOVES). |
-| Pressing a lit key adds a note instead of stopping one | ORBIT moved that body: press the half-lit key it started on. |
+| Pressing a key starts a body instead of stopping one | No body sounds on that key: ORBIT or SEL moved it, and its light moved with it. Tap the lit key. |
 | A body stops when I let go of the key | LATCH is off (SEL dark). Tap SEL. |
 | Leaning on a key does nothing | The top seven keys (C#5 to G5) can't sense a lean. Or PRESS (ENVELOPE page) is at 0. |
 | The knobs change the wrong thing | Another page is open: check the page band at the bottom of the screen. Press HOME. |
 | Bodies move by themselves | ORBIT is running (PLAY lit). Press PLAY to stop it. |
+| ORBIT moves faster or slower than EVERY says | A MIDI clock is coming in (USB, TRS or Bluetooth): EVERY counts its beats and reads BEATS, not seconds. Stop the clock or unplug it, and two seconds later ORBIT keeps its own time again. EVERY also varies each move by a quarter either way, by design (a half in SCATTER). |
+| I changed a scene and want it back | Hold HOME for a second: the scene as saved, under your chord (section 9). |
 | ORBIT does nothing | No body is latched. Every mode but ARP needs at least one. |
 | The reverb won't die away | FREEZE is on (SEQ lit). Press SEQ. |
-| A scene is silent | A scene brings its sound, not its chord: press some keys, or hold SEL and turn PRESETS to bring in its chord (section 9). Switching on is silent too. Or a body is muted (its LEVEL at MUTE). Or TIDE at full fades each body all the way down on its cycle. Or the scene is still blending in. |
+| A scene is silent | A scene brings its chord only when nothing is latched: hold SEL for a second, then turn PRESETS (section 9). Switching on is silent too. Or a body is muted (its LEVEL at MUTE). Or TIDE at full fades each body all the way down on its cycle. Or the scene is still blending in. |
 | My settings were gone after switching off | Settings are only stored when you save a scene (section 9). |
 | LOAD in the header | The FM-1 once ran short of processing time, so it plays one body fewer until things have been calm for a while. |
 | The buttons or knobs respond wrongly | Hold OCT- and OCT+ while you switch on: the hardware calibration asks you to press each button and turn each knob. |

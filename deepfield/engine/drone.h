@@ -13,10 +13,13 @@
 #define DR_NL 4u                         /* leads: the keys with LATCH off, the scene's model struck short */
 #define DR_ARENA_BYTES (235u * 1024u)    /* what dr_init wants from the app's pool: lines, tables, mix and hall buffers */
 
-enum { M_SOLAR, M_VOID, M_GLASS, M_STRING, M_CHOIR, M_BELL, M_SHEPARD, M_FOLD, M_SCAN, M_DX, M_COUNT };
+enum { M_SOLAR, M_VOID, M_GLASS, M_STRING, M_CHOIR, M_BELL, M_SHEPARD, M_FOLD, M_SCAN, M_DX, M_TEAR, M_TAPE, M_RESON,
+       M_COUNT };
 #define DR_DX_VOICES 8u                  /* DX: SHAPE picks one of eight four-operator voices */
 extern const char *const DR_DX_NAME[DR_DX_VOICES];
 extern const char *const DR_SCAN_NAME[3];   /* SCAN: the three tables SHAPE sweeps through */
+extern const char *const DR_RES_NAME[4];    /* RESONATOR: the materials SHAPE runs through */
+float dr_tear_ratio(float shape);           /* TEAR: SHAPE (0..1) as the sync's ratio to the note, 1 to 8 */
 enum { ENS_OFF, ENS_CHORUS1, ENS_CHORUS2, ENS_ENSEMBLE, ENS_COUNT };
 enum {
     P_MODEL, P_MASS, P_DRIFT, P_SPACE, P_TIDE,                    /* the model, and the four forces (HOME) */
@@ -70,16 +73,16 @@ void dr_param(uint32_t id, uint32_t v);             /* a knob: the scene's value
 void dr_load(const scene_t *s, float seconds, int chord);
 int dr_morphing(void);
 float dr_morph_pos(void);                            /* 0..1 */
-/* a blend by hand (GLO held, a key leaned on): from the values heard when the hold began toward a scene's, held
- * at pos; the bodies stay. The blend stays where it was left; the next hold starts from there */
-void dr_morph_hold(const scene_t *to, float pos);
-void dr_morph_hold_end(void);
-float dr_heard(uint32_t id);                         /* a parameter as heard now, 0..127 (a blend lies between scenes) */
+float dr_heard(uint32_t id);                         /* a parameter as heard now, 0..127 (a morph lies between scenes) */
 /* the keys (main loop, queued): on strikes a body that sounds while the key is held, or lets a latched body at
  * that note go; off lets an unlatched body go. The engine sends the note offs of the keys' bodies (dr_note_out) */
 void dr_note(uint32_t note, uint32_t vel, int on);
 void dr_note_latched(uint32_t note, uint32_t vel);  /* LATCH on: strikes a body that stays; at a latched body's note,
-                                                     * lets it go */
+                                                     * lets it go; a latched body ORBIT moved away from this note is
+                                                     * left where it sounds (it is struck there from now on) */
+int32_t dr_body_at(uint32_t note);                  /* the latched body sounding at this note (where ORBIT or
+                                                     * TRANSPOSE took it): the note it is known by, else -1 */
+void dr_let_go(uint32_t home);                      /* the latched body known by this note fades */
 void dr_unlatch(uint32_t note);                     /* LATCH off while its key is held: the body sounds while held */
 void dr_transpose_to(uint32_t note);                /* the latched bodies moved together, the lowest to this note */
 void dr_note_now(uint32_t note, uint32_t vel, int on);   /* MIDI, from the render: held while on, let go at off */
@@ -125,8 +128,9 @@ int dr_echo_running(void);                          /* ECHO runs and holds a phr
 /* MIDI clock (from the render, app.c): while clocks come, the runner steps at its DIV in clocks and ORBIT counts
  * its period in beats (a quarter and a half beat below one); two seconds without one and the knobs' own time
  * returns. Clock out: while the runner runs from RATE, 24 a beat (and start / stop) through dr_realtime_out */
-void dr_clock(void);
-void dr_clock_start(void);
+void dr_clock(int port);                            /* port: the input it came in on (only one is followed) */
+void dr_clock_start(int port);
+uint32_t dr_orbit_clocks(uint32_t p);               /* EVERY (p) in MIDI clocks at the clock's tempo */
 void dr_clock_stop(void);
 int dr_clock_ext(void);                             /* following MIDI clock now */
 float dr_clock_bpm(void);                           /* the tempo followed (0 none) */
@@ -161,6 +165,7 @@ typedef struct {
     uint8_t latched;
     uint8_t home;                        /* the note it was struck at */
     float pitch;                         /* where it is now, MIDI note (ORBIT and glide move it) */
+    float target;                        /* where it is going (or stands): the key that addresses it */
     float level;                         /* 0..1, what is heard */
     float spark;                         /* its breathing, 0..1 */
     int8_t lvl, tone, tune;              /* its own values (dr_body_edit) */
@@ -173,8 +178,6 @@ int32_t dr_newest_note(void);            /* the newest body's note, -1 none */
 int dr_sounding(uint32_t note);          /* a body struck at this note is sounding and not fading */
 float dr_out_level(void);                /* the output's peak, last block, 0..1 */
 float dr_bus_level(void);
-void dr_scope(const int16_t **l, const int16_t **r, uint32_t *n);   /* the last block's output, for a scope */
-uint32_t dr_harmonics(uint32_t i, float *amp);     /* body i's 8 harmonic levels (SOLAR; the others approximated) */
 float dr_time_s(uint32_t p);             /* the UI shows the engine's own mappings */
 float dr_orbit_s(uint32_t p);           /* EVERY: 0.1 .. 60 s */
 float dr_dly_time_s(uint32_t p);                    /* DLY TIME below 100: free, 50 to 800 ms */

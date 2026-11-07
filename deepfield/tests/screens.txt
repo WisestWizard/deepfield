@@ -1,39 +1,16 @@
 # The manual's screenshots (deepfield/docs/img): ./build.sh deepfield --host, then
 #   deepfield/build/host/deepfield_host deepfield/tests/screens.txt deepfield/docs/img
+# the boot vortex, the name falling in
+wait 1600
+shot screen-boot.png
 wait 300
 midi C0 05
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 9000
+wait 9700
 shot screen-home.png
-tap GLO
-spin K3 1
-tap HOME
 wait 2500
-shot screen-mouth.png
-tap GLO
-spin K3 1
-tap HOME
-wait 2500
-shot screen-orbits.png
-tap GLO
-spin K3 1
-tap HOME
-wait 2500
-shot screen-nebula.png
-tap GLO
-spin K3 1
-tap HOME
-wait 2500
-shot screen-scope.png
-tap GLO
-spin K3 -4
-tap HOME
 tap PLAY
 tap SEQ
 wait 1500
@@ -46,9 +23,6 @@ shot screen-body.png
 spin SELECT 1
 wait 1500
 shot screen-noise.png
-spin SELECT 1
-wait 1500
-shot screen-noise2.png
 tap ENV
 wait 1500
 shot screen-envelope.png
@@ -95,7 +69,7 @@ key 9 up
 key 14 up
 tap SEL
 wait 500
-# a body's own values: its key held (D4, one of NEBULA's), the four knobs its LEVEL, TONE, TUNE and ORBIT pin
+# a body's own values: its key held and a knob turned (D4, one of NEBULA's): the four knobs its LEVEL, TONE, TUNE and ORBIT pin
 tap HOME
 wait 500
 key 9 down
@@ -123,15 +97,15 @@ spin ALGO -9
 tap HOME
 wait 1000
 # where ORBIT is taking the chord: CHORD mode, every body with a line to its destination
+press SEL
+wait 1100
+release SEL
+wait 7000
 midi C0 02
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 tap ARP
 wait 30
 spin K3 40

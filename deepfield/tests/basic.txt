@@ -2,18 +2,20 @@
 #   deepfield/build/host/deepfield_host deepfield/tests/basic.txt deepfield/build/host
 # parameter numbers (expect pN): 0 MODEL, 1 MASS, 2 DRIFT, 3 SPACE, 4 TIDE, 5 SHAPE, 8 SWELL, 9 FADE, 18 SHIMMER
 wait 700
+expect boot 1
 expect scene 0
 # power-on: the scene's sound, in silence (nothing plays until a key does)
 expect bodies 0
 expect latch 0
 expect latchmode 1
 expect page 0
-expect view 0
 expect dirty 0
 shot boot.png
-# SEL held a second: every body let go; LATCH stays on
+# SEL held a second: every body let go; LATCH stays on (the press ends the boot vortex)
 press SEL
-wait 1100
+wait 30
+expect boot 0
+wait 1070
 release SEL
 wait 50
 expect latchmode 1
@@ -139,10 +141,10 @@ key 7 up
 wait 7000
 tap GLO
 wait 30
-expect page 14
+expect page 12
 spin SELECT 1
 wait 30
-expect page 15
+expect page 13
 spin K4 1
 wait 30
 expect velon 1
@@ -259,64 +261,64 @@ wait 30
 expect page 1
 tap ENV
 wait 30
-expect page 4
+expect page 3
 spin SELECT 1
 wait 30
-expect page 5
+expect page 4
 tap ENV
 wait 30
-expect page 4
+expect page 3
 tap LFO
+wait 30
+expect page 5
+spin SELECT 1
+wait 30
+expect page 6
+tap LFO
+wait 30
+expect page 5
+tap FX
+wait 30
+expect page 6
+tap FX
 wait 30
 expect page 6
 spin SELECT 1
 wait 30
 expect page 7
-tap LFO
-wait 30
-expect page 6
-tap FX
-wait 30
-expect page 8
-tap FX
+spin SELECT 1
 wait 30
 expect page 8
 spin SELECT 1
 wait 30
 expect page 9
-spin SELECT 1
-wait 30
-expect page 10
-spin SELECT 1
-wait 30
-expect page 11
 spin K4 -3
 wait 30
 expect p3 55
 tap ARP
 wait 30
+expect page 10
+spin SELECT 1
+wait 30
+expect page 11
+tap ARP
+wait 30
+expect page 10
+tap GLO
+wait 30
 expect page 12
 spin SELECT 1
 wait 30
 expect page 13
-tap ARP
-wait 30
-expect page 12
-tap GLO
+spin SELECT 1
 wait 30
 expect page 14
 spin SELECT 1
 wait 30
-expect page 15
-spin SELECT 1
-wait 30
-expect page 16
-spin SELECT 1
-wait 30
-expect page 16
+expect page 14
 spin SELECT -3
 wait 30
-expect page 13
+expect page 11
 tap EDIT
 wait 8500
 expect page 1
@@ -326,41 +328,33 @@ expect page 0
 spin SELECT -1
 wait 30
 expect page 0
-# the views (GLOBAL, KNOB 3)
+# GLOBAL's KNOB 4 does nothing now the VIEW is gone (BEAMS is the only view); the timing kept as it was
 tap GLO
-spin K3 1
+spin K4 1
 wait 30
-expect view 1
 tap HOME
 wait 300
-shot mouth.png
 tap GLO
-spin K3 1
+spin K4 1
 wait 30
-expect view 2
 tap HOME
 wait 300
-shot orbits.png
 tap GLO
-spin K3 1
+spin K4 1
 wait 30
-expect view 3
 tap HOME
 wait 300
-shot nebula.png
 tap GLO
-spin K3 1
+spin K4 1
 wait 30
-expect view 4
 tap HOME
 wait 300
-shot scope.png
 tap GLO
-spin K3 -4
+spin K4 -4
 wait 30
-expect view 0
 tap HOME
 wait 30
+expect page 0
 # the knobs: HOME's four forces, ALGO the model
 expect p1 48
 spin K1 5
@@ -374,8 +368,8 @@ expect model 1
 spin ALGO -1
 wait 50
 expect model 0
-# PRESET scrolls; the scene it rests on loads, as a morph; nothing loads while it keeps turning. A scene is a sound:
-# the bodies (here none) stay as they are. SEL held while PRESET turns: at SEL's release the scene lands with its chord
+# PRESET scrolls; the scene it rests on loads, as a morph; nothing loads while it keeps turning. A scene is a sound;
+# with nothing latched it lands with its chord too (LATCH on), so browsing is heard
 spin PRESET 1
 wait 300
 expect scene 0
@@ -389,15 +383,6 @@ expect morphing 1
 expect model 1
 wait 5000
 expect morphing 0
-expect bodies 0
-expect latch 0
-press SEL
-wait 30
-spin PRESET 1
-spin PRESET -1
-wait 30
-release SEL
-wait 100
 expect scene 1
 expect bodies 4
 expect latch 4
@@ -457,6 +442,7 @@ wait 50
 expect dialog 0
 expect scene 18
 expect dirty 0
+expect savelit 0
 expect store_writes 2
 reboot
 wait 700
@@ -467,6 +453,9 @@ expect fxbypass 1
 midi C0 00
 wait 300
 expect fxbypass 0
+expect bodies 0
+expect dirty 1
+expect savelit 0
 reboot
 wait 700
 expect scene 18
@@ -517,16 +506,18 @@ tap PLAY
 wait 30
 expect orbit 0
 expect freeze 0
-# PLAY held opens the ORBIT page without running ORBIT
+# PLAY runs ORBIT as it goes down; held, it opens nothing (ARP is ORBIT's page)
 press PLAY
+wait 30
+expect orbit 1
 wait 700
 release PLAY
 wait 30
-expect page 12
-expect orbit 0
-tap HOME
-wait 30
 expect page 0
+expect orbit 1
+tap PLAY
+wait 30
+expect orbit 0
 # MIDI: a controller moves a force, a program change loads a scene's sound (the bodies stay: here none)
 midi B0 10 40
 wait 50
@@ -572,13 +563,11 @@ expect p28 80
 shot noise.png
 midi B0 14 00
 wait 6000
-# the MOUTH view with six bodies whose pills collide: the spacing settles (an unbounded retry here hung the main
-# loop until the watchdog, 2026-11-01)
+# six bodies from MIDI, close together, all sounding (once the MOUTH view's test, its timing kept)
 tap GLO
 wait 30
-spin K3 1
+spin K4 1
 wait 30
-expect view 1
 tap HOME
 wait 30
 midi 90 29 64
@@ -598,20 +587,30 @@ expect bodies 6
 midi B0 7B 00
 tap GLO
 wait 30
-spin K3 -1
+spin K4 -1
 wait 30
-expect view 0
 tap HOME
 wait 7000
 expect bodies 0
-# the later models: ALGO reaches all ten (SCAN and DX the last), each sounds
-spin ALGO 10
+# the later models: ALGO reaches all thirteen (SCAN, DX, TEAR, TAPE and RESONATOR the last), each sounds
+spin ALGO 13
 wait 50
-expect model 9
+expect model 12
 midi 90 3C 64
 wait 400
 expect sounding60 1
+expect bus >40
 spin ALGO -1
+wait 1200
+expect model 11
+expect sounding60 1
+expect bus >40
+spin ALGO -1
+wait 1200
+expect model 10
+expect sounding60 1
+expect bus >40
+spin ALGO -2
 wait 400
 expect model 8
 expect sounding60 1
@@ -624,6 +623,44 @@ wait 50
 expect model 0
 midi 80 3C 00
 wait 7000
+# ALGO crosses each body into the new model, as a scene does: the old fades as its twin rises, no gap (the old hard
+# cut fell to nothing within 20 ms)
+expect latchmode 1
+tapkey 7
+wait 4000
+spin ALGO 1
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+wait 10
+expect bus >80
+expect bodies 2
+wait 1500
+expect bodies 1
+expect model 1
+expect sounding60 1
+spin ALGO -1
+wait 1500
+press SEL
+wait 1100
+release SEL
+wait 7000
+expect bodies 0
 # the screen reader hears the page
 listen
 wait 100
@@ -640,18 +677,15 @@ wait 100
 tap HOME
 midi C0 02
 wait 300
-press SEL
-wait 30
+expect bodies 0
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 expect bodies 4
 expect latch 4
 tap ARP
 wait 30
-expect page 12
+expect page 10
 expect orbitmode 0
 spin K3 40
 wait 30
@@ -665,8 +699,8 @@ expect orbit 1
 expect pending 1
 out
 wait 1600
-expect_out USB 80 37 00
-expect_out USB 90 34 6A
+expect_out USB 80 3C 00
+expect_out USB 90 3E 6A
 out
 shot orbit_line.png
 spin K1 1
@@ -703,8 +737,8 @@ wait 30
 expect orbitmode 0
 tap HOME
 
-# the noise layer's weather and texture (NOISE 2: EDIT, SELECT twice): with WIND and GUST up a gust comes as the
-# layer starts and another within six seconds; FREEZE holds the weather; TEXTURE past a half is crackle
+# the noise layer's weather and texture (TEXTURE and GUST have no page: the scene's, set here as a knob would): with
+# WIND and GUST up a gust comes as the layer starts and another within six seconds; FREEZE holds the weather; TEXTURE past a half is crackle
 midi C0 00
 wait 400
 tap EDIT
@@ -715,13 +749,10 @@ expect page 2
 spin K3 87
 wait 30
 expect p30 127
-spin SELECT 1
-wait 30
-expect page 3
-spin K2 127
+param 44 127
 wait 30
 expect p44 127
-spin K1 100
+param 43 100
 wait 30
 expect p43 100
 tap HOME
@@ -748,7 +779,7 @@ tap GLO
 wait 30
 spin SELECT 2
 wait 30
-expect page 16
+expect page 14
 expect speaker 1
 expect gain 4096
 expect usbrec1 1
@@ -780,13 +811,9 @@ tap HOME
 # seconds without one, RATE's own tempo returns; CLOCK OUT (USB page) sends 24 a beat while the runner runs
 midi C0 02
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 tap ARP
 wait 30
 spin K1 3
@@ -834,13 +861,9 @@ wait 7000
 # body up three degrees: C3 to F3, then four: G3, then home), one step about a second with CHANCE full
 midi C0 02
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 tap ARP
 wait 30
 spin K1 4
@@ -875,75 +898,40 @@ wait 1100
 release SEL
 tap HOME
 wait 7000
-# the crossfade by hand: GLO held, a key leaned on blends what is heard toward the next scene (F1 SPACE 58 to
-# F2's 70: at 64 % pressure, about 66); let go, the blend stays; the key played nothing
+# GLO is a page button only: held, the keys play as ever and nothing blends toward another scene
 midi C0 00
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 expect p3 58
 expect h3 58
+expect bodies 3
 press GLO
 wait 400
+expect page 12
 key 5 down 100 64
 wait 600
-expect pressure 82
-expect morphing 1
-expect h3 66
-expect bodies 3
-key 5 up
-wait 100
-release GLO
-wait 100
-expect h3 66
-expect morphing 1
-key 5 down 100 0
-wait 100
+expect morphing 0
+expect h3 58
 expect bodies 4
 key 5 up
-midi C0 00
-wait 400
-expect morphing 1
-wait 5000
-expect h3 58
-# the top row (D5 up) reads no pressure: held under GLO, the blend climbs from where it is to full in two
-# seconds; let go and press again, it climbs on from there
-press GLO
-wait 400
-key 22 down 100 80
-wait 1000
-expect pressure 0
-expect h3 >62
-expect h3 <67
-key 22 up
-wait 300
-key 24 down
-wait 1300
-expect h3 70
-key 24 up
 release GLO
 wait 100
-expect h3 70
-expect bodies 4
-midi C0 00
-wait 5000
 expect h3 58
+expect bodies 4
+press SEL
+wait 1100
+release SEL
+wait 7000
+expect bodies 0
 # ECHO: the keys' leads (LATCH off) make a phrase; in ECHO the phrase replays each period, quieter, until gone.
 # PULSE: a roll of dips across the chord each period; the bodies stay
 midi C0 02
 wait 300
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 5000
+wait 5700
 tap SEL
 wait 50
 key 9 down
@@ -968,10 +956,9 @@ wait 100
 expect echorun 1
 out
 wait 1200
-expect_out USB 90 3C 4D
 expect_out USB 90 43 4D
 out
-wait 15000
+wait 17000
 expect echorun 0
 spin K1 1
 wait 30
@@ -1000,7 +987,7 @@ tap FX
 wait 300
 turn SELECT 1
 wait 300
-expect page 9
+expect page 7
 spin K1 1
 wait 300
 said TAPE
@@ -1029,7 +1016,7 @@ said MS
 # DELAY 2: COLOUR, DIFFUSE, WOW, CHOP
 spin SELECT 1
 wait 300
-expect page 10
+expect page 8
 spin K1 5
 wait 300
 said COLOUR
@@ -1062,7 +1049,9 @@ expect p58 40
 midi B0 68 00
 wait 50
 expect p59 0
-# TRANSPOSE: SEL held and a key touched; then every key moves the latched bodies, the lowest to that key; the note offs go before the note ons; a SEL tap is LATCH again
+# TRANSPOSE: while SEL is held, each key touched moves the latched bodies, the lowest to that key (the note offs
+# before the note ons); let go of SEL and the keys strike again, LATCH as it was. SEL held a second with no key:
+# every body let go, and the keys strike again even with SEL still down
 tap HOME
 wait 500
 press SEL
@@ -1084,11 +1073,8 @@ press SEL
 wait 200
 tapkey 9
 wait 50
-release SEL
-wait 300
 expect shift 1
 said D4
-expect latchmode 1
 expect latch 3
 expect sounding62 1
 expect sounding66 1
@@ -1108,31 +1094,108 @@ tapkey 26
 wait 300
 expect sounding79 1
 expect sounding83 1
-tap SEL
+wait 1500
+expect bodies 3
+release SEL
 wait 200
 expect shift 0
 expect latchmode 1
-said LATCH
+expect latch 3
 tapkey 26
 wait 300
 expect latch 2
-press SEL
-wait 200
-tapkey 0
-wait 50
-release SEL
+expect sounding79 0
+expect sounding83 1
+tapkey 26
 wait 300
-expect shift 1
+expect latch 3
+expect sounding79 1
 press SEL
 wait 1100
-release SEL
-wait 300
-expect shift 0
 expect latch 0
 tapkey 7
 wait 200
 expect shift 0
 expect latch 1
+expect sounding60 1
+release SEL
+wait 200
+expect latchmode 1
+expect latch 1
+press SEL
+wait 1100
+release SEL
+wait 3000
+expect bodies 0
+press SEL
+wait 200
+tapkey 9
+wait 50
+said LATCH FIRST
+release SEL
+wait 200
+expect bodies 0
+expect latchmode 1
+# LATCH off: SEL held moves the bed under the leads; let go, the keys play leads again
+tapkey 7
+wait 100
+tapkey 11
+wait 300
+tap SEL
+wait 50
+expect latchmode 0
+press SEL
+wait 200
+tapkey 2
+wait 300
+expect sounding55 1
+expect sounding59 1
+expect leads 0
+release SEL
+wait 50
+expect latchmode 0
+tapkey 9
+wait 50
+expect leads 1
+tap SEL
+wait 50
+expect latchmode 1
+# a body ORBIT moved is addressed where it sounds: its key lit there, a tap there lets it go; the key it was struck
+# on strikes a new body (C4 struck, CYCLE's I IV V takes it up three degrees to F4, whatever the dice)
+press SEL
+wait 1100
+release SEL
+wait 7000
+tapkey 7
+wait 300
+expect latch 1
+tap ARP
+wait 30
+param 36 4
+param 47 0
+param 24 46
+param 25 127
+wait 30
+expect orbitmode 4
+tap PLAY
+wait 1400
+tap PLAY
+wait 1500
+expect orbit 0
+expect pitch60 65
+tapkey 7
+wait 300
+expect latch 2
+expect sounding60 1
+expect pitch65 65
+tapkey 12
+wait 300
+expect latch 1
+expect sounding65 0
+expect sounding60 1
+param 36 0
+tap HOME
+wait 30
 # a black key plays its own note in a scale (F#3 in C MAJOR)
 press SEL
 wait 1100
@@ -1223,7 +1286,7 @@ tap ENV
 wait 30
 spin SELECT 1
 wait 30
-expect page 5
+expect page 4
 expect p34 0
 turn K3 2 20
 wait 50
@@ -1249,7 +1312,7 @@ tap FX
 wait 30
 spin SELECT 1
 wait 30
-expect page 9
+expect page 7
 spin K2 40
 wait 30
 expect p20 100
@@ -1309,7 +1372,7 @@ wait 30
 expect orbitmode 3
 spin SELECT 1
 wait 30
-expect page 13
+expect page 11
 spin K3 2
 wait 300
 said 3/8
@@ -1360,17 +1423,25 @@ expect orbitmode 0
 tap HOME
 wait 2000
 expect leads 0
-# A BODY'S OWN VALUES: LATCH on, a latched body's key held a third of a second opens it (a tap still lets it go, at
-# the release); its LEVEL, TONE, TUNE and ORBIT pin on the four knobs, out as NRPN, saved with the scene
+# A BODY'S OWN VALUES: LATCH on, a knob turned while the key a latched body sounds on is held opens it (no timer:
+# let go without a turn, however slowly, and the body is let go); its LEVEL, TONE, TUNE and ORBIT pin on the four
+# knobs, out as NRPN, saved with the scene (a fresh chord: ORBIT moved the last one)
+press SEL
+wait 1100
+release SEL
+wait 7000
+tapkey 7
+tapkey 11
+tapkey 14
+wait 300
 expect latch 3
 key 11 down
-wait 200
+wait 400
 expect bodyopen 0
-wait 200
-expect bodyopen 1
 out
 turn K1 -6
 wait 50
+expect bodyopen 1
 expect blvl64 -6
 expect_out USB B0 63 01
 expect_out USB B0 62 40
@@ -1392,6 +1463,17 @@ tapkey 14
 wait 200
 expect sounding67 0
 expect latch 2
+key 14 down
+wait 30
+key 14 up
+wait 200
+expect latch 3
+key 14 down
+wait 1500
+key 14 up
+wait 200
+expect sounding67 0
+expect latch 2
 key 7 down
 wait 50
 spin K4 1
@@ -1405,9 +1487,10 @@ expect sounding60 1
 key 7 down
 key 11 down
 wait 400
-expect bodyopen 2
+expect bodyopen 0
 turn K1 -40
 wait 50
+expect bodyopen 2
 expect blvl60 -25
 expect blvl64 -25
 expect sounding60 1
@@ -1484,10 +1567,10 @@ release SEL
 wait 300
 expect pitch62 62
 expect bpin62 1
-tap SEL
-wait 50
 expect shift 0
-# saved with the scene: SAVE to U3, every body let go, then SEL + PRESET brings the chord back with its values
+expect latchmode 1
+# saved with the scene: SAVE to U3, every body let go, then PRESET (nothing latched) brings the chord back with its
+# values
 tap SAVE
 wait 30
 tap SAVE
@@ -1499,13 +1582,9 @@ wait 1100
 release SEL
 wait 7000
 expect bodies 0
-press SEL
-wait 30
 spin PRESET 1
 spin PRESET -1
-wait 30
-release SEL
-wait 300
+wait 1000
 expect bodies 3
 expect latch 3
 expect bpin62 1
@@ -1618,3 +1697,296 @@ spin ALGO -9
 wait 50
 expect model 0
 tap HOME
+# an effect switched off on the FX keys reads OFF on its knobs (SPACE on HOME and REVERB, SHIMMER through the hall);
+# a turn of one of them brings the effect back on at the amount turned to, never a dead knob stuck at OFF
+wait 3000
+listen
+press FX
+wait 100
+key 4 down
+wait 30
+key 4 up
+wait 100
+release FX
+wait 200
+said REVERB OFF
+expect fxon2 0
+expect page 0
+turn K3 1
+wait 50
+unsaid OFF
+expect fxon2 1
+press FX
+wait 100
+key 4 down
+wait 30
+key 4 up
+wait 100
+release FX
+wait 200
+said REVERB OFF
+expect fxon2 0
+tap FX
+wait 30
+spin SELECT 3
+wait 30
+expect page 9
+turn K3 1
+wait 50
+unsaid OFF
+expect fxon2 1
+expect fxon3 1
+# SAVE lights for a sound or a setting changed, not for browsing, LATCH or the octave
+tap SAVE
+wait 30
+tap SAVE
+wait 100
+expect savelit 0
+tap SEL
+wait 50
+tap SEL
+wait 50
+tap OCT+
+wait 50
+tap OCT-
+wait 50
+expect savelit 0
+tap GLO
+wait 30
+spin K2 1
+wait 30
+expect savelit 1
+spin K2 -1
+wait 30
+tap HOME
+# the boot vortex: it plays at power-on and gives way to the panel by itself after 3.4 s; a key during it ends it
+# and plays as ever
+reboot
+wait 500
+expect boot 1
+wait 3100
+expect boot 0
+reboot
+wait 500
+expect boot 1
+expect latch 0
+tapkey 7
+wait 300
+expect boot 0
+expect sounding60 1
+# the three newest models' SHAPE: TEAR the sync's ratio, TAPE the source, RESONATOR the material, named on the knob
+listen
+tap EDIT
+wait 30
+spin ALGO 10
+wait 50
+expect model 10
+spin K2 -127
+wait 300
+said X1.0
+spin K2 127
+wait 300
+said X8.0
+spin ALGO 1
+wait 50
+turn K2 -1
+wait 300
+said SOURCE
+spin ALGO 1
+wait 50
+spin K2 -127
+wait 300
+said PURE
+spin K2 127
+wait 300
+said BRONZE
+spin ALGO -12
+wait 50
+expect model 0
+tap HOME
+# HOME held a second: the scene back as saved (its values, ORBIT's values) under the chord; SAVE goes dark
+reboot
+wait 700
+midi C0 00
+wait 300
+tapkey 7
+tapkey 11
+tapkey 14
+wait 300
+expect boot 0
+expect latch 3
+tap HOME
+wait 30
+spin K1 10
+wait 30
+expect p1 58
+tap ARP
+wait 30
+spin K2 -20
+wait 30
+expect p24 58
+expect savelit 1
+listen
+press HOME
+wait 500
+expect p1 58
+wait 600
+said AS SAVED
+release HOME
+wait 50
+expect p1 48
+expect p24 78
+expect savelit 0
+expect latch 3
+expect page 0
+# MIDI clock: the tempo over a whole beat, so clocks bunched in pairs (a Bluetooth packet) read right; the same clock
+# on a second input is not counted again; EVERY then reads in beats; a turn of EVERY cuts the countdown under way
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+clock 2 0
+wait 42
+expect clockext 1
+expect clockbpm >112
+expect clockbpm <128
+clock 24 21
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+midi TRS F8 00 00
+clock 24 21
+expect clockbpm >112
+expect clockbpm <128
+tap ARP
+wait 20
+spin K2 1
+said BEATS
+spin K3 40
+clock 1 0
+wait 3000
+expect clockext 0
+spin K2 127
+wait 30
+spin K3 127
+wait 30
+tap PLAY
+wait 500
+expect moves >-1
+spin K2 -67
+wait 2800
+expect moves >0
+tap PLAY
+wait 30
+spin K1 2
+wait 30
+expect orbitmode 2
+spin K3 -127
+spin K3 64
+wait 300
+said 2 OF 3
+spin K1 -2
+wait 30
+tap HOME
+# the runner keeps RATE over time: 1/16 at 120 BPM, twenty seconds, 160 steps (it once lost a block a step)
+press SEL
+wait 1100
+release SEL
+wait 7000
+tapkey 7
+tapkey 11
+tapkey 14
+wait 300
+param 36 3
+param 61 0
+param 60 0
+param 39 51
+tap PLAY
+wait 2000
+expect arpsteps >15
+wait 20000
+expect arpsteps >174
+expect arpsteps <180
+tap PLAY
+wait 30
+param 36 0
+
+# the delay's GRAINS: pieces of a played note come back, scattered (they once all but vanished)
+expect latchmode 1
+tap SEL
+wait 50
+param 3 0
+param 19 127
+param 57 6
+wait 300
+key 7 down
+wait 120
+key 7 up
+wait 1500
+expect out >2
+wait 4000
+tap SEL
+wait 50
+expect latchmode 1

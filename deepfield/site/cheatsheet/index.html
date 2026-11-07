@@ -138,17 +138,17 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>The next or previous page.</dd>
     <dt><span class="v">tap</span><span class="c">EDIT</span></dt>
-    <dd>BODY: model, shape, sub, air. Turn SELECT for NOISE and NOISE 2.</dd>
+    <dd>BODY: model, shape, sub, air. Turn SELECT for NOISE.</dd>
     <dt><span class="v">tap</span><span class="c">ENV</span></dt>
     <dd>ENVELOPE: swell, fade, press, glide. Turn SELECT for LEAD.</dd>
     <dt><span class="v">tap</span><span class="c">LFO</span></dt>
-    <dd>MOTION: tide rate, wobble, walk, width. Turn SELECT for MOTION 2.</dd>
+    <dd>MOTION: tide rate, wobble, walk, width.</dd>
     <dt><span class="v">tap</span><span class="c">FX</span></dt>
     <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
     <dd>ORBIT. Turn SELECT for ORBIT 2.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span></dt>
-    <dd>GLOBAL: scale, root, view, morph. Turn SELECT for MIDI and USB.</dd>
+    <dd>GLOBAL: scale, root, morph. Turn SELECT for MIDI and USB.</dd>
     <dt><span class="v">turn</span><span class="c k">MASTER</span></dt>
     <dd>Volume.</dd>
   </dl>
@@ -159,18 +159,18 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <dl>
     <dt><span class="v">tap</span><span class="c w">any key</span></dt>
     <dd>Start a body: it swells in and keeps sounding (LATCH on, SEL lit).</dd>
-    <dt><span class="v">tap</span><span class="c w">its key again</span></dt>
-    <dd>Stop that body; it fades out as you let go. If ORBIT moved it, tap the half-lit key it started on.</dd>
+    <dt><span class="v">tap</span><span class="c w">its lit key</span></dt>
+    <dd>Stop that body; it fades out as you let go, however slowly you pressed. If ORBIT moved it, its light moved too: tap the key it sounds on.</dd>
     <dt><span class="v">hold</span><span class="c w">its key</span><span class="p">+</span><span class="v">turn</span><span class="c k">KNOB 1–4</span></dt>
     <dd>That body alone: LEVEL (−24 to +6 dB, or MUTE), TONE (its own MASS), TUNE (±50 cents), ORBIT (PINNED: ORBIT and the arp leave it be). Several keys held: all of them. Saved with the scene.</dd>
     <dt><span class="v">lean on</span><span class="c w">a key</span></dt>
     <dd>Brighter, with more wobble, while you lean. The top seven keys can't sense a lean.</dd>
     <dt><span class="v">tap</span><span class="c">SEL</span></dt>
     <dd>LATCH off: the bodies keep sounding, and each key plays a lead over them while you hold it. Tap again for LATCH on.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">keys</span></dt>
+    <dd>Move the chord: each key moves the whole latched chord there, its lowest note to that key. Let go of SEL and the keys play as before.</dd>
     <dt><span class="v">hold</span><span class="c">SEL</span><span class="v">1 s</span></dt>
     <dd>Stop every body.</dd>
-    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">a key</span><span class="v">within 1 s</span></dt>
-    <dd>TRANSPOSE: each key you play then moves the whole latched chord, its lowest note to that key. Tap SEL to leave.</dd>
     <dt><span class="v">tap</span><span class="c">OCT-</span><span class="c">OCT+</span></dt>
     <dd>The keys an octave down or up, two each way.</dd>
   </dl>
@@ -188,9 +188,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">turn</span><span class="c k">KNOB 4</span></dt>
     <dd>On HOME, TIDE: each body slowly fades down and back up.</dd>
     <dt><span class="v">turn</span><span class="c k">ALGORITHM</span></dt>
-    <dd>The model: SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, SCAN (wavetables), DX (four-operator FM). On DX, SHAPE picks one of eight voices.</dd>
-    <dt><span class="v">tap</span><span class="c">LFO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
-    <dd>MOTION 2: SPREAD, CROSS, TIMBRE and SWAY make the bodies sound like separate voices.</dd>
+    <dd>The model: SOLAR, VOID, GLASS, STRING, CHOIR, BELL, SHEPARD, FOLD, SCAN (wavetables), DX (four-operator FM), TEAR (hard sync), TAPE (a worn tape loop), RESONATOR (a singing bowl); every body crosses over smoothly. On DX, SHAPE picks one of eight voices.</dd>
     <dt><span class="v">tap</span><span class="c">EDIT</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>NOISE: wind, rain or crackle under the bodies.</dd>
   </dl>
@@ -240,11 +238,9 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>Scenes and saving</h2>
   <dl>
     <dt><span class="v">turn</span><span class="c k">PRESETS</span></dt>
-    <dd>Change the sound: the screen lists the scenes and a line fills; then it blends in over MORPH (4 s) under your chord. LATCH, ORBIT and FREEZE stay.</dd>
-    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span></dt>
-    <dd>The scene with its own chord, when you let go of SEL (factory chords stand on C and play in ROOT).</dd>
-    <dt><span class="v">hold</span><span class="c">GLO</span><span class="p">+</span><span class="v">lean on</span><span class="c w">a key</span></dt>
-    <dd>Blend toward the next scene: the harder you press, the further. Let go and the blend stays.</dd>
+    <dd>Change the sound: the screen lists the scenes and a line fills; then it blends in over MORPH (4 s) under your chord. LATCH, ORBIT and FREEZE stay. With nothing latched, the scene's own chord comes too (factory chords stand on C and play in ROOT).</dd>
+    <dt><span class="v">hold</span><span class="c">HOME</span><span class="v">1 s</span></dt>
+    <dd>The scene back as saved: its sound, effect switches and ORBIT values blend back in; your chord keeps playing.</dd>
     <dt><span class="v">tap</span><span class="c">SAVE</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span><span class="p">+</span><span class="v">tap</span><span class="c">SAVE</span></dt>
     <dd>Save the sound and its chord (each body's own values too) to U1–U16. HOME cancels.</dd>
   </dl>
@@ -298,11 +294,11 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <li>A button always opens the same page, and SELECT steps between pages. The four boxes at the bottom of the screen are the four knobs.</li>
     <li>SEL, PLAY and SEQ are lit while their mode is on: LATCH, ORBIT, FREEZE.</li>
     <li>F1–F16 are the factory scenes; U1–U16 are yours. F3 GLASS ORBIT and F11 GAMELAN were made for ORBIT.</li>
-    <li>Switching on is silent: the last scene's sound is ready, and nothing plays until you press a key.</li>
+    <li>Switching on, the name falls into a vortex for three seconds (press anything to skip). Then it is silent: the last scene's sound is ready, and nothing plays until you press a key.</li>
     <li>Knobs: turned slowly, small steps; turned fast, big ones. A knob with a few values moves one a click.</li>
-    <li>Key lights: bright is what you're playing, half is the machine (a body fading, the key ORBIT moves to next), a glow is the scale.</li>
+    <li>Key lights: bright is a body sounding there (tap to stop it), half is sound going (a body fading, the bed while LATCH is off), a glow is the scale.</li>
     <li>On the screen only sound gives off light. Sun means latched, white your hand (a lead, an open body), cyan where you are, teal an effect on, orange something to look at.</li>
-    <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a scene. SAVE is lit while something is unsaved.</li>
+    <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a scene. SAVE is lit while a sound or a setting is unsaved.</li>
     <li>SEL is a button (LATCH) and SELECT is a knob (pages): different controls.</li>
     <li>Update mode: hold REC while you switch on. Hardware calibration (buttons and knobs): hold OCT- and OCT+ while you switch on.</li>
     <li>Back to the stock firmware: the installer puts M-VAVE's own back.</li>

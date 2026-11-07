@@ -2,12 +2,255 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the last flash, PHOSPHOR TUBE, DEEP FIELD's new screen (flashed 2026-11-07; site 0.5 the same day)
+## Start here: built, waiting for the flash: the delay's quiet types reworked, the views gone (2026-11-08; not flashed, not committed)
 
-When Kyle asks "what's next", open with a short review of this flash and how to test it, then the agreed order.
+When Kyle asks "what's next", open with these and how to test them, then the flash below.
+
+- **The delay** (Kyle: "rise and fall you can really hear and ping is ok but the rest I can't hear at all"). Measured
+  first: on a short note with nothing held, TAPE, HEADS and REVERSE echoed as loud as PING; over a held chord they
+  vanish, because an echo of a steady sound is the same sound (RISE and FALL change octave, PING moves). GRAINS was
+  broken outright: its pieces 26 dB under PING and silent a second after a note (four pieces, nearly all from the last
+  80 ms). Now each kind changes what comes back (engine/fx.c):
+  - TAPE sways deeper: wow 600 x (0.12 + WOW) half-rate samples, about 22 cents either way at WOW 40, 57 at full;
+    darker (lpc x 0.4) and harder (drive 2.0) each pass;
+  - HEADS slices its input: open for the first 30 % of each DLY TIME, a quarter the rest, a note's onset (a fast
+    follower over a slow one) opening it whole for 120 ms: a held chord pulses as a triplet left, centre, right;
+  - REVERSE one head, each window the last DLY TIME backwards, swelling from a quarter to full and cut in its last 4 %,
+    alternate swells leaning left and right: a held chord breathes in;
+  - GRAINS six pieces, one every half DLY TIME, 40 to 150 ms, from anywhere 80 ms to 1.8 s back, each at the note, an
+    octave up or down, or a fifth up (its head running against the line), feedback 0.45 so octaves do not climb;
+  - DLY MIX above 60 % climbs harder (x (1 + 12 (mix - 0.6)^2): +9.3 dB at full), so full brings the first echo about to
+    the note's level; every factory scene sits at 55 or less, so the goldens match.
+  Measured on a held C major chord (level swing / left-right swing over 30 ms windows, dB; before -> after, DLY MIX
+  full): TAPE 0.95/0.14 -> 1.64/0.22, HEADS 0.88/0.53 -> 1.21/1.50, REVERSE 0.82/0.57 -> 1.23/1.16, GRAINS 0.52/0.26 ->
+  1.58/0.90 (PING 0.80/1.43 -> 1.59/2.95, no delay 0.17/0.02; part of each rise is the louder top of DLY MIX; the
+  measure misses pitch, which is how RISE and FALL stand out). On short notes all seven now echo -45 to -52 dB against
+  the note's -23.7 (GRAINS -66.6 before). Auditions after the rework, each kind on short notes and over a held chord:
+  deepfield/build/renders/delays/*.wav.
+- **The views** (Kyle: "remove all views except for beams and remove the view setting"): MOUTH, ORBITS, NEBULA and SCOPE
+  gone with their sprites, palette and state (ui.c), dr_scope and dr_harmonics and the per-tick spectra only NEBULA drew
+  (drone.c; SOLAR keeps its own); GLOBAL is SCALE, ROOT, MORPH, -. `settings_t.view` stays for the saved layout, set 0
+  at load, and no longer resets the settings when an older build saved another view. Manual section 10 (the views) cut,
+  BEAMS described in section 3, sections renumbered; cheat sheets, README, words.tsv, screens.txt and four screenshots.
+- Measured: 598 checks (the view checks kept as timing with KNOB 4 so the later dice don't move; new: GRAINS brings a
+  note back), renders match, sanitizer clean but fastmath.h:58, device image 402,052 B (-15.7 KB), RAM 79,436 (-1.6 KB).
+
+How to test (numbered for the unit):
+
+1. Hold SEL a second, tap SEL (LATCH off), SPACE down. FX, SELECT once (DELAY): DLY TIME about 500 MS, FDBK 70 %, MIX full.
+   Tap C4 with each TYPE: TAPE wavers and darkens, HEADS taps three times, REVERSE swells backwards, GRAINS scatters
+   pieces at octaves and a fifth.
+2. Tap SEL (LATCH on), hold C4 E4 G4, step TYPE again: TAPE beats against the chord, HEADS pulses left-centre-right,
+   REVERSE breathes in each DLY TIME, GRAINS glitters.
+3. GLO: the GLOBAL page reads SCALE, ROOT, MORPH; nothing on KNOB 4; the screen is always BEAMS.
+
+## The last flash, the bed 3 dB down, ORBIT's audit fixed, GLIDE 0.13 s, HOME held (flashed 2026-11-08; not committed)
+
+Its test steps are below.
+Flashed on Kyle's "flash and update everything after you are done building" (`/usr/bin/python3
+base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`, through first time; the package newer than every
+source, carrying AS SAVED and BEATS); booted clean: FIRST LIGHT, HOME, 0 bodies, 5 % CPU, no crash recorded. Site 0.8
+published on Kyle's "Publish 0.8" (`deepfield/tools/publish_site.sh 0.8`, release FM-1_14000800; the first try with
+"update everything" was refused by the permission check). Not committed (the 0.6 tree is saved as a patch in the
+session's scratchpad, flashed-0.6/tree.patch).
+
+- **The bed 3 dB down** (Kyle: "bed too loud"; he had asked first about the keys' velocity, which is already MIDI 100,
+  79 %, and only spans 9 dB of level): `BED_GAIN` 0.708 on every body and on the noise layer, the leads left where
+  they were, so LEAD LEVEL's default (59 %) now sits about 2 dB over a body (50 % matches one, full is 9 dB over).
+  CROSS divides the trim back out of its bend. The factory scenes peaked at the limiter (NEBULA -0.1 dBFS, ICE BELLS
+  -0.1, CATHEDRAL -0.2): every scene now 2.9 to 3.0 dB lower in RMS, peaks -1.9 to -9.7 dBFS. Goldens rewritten.
+- **ORBIT's audit** (Kyle: "chord mode, EVERY 2.1 s, changing every 1 second"; a subagent measured every setting in
+  the simulator, scripts in the scratchpad's audit/): with ORBIT keeping its own time EVERY was right (1.64 to 2.48 s
+  at 2.1 s, the designed quarter either way). The 1 s came from MIDI clock arriving doubled (the same clock on two
+  inputs) or bunched in pairs (Bluetooth): dr_clock counted every clock but left zero gaps out of the tempo, so the
+  tempo read half and EVERY's beats halved; reproduced exactly (1.00 s) before the fix. Fixed:
+  - the clock followed from one input (`clk_src`, dr_clock(port)), the tempo read over the last 24 clocks
+    (`clk_hist`): every case the audit tried (steady 60 to 240 BPM, duplicates on two ports or 2 to 12 ms apart,
+    pairs, computer buffers of 11.6 to 46 ms, Bluetooth intervals of 15 to 45 ms) now moves every 2.0 s at EVERY 2.1;
+  - EVERY reads in beats under clock (4 BEATS, 1/2 BEAT: `dr_orbit_clocks`), so the screen says what ORBIT does;
+  - under clock `orbit_per` is set from the clock, so PULSE rolls again (C4, E4, G4 dipping 0.6 s apart at ROLL full
+    instead of all at once) and ECHO spreads its phrase;
+  - the runner lost a whole block every step (it kept no leftover and the firing block went uncounted): 1/16 at 120
+    BPM stepped every 130.5 ms, now 124.72 for 124.7;
+  - ECHO's one-second floor applied after the spread (passes never under 1.004 s; they came 0.76 s apart);
+  - WANDER's HOME PULL no longer lands on a note another body holds (33 in 1200 samples, now 0);
+  - a turn of EVERY cuts the countdown under way (60 s to 2.1 s used to wait out the 60);
+  - BODIES counts the latched bodies that may move ("2 OF 3"), as the engine does, instead of "N OF 8".
+  Left as designed: CYCLE's three-chord progressions (I IV V, I II V, I VII IV) rest on I for two periods across the
+  loop (the test calls it I IV V I).
+- **GLIDE** 40 (0.13 s) on INIT and so every factory scene (was 60, 0.33 s; Kyle: "too much portamento"), GLASS
+  ORBIT 50 (0.21 s, was 75, 0.68 s). Saved user scenes keep theirs.
+- **HOME held a second**: the scene back as saved (`scene_reset`: its values, effect switches and ORBIT values over
+  MORPH; the chord, LATCH, ORBIT on or off, FREEZE, octave and scale stay; SAVE dark; the screen says the scene and
+  AS SAVED); HOME blinks while it counts; a tap still only opens HOME. Kyle: "a clear way to set each preset back to
+  the default".
+- Measured: 598 simulator checks (new: HOME held, bunched and two-input clocks, EVERY in beats, EVERY cut short,
+  BODIES' count, the runner's 20 s; the moved-body check now rides CYCLE so the dice don't move it; a `level60` probe
+  in app.c), renders match the rewritten goldens, sanitizer clean but fastmath.h:58, device image 417,748 B, RAM 81,036
+  of 98,304 (+96 B for the clock history).
+
+How to test (numbered for the unit):
+
+1. Tap C4 E4 G4 on F1: quieter than before by about 3 dB; LATCH off and a lead stands out a little more.
+2. ARP, KNOB 1 to CHORD, KNOB 2 (EVERY) to 2.1S, PLAY: a move about every two seconds (1.6 to 2.6). If a computer or
+   a Bluetooth device sends clock, EVERY now reads BEATS instead of seconds.
+3. KNOB 2 from 60S down to 2.1S while ORBIT runs: the next move comes within a couple of seconds, not a minute.
+4. Watch a CHORD or WANDER move: a short slide (0.13 s), not a swoop.
+5. Turn MASS and SPACE, switch the delay off on FX held + G3, change EVERY. Hold HOME a second: HOME blinks, then the
+   scene's own values come back under the chord and SAVE goes dark.
+6. ARP with RHYTHM 8/8 at 120: steady, and in time with a drum machine following CLOCK OUT.
+
+## The flash before, three new models, TEAR, TAPE and RESONATOR (flashed 2026-11-07 late; not committed)
+
+Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`,
+through first time; the package newer than every source, carrying RESONATOR, MATERIAL, BRONZE, SOURCE, SEL TRANS);
+booted clean: the screen reader read FIRST LIGHT, HOME, 0 bodies, 5 % CPU after the vortex; the log only the radio's
+lines, no crash. Not yet heard; device CPU with eight bodies of RESONATOR not read. Site 0.7 published on Kyle's
+"Publish 0.7" with `deepfield/tools/publish_site.sh 0.7` (release FM-1_14000700), from the uncommitted tree.
+
+Not heard yet; its test steps are below.
+Kyle wanted more sounds; SCAN and DX (from Pocket Poly, on the unit since 878f35f) he has not heard yet. Pocket Poly's
+other models are plain waves VOID covers and PD; its TEAR (sync and ring) was the one left. He said "Build all
+three". ALGO now runs SOLAR ... DX, TEAR, TAPE, RESONATOR (M_TEAR 10, M_TAPE 11, M_RESON 12: older scenes unchanged).
+No factory scene uses them, nor SCAN or DX: which five factory scenes make room for them is Kyle's call, once heard.
+
+- **TEAR** (`render_tear`): a saw hard-synced to the note, SHAPE the ratio 1 to 8 (`dr_tear_ratio`, shown X1.0 to
+  X8.0 as RATIO), DRIFT breathing it; every edge, the saw's own and the reset's, gets a two-point polyBLEP one sample
+  late (Pocket Poly's sync smoothed only the saw's own), a DC blocker after; AIR rings it with the note's sine (all
+  harmonic), MASS a low-pass that follows the note and a little drive. Measured: the energy between harmonics 96 dB
+  under them at 1.6 kHz (SOLAR's additive sines 93), 60 dB at 392 Hz with the ratio at 8.
+- **TAPE** (`render_tape`): a soft organ of three sines to a saw (SHAPE as SOURCE), saturated, through the tape's
+  bandwidth (MASS); DRIFT the wear: wow (each body its own, 0.35 Hz and up), flutter, and dropouts at random times
+  per body (3 to 12 s apart, sooner when worn; level down fast and back over 0.38 s, the top darkening with it; the
+  first not before 2 s); AIR the hiss. Measured at full DRIFT over 30 s: five dropouts, 3 to 8 dB, no step over 6 dB
+  in 50 ms.
+- **RESONATOR** (`render_reson`): white noise into five coupled-form resonances (a rotation a sample: in tune low
+  down in single precision), fed at the square root of their width, their power normalised across MASS's tilt;
+  SHAPE the MATERIAL (PURE harmonic, GLASS a wine glass's rim, BOWL a singing bowl, BRONZE a plate's crowded modes);
+  DRIFT a shimmer of up to 3 cents and their levels breathing; AIR the scrape (a darker noise, the resonances wider).
+  Six bodies with every knob full, two octaves up or down: the bus stays between 0.29 and 0.83.
+- **Levels** against SOLAR at F1's settings (a C-major chord, the model chosen before the strike), across SHAPE and
+  MASS: TEAR -1.0 to -0.2 dB (dark MASS -2.9), TAPE -1.2 to +1.8, RESONATOR +0.4 to +0.5; single notes G3 and G5
+  within 2.6 dB. (The older models are matched in their own scenes, not at F1's settings: VOID -4.8, CHOIR +8.9
+  there, by design.)
+- **CPU** (host, eight bodies, 120 s simulated, less idle): TEAR 0.21 s (SOLAR 0.23), TAPE 0.28, RESONATOR 0.36
+  (CHOIR 0.36, the heaviest; LOW CHOIR reads 47 % on the unit). Device not read.
+- Screen: a glyph each in art.h (a synced saw, a cassette, a singing bowl), SHAPE named RATIO / SOURCE / MATERIAL,
+  RESONATOR's material by name; words.tsv has them. 572 checks (ALGO through all thirteen, each sounding; the three
+  SHAPE readouts), renders unchanged, sanitizer clean, device image 416,580 B (+9 KB), RAM unchanged. Auditions at
+  F1's settings, SHAPE 0, 64 and 127: deepfield/build/renders/models/*.wav.
+
+How to test (numbered for the unit):
+
+1. Tap C4, E4, G4. Turn ALGO to TEAR (11th): EDIT, turn KNOB 2 (RATIO) slowly from X1.0 to X8.0: the sync sweep.
+   KNOB 4 (AIR) up: ringing, hollow. HOME, DRIFT up: the formant slides by itself.
+2. ALGO one more: TAPE. KNOB 2 (SOURCE) from organ to saw. HOME, DRIFT to full and wait: the pitch sways, a body
+   drops out now and then. AIR (EDIT, KNOB 4): hiss.
+3. ALGO one more: RESONATOR. KNOB 2 (MATERIAL) through PURE, GLASS, BOWL, BRONZE. KNOB 1 (MASS on HOME) up:
+   brighter rings. AIR: scrape.
+4. Try each on F6 NEBULA (long swells) and with LATCH off for leads (TEAR is the one with bite).
+
+Questions to ask after: do TEAR's leads have the bite he wanted; how worn should TAPE be at DRIFT's default; which
+materials earn their place; which five factory scenes give way to scenes for SCAN, DX, TEAR, TAPE and RESONATOR.
+
+## The last flash, DEEP FIELD's cut pass and the boot vortex (flashed 2026-11-07; not committed)
+
+Flashed on Kyle's word ("Flash it") with `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc
+--yes`, through first time (the package checked newer than every source, carrying SEL TRANS and SCENE + CHORD, no
+CROSSFADE); booted clean: the screen reader read FIRST LIGHT, HOME, 0 bodies, 5 % CPU after the vortex, nothing in
+the log. Not yet seen or heard by Kyle; the vortex's frame rate on the unit not read. Site 0.6 published on Kyle's
+"Publish 0.6" with `deepfield/tools/publish_site.sh 0.6` (release FM-1_14000600; the first try had been refused by
+the session's permission check), from the uncommitted tree. Not committed.
+
+
+**The boot vortex** (Kyle, before the flash: "a cool vortex look with our color scheme and deepfield getting sucked
+into the vortex in a spiral"). `boot_frame(t)` in ui.c, played by ui_frame for 3.4 s from ui_init: violet arms,
+cyan nearer in, a white-hot ring round a dark eye (a log spiral of three arms worked out per 2 x 2 cell, dithered
+with the beams' Bayer matrix, colour bounds dithered too); DEEP FIELD in FONT_L, each glyph pixel a mote, the letters
+peeling off left to right from 0.62 s, 118 ms apart, falling along a spiral that turns faster near the eye with two
+trailing samples for streaks; the eye flares at 2.45-3.15 s and the field collapses into the sky by 3.4 s. Nothing
+kept between frames. Any key, button or knob ends it (and acts). On the unit `app_splash` (APP_SPLASH) draws its
+first frame instead of the cream name page, and ui_init no longer clears to black, so the boot runs straight into
+it. 558 checks (the vortex playing at boot, ending by itself, a key ending it and striking), renders unchanged,
+sanitizer clean, image 407,700 B (+4 KB), RAM unchanged. The unit's frame rate is not read: each frame sends the
+whole screen (21 ms) plus the maths (estimated under 15 ms), so expect about 25-30 fps. Test: switch on and watch;
+switch on again and tap a key at once: the vortex gives way and the key plays.
+
+
+Its test: the vortex, then the ten steps below.
+Kyle: "I feel like we may have made this too complex now." A three-persona review (a first-hour player, a live
+drone performer, an instrument designer; each read the manual, cheat sheet and code without my suggestions) agreed
+the core works and the weight was in gestures and hidden states: SEL had five gestures, a ⅓ s timer decided whether
+a key stopped or edited a body, TRANSPOSE stayed on after SEL was let go (with a bug: SEL held a second, then a key,
+entered it with nothing latched, every key saying LATCH FIRST), the GLO blend could not be saved (it stopped at
+0.999), the key lights carried 14 meanings, 17 pages. Kyle's four picks: ORBIT keeps all seven modes (untouched);
+a body opens on a held key plus a knob turn, no timer; MOTION 2 and NOISE 2 leave the panel; one meaning per light
+level. The persona majority's calls were built as defaults. Built on top of PHOSPHOR TUBE, which this session
+committed first on Kyle's word (09384cf, not pushed).
+
+- **SEL is LATCH and a hold-layer.** Tap: LATCH. Held: each key touched moves the latched chord there
+  (`dr_transpose_to`, engine unchanged), pill SEL TRANS only while held; let go and the keys strike again, LATCH as
+  it was. Held a second with no key: every body let go, and the keys strike at once (`sel_cleared`). `ui.shift`,
+  the sticky mode and SEL+PRESET are gone.
+- **A body is reached where it sounds.** `dr_body_at(note)` finds the latched body whose target is that key;
+  `dr_let_go(home)` (queue kind 8) lets it go. Released without a knob turn, however slowly: let go. A knob turned
+  while it is held: BODY opens, values kept at release. Pressing the key a moved body was struck on strikes a new
+  body there; the moved one is re-homed where it sounds (`note_event`), and `find_body` prefers, between two known
+  by one note, the one sounding there.
+- **PRESET with nothing latched brings the scene's chord** (+ CHORD in the list and the HUD); with a chord latched,
+  sound only, as before. Program change: sound only, always. Switching on is still silent.
+- **Cut:** the GLO blend (`dr_morph_hold*`, the GLO layer; GLO is a page button, keys play under it), PLAY-hold
+  (PLAY toggles ORBIT as it goes down), the MOTION 2 and NOISE 2 pages (their eight values stay in every scene and
+  the engine; no CC had them), the destination LED, the home-key trace and the end-key stand-in.
+- **Lights:** LIT a body sounds here (by its target), MID fading or the bed under LATCH off or a lead releasing,
+  GLOW the scale; the keys strip the same. SAVE lights for a sound change or a GLOBAL/MIDI/USB setting
+  (`ui.cfg_dirty`), not browsing, LATCH or the octave (still saved). An effect switched off reads OFF on SPACE,
+  SHIMMER, DLY MIX and ENS MIX; a turn of that knob switches it back on (`knob()`, 2026-11-07: Kyle found SPACE
+  "stuck at OFF" after the reverb was switched off).
+- **ALGO crosses** each body over in 0.8 s through the scene morph's twins (`dr_param(P_MODEL)`), instead of the hard
+  restart: measured at 10 ms steps the old cut fell to 3/1000 within 20 ms, the cross never under 105.
+- **Not built from the plan:** FX opening its page on press. It would move the knobs to ENSEMBLE every time FX is
+  held to switch an effect mid-set, the performer's main gesture; FX still opens its page on a tap. Left for later
+  (persona findings, not picked): five ORBIT modes share PLAY's orange; ECHO needs LATCH off and a bed; SCATTER and
+  ECHO use a CHANCE they don't show; a synced DLY TIME follows ARP's RATE, shown only in ARP; the designer's delay
+  cut (PING, TAPE, GRAINS) waits until Kyle has heard the seven; views, models, the FX page layout, LIFT.
+
+Measured: 550 simulator checks (499 before; TRANSPOSE, the body hold, the GLO blend, PLAY-hold, SEL+PRESET and the
+page walks rewritten; new: SEL held a second then a key, SEL's release, a slow press, key plus knob, PRESET bringing
+the chord, a moved body stopped where it sounds and its home key striking anew, ALGO's cross with no gap, the OFF
+readouts, SAVE's light); the simulator's new `param N V` and `land N` commands (app.c). Sanitizer clean but the
+known `fastmath.h:58`. Goldens rewritten: render_scenes.py brought each chord in with SEL+PRESET, now `land` on the
+same millisecond; the committed 09384cf engine run with the new driver gives hashes identical to this build's, so
+the sound is unchanged. Device package built: image 403,508 B, RAM 80,940 of 98,304 (17,364 B spare), pool 14,128 B
+spare. The browser emulator built and played: silent boot, PRESET's chord, a 1.5 s press letting a body go, hold
+plus knob opening BODY C4, SEL TRANS while held, the lit key following a moved body and stopping it. Manual
+653 → 633 lines; cheat sheets, README, BUDGET and words.tsv updated; screenshots regenerated (screen-noise2.png
+removed). Site not published (`publish_site.sh 0.6` with the commit).
+
+How to test (numbered for the unit):
+
+1. Switch on: F1 in silence. Turn PRESETS one click and back: + CHORD under the name, the line fills, F1's chord
+   comes in.
+2. Press E4 and hold it two seconds, then let go: it fades (no blink, no BODY).
+3. Tap E4 back in. Hold it and turn KNOB 1 left a few clicks: BODY E4, quieter. Let go: it stays, quieter.
+4. Hold SEL and touch A3, then D4: the chord moves to each, the pill reads SEL TRANS. Let go of SEL: SEL LATCH; tap
+   G5: a new body.
+5. Hold SEL a second without a key: every body goes. With SEL still down, tap C4: it sounds.
+6. Tap E4 and G4 too. ARP, KNOB 2 (EVERY) to about 1 s, PLAY: a body moves and its light goes with it, the old key
+   dark. PLAY off. Tap the lit key: that body fades. Tap the key it started on: a new body.
+7. Turn ALGO one click: the chord crosses into VOID with no gap.
+8. Hold FX, press A3 (reverb off), let go; turn KNOB 3 on HOME: the reverb comes back, SPACE reads its amount.
+9. Hold GLO and press a key: it plays. SELECT from MOTION goes straight to ENSEMBLE, from NOISE to ENVELOPE.
+10. Browse PRESETS with a chord latched: the sound changes under it, SAVE stays dark.
+
+Questions to ask after: does stopping on any release feel right, or does he miss holding to peek at a body; is
+MOTION 2 or NOISE 2 missed; should the key a moved body started on strike a new body, as now.
+
+## The last flash: PHOSPHOR TUBE, DEEP FIELD's new screen (flashed 2026-11-07; site 0.5 the same day)
+
 Flashed on his word ("Flash it"), through first time; booted clean (FIRST LIGHT, Kyle already playing: 2 bodies,
 31 % CPU, nothing but the platform's boot lines in the log). Site 0.5 published with `deepfield/tools/publish_site.sh
-0.5` (release FM-1_14000500). Not committed. Not yet judged on the panel by Kyle.
+0.5` (release FM-1_14000500). Committed as 09384cf (not pushed) before the cut pass. Not yet judged on the panel by Kyle.
 
 Kyle asked for a design review of the screen (a UI/UX designer, a pixel artist, an FM-1 expert as agents; the review
 page is the artifact https://claude.ai/artifact/XufR1cQRyPw3Ma1hJKiebq) and picked its recommended direction ("Build

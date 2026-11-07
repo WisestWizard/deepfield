@@ -37,10 +37,7 @@ FREEZE	freeze
 FRZ	freeze
 MORPH	morph
 SCENE	scene
-VIEW	view
-ORBITS	orbits
 NEBULA	nebula
-SCOPE	scope
 SOLAR	solar
 VOID	void
 GLASS	glass
@@ -65,9 +62,9 @@ SAVE TO	save to
 SAVE AGAIN	press save again
 BLE	bluetooth
 SEL LATCH	latch
+SEL TRANS	transpose
 PLAY ORBIT	orbit
 SEQ FRZ	freeze
-BEAMS	beams
 ENS	ensemble
 DLY	delay
 REV	reverb
@@ -107,7 +104,6 @@ UP DOWN	up down
 RANDOM	random
 PLAYED	played
 ORBIT 2	orbit two
-NOISE 2	noise two
 TEXTURE	texture
 GUST	gust
 DUCK	duck
@@ -128,10 +124,6 @@ EXT	external clock
 CYCLE	cycle
 CHORDS	chords
 PLAY CYCLE	play cycle
-CROSSFADE	crossfade
-LEAN ON A KEY	lean on a key
-HELD	held
-MOTION 2	motion two
 SPREAD	spread
 CROSS	cross
 TIMBRE	timbre
@@ -198,3 +190,11 @@ CT	cents
 LET GO: BACK	let go to go back
 VOICE	voice
 TABLE	wavetable position
+TEAR	tear
+RESONATOR	resonator
+RATIO	ratio
+SOURCE	source
+MATERIAL	material
+PURE	pure
+BOWL	bowl
+BRONZE	bronze

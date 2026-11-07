@@ -16,7 +16,7 @@ typedef struct {
     uint8_t scale;                       /* SC_* */
     uint8_t root;                        /* 0..11, C = 0 */
     uint8_t vel;                         /* 1: a key's velocity is its body's weight; 0: every body the same */
-    uint8_t view;                        /* VIEW_* */
+    uint8_t view;                        /* once the VIEW (MOUTH, ORBITS...): only BEAMS now, kept 0 for the layout */
     uint8_t morph;                       /* seconds a scene change takes, 0..30 */
     uint8_t midi_in;                     /* 0 omni, 1..16 */
     uint8_t midi_out;                    /* 1..16 */
@@ -83,10 +83,8 @@ static uint32_t scale_mask(uint32_t sc)
 }
 static void scale_apply(void) { dr_scale(scale_mask(set.scale), set.root); }
 
-enum { VIEW_BEAMS, VIEW_MOUTH, VIEW_ORBITS, VIEW_NEBULA, VIEW_SCOPE, VIEW_COUNT };
-static const char *const VIEW_NAME[VIEW_COUNT] = {"BEAMS", "MOUTH", "ORBITS", "NEBULA", "SCOPE"};
 static const char *const MODEL_NAME[M_COUNT] = {"SOLAR", "VOID", "GLASS", "STRING", "CHOIR", "BELL", "SHEPARD", "FOLD",
-                                                "SCAN", "DX"};
+                                                "SCAN", "DX", "TEAR", "TAPE", "RESONATOR"};
 
 static void scene_name_set(scene_t *s, const char *name)
 {
@@ -102,7 +100,7 @@ static void scene_init(scene_t *s, const char *name)
     static const uint8_t INIT[P_COUNT] = {
         [P_MODEL] = M_SOLAR, [P_MASS] = 50, [P_DRIFT] = 35, [P_SPACE] = 45, [P_TIDE] = 25,
         [P_SHAPE] = 64, [P_SUB] = 30, [P_AIR] = 20,
-        [P_SWELL] = 25, [P_FADE] = 75, [P_PRESS] = 50, [P_GLIDE] = 60,
+        [P_SWELL] = 25, [P_FADE] = 75, [P_PRESS] = 50, [P_GLIDE] = 40,   /* GLIDE 40: 0.13 s */
         [P_TIDE_RATE] = 40, [P_WOBBLE] = 20, [P_WALK] = 30, [P_WIDTH] = 70,
         [P_REV_SIZE] = 70, [P_REV_DAMP] = 40, [P_SHIMMER] = 0, [P_DLY_MIX] = 0,
         [P_DLY_TIME] = 60, [P_DLY_FDBK] = 45, [P_ENS] = 0, [P_ENS_MIX] = 40,
@@ -157,7 +155,7 @@ static void factory_build(void)
                                          {P_ENS_MIX, 55}, END};
     static const uint8_t VOID_TIDE_N[] = {36, 43, 48, 62, 0};
     static const change_t GLASS_ORBIT[] = {{P_MODEL, M_GLASS}, {P_MASS, 42}, {P_DRIFT, 45}, {P_SPACE, 62}, {P_TIDE, 40},
-                                           {P_SHAPE, 50}, {P_SUB, 20}, {P_SWELL, 30}, {P_FADE, 80}, {P_GLIDE, 75},
+                                           {P_SHAPE, 50}, {P_SUB, 20}, {P_SWELL, 30}, {P_FADE, 80}, {P_GLIDE, 50},
                                            {P_WOBBLE, 25}, {P_SHIMMER, 30}, {P_DLY_MIX, 40}, {P_DLY_TIME, 114},
                                            {P_DLY_FDBK, 50}, {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 70}, {P_ORB_PERIOD, 71}, {P_ORB_CHANCE, 90}, END};
     static const uint8_t GLASS_ORBIT_N[] = {48, 55, 60, 67, 0};
@@ -262,7 +260,7 @@ static void settings_defaults(void)
     set.scale = SC_MAJOR;
     set.root = 0;
     set.vel = 0;
-    set.view = VIEW_BEAMS;
+    set.view = 0;
     set.morph = 4;
     set.midi_in = 0;
     set.midi_out = 1;
@@ -328,9 +326,10 @@ static void project_load(void)
         }
         if (got != (int)sizeof set || set.magic != SET_MAGIC
             || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
-            || set.vel > 1u || set.view >= VIEW_COUNT || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
+            || set.vel > 1u || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
             || set.midi_out > 16u || set.latch > 1u || set.speaker > SPK_OFF || set.usb_level > 6u || set.clock_out > 1u)
             settings_defaults();
+        set.view = 0;                    /* a view saved by an older build: BEAMS, the one left */
     }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);

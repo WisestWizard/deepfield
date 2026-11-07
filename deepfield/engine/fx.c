@@ -57,14 +57,18 @@ typedef char fx_ap_check[DLY_AP0 + DLY_AP1 + DLY_AP2 + DLY_AP3 == FX_DLY_AP
                          && DLY_LEN_R > DLY_LEN_L ? 1 : -1];
 #define DLY_SHIFT_G 1536u               /* RISE and FALL: a head's grain, 70 ms at the half rate */
 #define DLY_WOB_MAX 420.0f               /* the most WOW moves a head back, in half-rate samples (TAPE's at full) */
-#define DLY_NGR 4u                       /* GRAINS: pieces sounding at once */
+#define DLY_NGR 6u                       /* GRAINS: pieces sounding at once */
 static int16_t *dly;
 static line_t dly_ap[4];
 static uint32_t dly_pos_l, dly_pos_r, dly_pos_w, dly_type_cur;
 static float dly_read, dly_ratio = DLY_RATIO, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
 static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
 static float dly_fade = 1.0f, chop_ph, chop_g = 1.0f, sh_ph, rev_ph, gr_left;
-typedef struct { float d, pos, len, gl, gr; uint32_t on; } grain_t;
+static float on_fast, on_slow, on_hold;
+static uint32_t rev_lr;                  /* REVERSE: the side this swell leans to */  /* HEADS: a note's onset opens its slicing gate, so a played note echoes whole */
+typedef struct { float d, pos, len, gl, gr, rate; uint32_t on; } grain_t;   /* rate: how far its head moves a sample
+                                                                            * against the line (0 unison, 1 an octave
+                                                                            * up, -0.5 down, 0.5 a fifth up) */
 static grain_t grn[DLY_NGR];
 static const float DLY_OG[DT_COUNT] = {1.0f, 0.5f, 1.16f, 1.35f, 1.55f, 1.4f, 1.15f};   /* each TYPE's wet, level
                                          * with PING's on a held chord (measured: the drone and a played key) */
@@ -204,7 +208,8 @@ void fx_init(void *arena)
     dly_type_cur = DT_PING;
     dly_pos_w = 0;
     dly_fade = chop_g = 1.0f;
-    chop_ph = sh_ph = rev_ph = gr_left = 0.0f;
+    chop_ph = sh_ph = rev_ph = gr_left = on_fast = on_slow = on_hold = 0.0f;
+    rev_lr = 0;
     for (i = 0; i < DLY_NGR; i++)
         grn[i].on = 0;
     dly_lp[0] = dly_lp[1] = dly_hp_x[0] = dly_hp_x[1] = dly_hp_y[0] = dly_hp_y[1] = rv_hp_l = rv_hp_r = 0.0f;
@@ -368,8 +373,10 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         float wa = 400.0f * p->dly_wow * p->dly_wow, wfl = 14.1f * fm_sqrtf(p->dly_wow);   /* WOW: the wow's and the
                                          * flutter's reach back, in samples; 40 of 127 is the 3 and 12 cents of before */
         float tmax, tgt = p->dly_time_s * FSH - (float)DLY_AP_SUM;
-        if (ty == DT_TAPE) {             /* the worn tape wanders more */
-            wa *= 2.5f;
+        if (ty == DT_TAPE) {             /* the worn tape sways far enough to be heard against a held chord: at WOW's
+                                          * 40 about 22 cents either way, at full 57; it reaches back further, which
+                                          * its one long line has room for */
+            wa = 600.0f * (0.12f + p->dly_wow);
             wfl *= 1.5f;
         }
         tmax = two ? (float)(DLY_LEN_L - 64u) - DLY_WOB_MAX - (ty == DT_PING ? 0.0f : (float)DLY_SHIFT_G)
@@ -394,8 +401,8 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             uint32_t h = n / 2u, want = p->dly_type < DT_COUNT ? p->dly_type : DT_PING;
             int32_t live = 0;
             if (ty == DT_TAPE) {         /* darker and harder each time round */
-                lpc *= 0.55f;
-                drive = 1.7f;
+                lpc *= 0.4f;
+                drive = 2.0f;
             }
             if (per < 32.0f)
                 per = 32.0f;
@@ -427,6 +434,19 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     chop_ph -= 1.0f;
                 chop_g += ((chop_ph < duty ? 1.0f : 0.0f) - chop_g) * 0.02f;
                 in = dly_dn2 * chop_g * chop_mk;
+                if (ty == DT_HEADS) {                       /* a slice in at the start of each DLY TIME, the rest at a
+                                                             * quarter: the three heads make a held chord a triplet,
+                                                             * left, centre, right; a note's onset opens it whole */
+                    float a = fm_fabsf(dly_dn2), gate;
+                    on_fast += (a - on_fast) * 0.02f;
+                    on_slow += (a - on_slow) * 0.0008f;
+                    if (on_fast > 1.8f * on_slow + 0.002f)
+                        on_hold = 0.12f * FSH;
+                    gate = on_hold > 0.0f ? 1.0f : chop_ph < 0.3f ? 1.0f : 0.25f;
+                    if (on_hold > 0.0f)
+                        on_hold -= 1.0f;
+                    in *= gate;
+                }
                 dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
                 dly_ratio += (ratio_t - dly_ratio) * slew;
                 wa0 += dwa;
@@ -478,20 +498,25 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     outr = 0.15f * h1 + 0.4f * h2 + 0.6f * h3;
                     break;
                 }
-                case DT_REVERSE: {                          /* two heads, half a window apart, each reading back
-                                                             * across the last window: twice as fast as the line runs */
-                    float win = dly_read + (float)DLY_AP_SUM, w1 = rev_ph, w2 = rev_ph + 0.5f, g1, s1, s2;
-                    if (w2 >= 1.0f)
-                        w2 -= 1.0f;
-                    g1 = tri01(w1);
-                    s1 = g1 * dly_tap(dly, DLY_LEN, dly_pos_w, 2.0f + 2.0f * win * w1 + wob, &live);
-                    s2 = (1.0f - g1) * dly_tap(dly, DLY_LEN, dly_pos_w, 2.0f + 2.0f * win * w2 + wob, &live);
+                case DT_REVERSE: {                          /* one head reading back across the last window, twice as
+                                                             * fast as the line runs: each window the last DLY TIME
+                                                             * backwards, swelling from a quarter to full and cut in
+                                                             * 4 % of it, so a held chord breathes in, window by window */
+                    float win = dly_read + (float)DLY_AP_SUM, w1 = rev_ph, env, s1;
+                    env = 0.25f + 0.75f * w1 * w1;
+                    if (w1 > 0.96f)
+                        env *= (1.0f - w1) * 25.0f;
+                    if (w1 < 0.01f)
+                        env *= w1 * 100.0f;
+                    s1 = env * dly_tap(dly, DLY_LEN, dly_pos_w, 2.0f + 2.0f * win * w1 + wob, &live);
                     rev_ph += 1.0f / win;
-                    if (rev_ph >= 1.0f)
+                    if (rev_ph >= 1.0f) {
                         rev_ph -= 1.0f;
-                    c = dly_leg(0, in + (s1 + s2) * fb, g, lpc, hpa, drive);
-                    outl = 0.75f * s1 + 0.35f * s2;     /* the swell leans left on one head and right on the other */
-                    outr = 0.35f * s1 + 0.75f * s2;
+                        rev_lr = !rev_lr;               /* each swell from the other side */
+                    }
+                    c = dly_leg(0, in + s1 * fb, g, lpc, hpa, drive);
+                    outl = rev_lr ? 0.8f * s1 : 0.45f * s1;
+                    outr = rev_lr ? 0.45f * s1 : 0.8f * s1;
                     break;
                 }
                 case DT_GRAINS: {                           /* a piece every delay time, from anywhere up to 1.9 s
@@ -501,18 +526,25 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     float sum = 0.0f;
                     outl = outr = 0.0f;
                     gr_left -= 1.0f;
-                    if (gr_left <= 0.0f) {
+                    if (gr_left <= 0.0f) {          /* a piece every half DLY TIME, 40 to 150 ms long, from anywhere
+                                                     * in the last 1.8 s, at the note, an octave up or down, or a fifth
+                                                     * up, its own place left to right: a held chord glitters, notes
+                                                     * come back scattered */
                         grain_t *gv = &grn[0];
-                        float len = 1.6f * (dly_read + (float)DLY_AP_SUM), pan, q = gr_rand();
-                        gr_left += dly_read + (float)DLY_AP_SUM;
+                        float per = dly_read + (float)DLY_AP_SUM, len = 0.8f * per, pan, q = gr_rand(), pr = gr_rand(),
+                              lo, hi;
+                        gr_left += 0.5f * per < 880.0f ? 880.0f : 0.5f * per;
                         for (k = 0; k < DLY_NGR; k++)   /* a free one, else the furthest through */
                             if (!grn[k].on || (gv->on && grn[k].pos / grn[k].len > gv->pos / gv->len))
                                 gv = &grn[k];
-                        len = len < 880.0f ? 880.0f : len > 6600.0f ? 6600.0f : len;
+                        len = len < 880.0f ? 880.0f : len > 3300.0f ? 3300.0f : len;
+                        gv->rate = pr < 0.35f ? 0.0f : pr < 0.6f ? 1.0f : pr < 0.8f ? -0.5f : 0.5f;
+                        lo = 1765.0f + (gv->rate > 0.0f ? gv->rate * len : 0.0f);   /* room for its head to run */
+                        hi = (float)(DLY_LEN - 64u) - DLY_WOB_MAX - (gv->rate < 0.0f ? -gv->rate * len : 0.0f);
                         gv->on = 1;
                         gv->pos = 0.0f;
                         gv->len = len;
-                        gv->d = 1765.0f + q * q * ((float)(DLY_LEN - 64u) - DLY_WOB_MAX - 1765.0f);
+                        gv->d = lo + q * (hi - lo);
                         pan = 0.9f * (2.0f * gr_rand() - 1.0f);
                         gv->gl = fm_sqrtf(0.5f * (1.0f - pan));
                         gv->gr = fm_sqrtf(0.5f * (1.0f + pan));
@@ -528,11 +560,13 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                         outl += v * gv->gl;
                         outr += v * gv->gr;
                         sum += v;
+                        gv->d -= gv->rate;              /* the head runs against the line: the piece's pitch */
                         gv->pos += 1.0f;
                         if (gv->pos >= gv->len)
                             gv->on = 0;
                     }
-                    c = dly_leg(0, in + sum * fb * 0.7f, g, lpc, hpa, drive);
+                    c = dly_leg(0, in + sum * fb * 0.45f, g, lpc, hpa, drive);   /* less back in: pieces an octave
+                                                                                     * up would climb */
                     break;
                 }
                 }

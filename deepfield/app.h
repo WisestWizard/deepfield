@@ -15,11 +15,13 @@
 #define APP_BTDEV                        /* Bluetooth MIDI devices (lib/btdev.h) */
 #define APP_BLE_AT_BOOT (!df_ble_off())  /* Bluetooth at power-on: as the player left it (REC held) */
 #define APP_OVERLOAD                     /* the render over 90 % of its time: the engine sheds a body */
+#define APP_SPLASH                       /* the boot vortex's first frame, the name whole (ui.c) */
+void app_splash(void);
 #define APP_GAIN(m) df_gain(m)           /* the speaker's gain from MASTER: none while a computer records over USB and
                                           * SPEAKER is AUTO (the USB audio input then gets the render at full level) */
 uint32_t df_gain(uint32_t m);
 int df_ble_off(void);
-int df_shift(void);                      /* TRANSPOSE is on */
+int df_shift(void);                      /* SEL held and a key touched: the keys move the latched chord */
 void app_overload(void);
 
 /* the store: the settings, the panel calibration (the platform's), Bluetooth's address and pairing, the scenes;
@@ -39,3 +41,6 @@ void app_say(const char *a, const char *b);   /* a short message on the screen a
 /* the host simulator's checks (host/plat_host.c "expect"): see app.c */
 #define APP_HOST_EXPECT
 int app_expect(const char *what, int *got);
+#define APP_HOST_CMD                     /* "param N V": a scene value set as a knob would (the ones without a page);
+                                          * "land N": scene N lands as PRESET lands it, at once (the renders) */
+int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, const char *d);

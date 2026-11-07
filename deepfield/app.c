@@ -99,9 +99,9 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
         uint32_t full = (pkt >> 8) & 0xFFu;
         if (full >= 0xF8u) {             /* real time: the clock for the runner and ORBIT */
             if (full == 0xF8u)
-                dr_clock();
+                dr_clock(port);
             else if (full == 0xFAu || full == 0xFBu)
-                dr_clock_start();
+                dr_clock_start(port);
             else if (full == 0xFCu)
                 dr_clock_stop();
             continue;
@@ -199,6 +199,11 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 }
 void app_panic(void) { dr_panic(); }
 void app_ui_init(void) { ui_init(); }
+void app_splash(void)                        /* before the engine is up: the vortex's first frame, which ui_init plays on */
+{
+    lut_build();
+    boot_frame(0.0f);
+}
 void app_frame(void)
 {
     CRUMB(1);
@@ -210,7 +215,7 @@ void app_say(const char *a, const char *b) { ui_say(a, b); }
 
 #ifdef PLAT_HOST
 /* the simulator's checks: octave, note (the newest body's, -1 none), bodies, scene, page, dialog, dirty, latch (bodies latched), latchmode, velon,
- * orbit, freeze, model, scale, view, morphing, fxbypass, fxactive, sounding (dr_sounding of the next arg: "sounding60"),
+ * orbit, freeze, model, scale, morphing, fxbypass, fxactive, sounding (dr_sounding of the next arg: "sounding60"),
  * pN (parameter N), ch_in, ch_out, local */
 int app_expect(const char *what, int *got)
 {
@@ -228,6 +233,10 @@ int app_expect(const char *what, int *got)
         *got = ui.dialog;
     else if (!strcmp(what, "dirty"))
         *got = set_dirty || scene_dirty;
+    else if (!strcmp(what, "boot"))          /* the vortex still playing */
+        *got = ui.boot;
+    else if (!strcmp(what, "savelit"))       /* SAVE lit: a sound or a setting changed (not browsing, LATCH, octave) */
+        *got = scene_dirty || ui.cfg_dirty;
     else if (!strcmp(what, "latch"))         /* bodies latched */
         *got = (int)dr_latched();
     else if (!strcmp(what, "latchmode"))     /* SEL: the LATCH mode */
@@ -255,8 +264,6 @@ int app_expect(const char *what, int *got)
         *got = dr_scene.p[P_MODEL];
     else if (!strcmp(what, "scale"))
         *got = set.scale;
-    else if (!strcmp(what, "view"))
-        *got = set.view;
     else if (!strcmp(what, "morphing"))
         *got = dr_morphing();
     else if (!strcmp(what, "fxbypass"))
@@ -283,7 +290,14 @@ int app_expect(const char *what, int *got)
         *got = (int)dr_body_value((uint32_t)atoi(what + 5), BE_TUNE);
     else if (!strncmp(what, "bpin", 4))
         *got = (int)dr_body_value((uint32_t)atoi(what + 4), BE_PIN);
-    else if (!strncmp(what, "pitch", 5)) {   /* "pitch60": where the body struck at 60 stands now (its target, rounded) */
+    else if (!strncmp(what, "level", 5)) {   /* "level60": the body struck at 60, its level as heard, in 1/1000 */
+        uint32_t i;
+        dr_body_t b;
+        *got = -1;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && !b.fading && b.home == (uint32_t)atoi(what + 5))
+                *got = (int)(b.level * 1000.0f);
+    } else if (!strncmp(what, "pitch", 5)) {   /* "pitch60": where the body struck at 60 stands now (its target, rounded) */
         uint32_t i;
         dr_body_t b;
         *got = -1;
@@ -372,6 +386,19 @@ int app_expect(const char *what, int *got)
         *got = dr_scene.p[atoi(what + 1) % P_COUNT];
     else
         return 0;
+    return 1;
+}
+int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, const char *d)
+{
+    (void)c;
+    (void)d;
+    if (!strcmp(cmd, "land")) {          /* "land N": scene N lands as PRESET lands it, this millisecond (the renders) */
+        scene_go((uint32_t)atoi(a) % NSLOTS, 1, !dr_latched());
+        return 1;
+    }
+    if (strcmp(cmd, "param") || atoi(a) < 0 || atoi(a) >= (int)P_COUNT)
+        return 0;
+    value_set((uint32_t)atoi(a), (uint32_t)atoi(b) & 127u);
     return 1;
 }
 #endif
