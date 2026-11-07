@@ -8,7 +8,7 @@ When Kyle asks "what's next", open with a short review of this flash and how to 
 below. Flashed on his word ("update the device now") with `/usr/bin/python3 base/tools/fm1_install.py
 deepfield/build/deepfield.fwsc --yes` (the first try died at CoreMIDI client creation, -304, before writing anything;
 the second went through). Booted clean: FIRST LIGHT, 3 bodies, 31 % CPU, no xruns, no crash. Not yet heard by Kyle;
-device CPU at full load not read. The code is not committed. The site went up as 0.3 the same night
+device CPU at full load not read. Committed as acbd7d7 (not pushed). The site went up as 0.3 the same night
 (`deepfield/tools/publish_site.sh 0.3`, release package FM-1_14000300) in the PHOSPHOR theme Kyle picked:
 `deepfield/site/theme.css` and `beams.svg`, put in every page by `deepfield/tools/site_theme.py` (fm1-base's front
 page, manual, installer and emulator page, and the cheat sheet; base/ untouched); `publish_site.sh X.Y --local`
@@ -629,7 +629,7 @@ music that starts as the normal songs and gets more IDM / house / acid as the le
   only inline on the host; the tearing of a 21 ms full-screen write on invert/strobe/cycling needs a finger test on
   the unit; the transcriptions are from memory (Hungarian Dance, the later bars of Alla Turca and the Can-Can are
   "that tune at tempo"); the ACID bass slide was fixed twice on integration (it now glides and gates) and only re-rendered by number.
-- **Pre-flash bug pass, 2026-11-04 late (uncommitted):** three reviewers (engine, UI, simulator play) plus my own
+- **Pre-flash bug pass, 2026-11-04 late (committed 2026-11-06 as 673e558, not flashed):** three reviewers (engine, UI, simulator play) plus my own
   read; 20 bugs fixed and each re-checked in the simulator or a harness: early eats at stages 1–2 cut to the
   guide's level (a BN_SOFT note no longer retriggers a sounding eat), STAB ignored BN_NOTEOFF_SELF (boss and BURP
   pad/hoover notes stuck, MIDI too), a REC tap toggled Bluetooth on even ms, buttons in the demo acted on the title,
@@ -640,7 +640,7 @@ music that starts as the normal songs and gets more IDM / house / acid as the le
   title bell, density-4 chain floods, FB (continue) instead of FA on resume, reader state announcements. Host
   CPU against DEEP FIELD by the same simulator figure (0.5 % at stage 8 vs 0.3 % for DEEP FIELD at 33–40 % on the
   unit) puts stage 8 near 55–80 % of core 1: read it first; the fallback is the drums on core 2 beside the hall.
-- **Design pass built, 2026-11-04 late (uncommitted, Kyle picked the top six):** (1) a wrong key: a lane press
+- **Design pass built, 2026-11-04 late (committed with the bug pass, Kyle picked the top six):** (1) a wrong key: a lane press
   that eats nothing while a mushroom is due in another lane, or beside one a key just ate, plays a sour note, ends
   the combo, costs a third of a miss, shows OOPS (judged after CHORD's and WIDE's extra lanes; never under FREEZE);
   at stage 1 honest play makes 0, a neighbour with every note keeps every eat at 29 % of the score, slapping all
