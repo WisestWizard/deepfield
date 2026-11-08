@@ -2,7 +2,7 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the sound and dynamics pass, with the Bluetooth retry (flashed 2026-11-07; not committed; site still 0.11)
+## Start here: the sound and dynamics pass, with the Bluetooth retry (flashed 2026-11-07; committed 598feb0; site 0.12)
 
 Kyle: "things are sounding pretty good - what can we do to polish the sound or improve the dynamics - within the
 bounds of what we have already built are there any ways per voice/ effect/ motion to improve the sound or dynamics -
@@ -20,8 +20,11 @@ image 408,324 B, RAM 77,628 B, 699 checks.
 The unit is on the 16:36 package. Verified after it: the installer said `done: the FM-1 runs FM-1_1400`; the log
 has no crash recorded, `BT ready: advertising as FM-1 F9FC` and `cpu 5% b0 ADDITIVE s0 x0`; the screen reader reads
 `DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%`. Not yet heard
-by Kyle, and neither this pass's test steps nor the piano test have been run on it. Nothing is committed and the
-site is still 0.11.
+by Kyle, and neither this pass's test steps nor the piano test have been run on it. Committed on his "Commit and
+publish" as 598feb0 (not pushed), and site 0.12 published the same way (`deepfield/tools/publish_site.sh 0.12`,
+release FM-1_14001200): deepfield.fog.baby serves the new landing page, the manual, both cheat sheets, the emulator
+on this engine and `deepfield-0.12.fwsc`. The Bluetooth session's le_midi.c fix is in the flashed firmware but is
+**still uncommitted in the base submodule**, so 598feb0 alone does not rebuild what is on the unit.
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
