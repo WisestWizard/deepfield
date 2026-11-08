@@ -139,29 +139,48 @@ expect leads 0
 tap SEL
 wait 50
 expect latchmode 1
-# the velocity setting (GLO, then SELECT to MIDI): off, every body lands at 100; on, as the key landed
-tap SEL
+# VELOCITY (GLO, SELECT once): on out of the box, so how hard a key is struck is its voice's weight. Its level
+# spans 18 dB, a full strike unity (it was 9 dB from a floor of 0.35): 60 is a third of full. Off, every key
+# strikes full. MIDI out carries the key as struck whatever the switch says
+expect velon 1
 key 7 down 60
-wait 100
-expect_out USB 90 3C 64
-out
+wait 400
+expect level60 333
+key 7 up
+wait 200
+key 7 down
+wait 60
 key 7 up
 wait 7000
+expect bodies 0
 tap GLO
 wait 30
 expect page 14
 spin SELECT 1
 wait 30
 expect page 15
-spin K4 1
+spin K4 -1
 wait 30
-expect velon 1
+expect velon 0
+key 7 down 60
+wait 400
+expect level60 1000
+expect_out USB 90 3C 3C
+out
+key 7 up
+wait 200
+key 7 down
+wait 60
+key 7 up
+wait 7000
+expect bodies 0
+tap SEL
 key 7 down 60
 wait 100
 expect_out USB 90 3C 3C
 out
 key 7 up
-spin K4 -1
+wait 7000
 spin K2 -1
 wait 30
 expect ch_out 1
@@ -731,7 +750,7 @@ expect pending 1
 out
 wait 1600
 expect_out USB 80 3C 00
-expect_out USB 90 3E 6A
+expect_out USB 90 3E 7F
 out
 shot orbit_line.png
 spin K1 1
@@ -922,13 +941,13 @@ expect cyclepos 1
 out
 wait 1600
 expect_out USB 80 30 00
-expect_out USB 90 35 6A
+expect_out USB 90 35 7F
 expect_out USB 80 43 00
-expect_out USB 90 48 6A
+expect_out USB 90 48 7F
 out
 wait 3000
-expect_out USB 90 30 6A
-expect_out USB 90 43 6A
+expect_out USB 90 30 7F
+expect_out USB 90 43 7F
 tap PLAY
 wait 30
 spin K1 -4
@@ -1007,7 +1026,7 @@ wait 100
 expect echorun 1
 out
 wait 1200
-expect_out USB 90 43 4D
+expect_out USB 90 43 62
 out
 wait 17000
 expect echorun 0
@@ -1140,7 +1159,7 @@ expect sounding66 1
 expect sounding69 1
 expect sounding60 0
 expect_out USB 80 3C 00
-expect_out USB 90 3E 6D
+expect_out USB 90 3E 7F
 tapkey 2
 wait 300
 expect sounding55 1
@@ -1323,19 +1342,22 @@ wait 30
 out
 tap PLAY
 wait 60
-expect_out USB 90 43 64
-expect_no_out USB 90 3C 64
+expect_out USB 90 43 7F
+expect_no_out USB 90 3C 5E
 out
 wait 250
-expect_out USB 90 3C 64
-expect_no_out USB 90 45 64
+expect_out USB 90 3C 5E
+expect_no_out USB 90 45 5E
 out
 wait 250
-expect_out USB 90 45 64
+expect_out USB 90 45 5E
 out
 wait 250
-expect_out USB 90 40 64
-expect_no_out USB 90 43 64
+expect_out USB 90 40 5E
+expect_no_out USB 90 43 7F
+out
+wait 250
+expect_out USB 90 43 6E
 out
 tap PLAY
 wait 300
@@ -2309,3 +2331,120 @@ wait 30
 expect ble_dev 1
 tap HOME
 wait 30
+
+# ---- 2026-11-07: the sound and dynamics pass
+# LOOP's phrase is the leads' own: it plays with nothing latched (the planner used to give up before it reached the
+# phrase, so the mode was silent unless some unrelated body was latched), and CHANCE, which the mode shows no knob
+# for, no longer silences it. A replay comes back at the velocity it was played at, decayed
+reboot
+wait 700
+tap HOME
+wait 600
+tap SEL
+wait 50
+expect latchmode 0
+expect latch 0
+midi 90 3C 64
+wait 150
+midi 90 3C 00
+midi 90 40 64
+wait 150
+midi 90 40 00
+wait 400
+param 36 5
+param 24 46
+param 25 0
+param 52 0
+param 53 0
+wait 30
+expect orbitmode 5
+out
+tap PLAY
+wait 60
+expect echorun 1
+wait 1400
+expect_out USB 90 3C 5F
+expect_out USB 90 40 5F
+out
+# and the phrase is let go with it: PLAY off between a replay and its note off used to leave that note sounding and
+# its note off owed for ever
+expect leads >0
+tap PLAY
+wait 30
+expect orbit 0
+wait 20000
+expect leads 0
+# a note off sent as a note on at nothing (much gear does), with LATCH switched between the two: it used to reach
+# only the half LATCH names, so the note stayed
+reboot
+wait 700
+tap HOME
+wait 600
+tap SEL
+wait 50
+expect latchmode 0
+midi 90 3C 64
+wait 200
+expect lead60 1
+tap SEL
+wait 50
+expect latchmode 1
+midi 90 3C 00
+wait 20000
+expect leads 0
+expect lead60 0
+# a chord saved keeps the strike it was played at: it used to store the level the body happened to be at, so a
+# chord saved while it was still swelling came back quiet
+reboot
+wait 700
+tap HOME
+wait 600
+midi 90 3C 5A
+wait 300
+expect bodies 1
+expect level60 545
+tap SAVE
+wait 30
+expect dialog 1
+tap SAVE
+wait 400
+expect dialog 0
+expect scene 16
+press SEL
+wait 30
+press HOME
+wait 30
+release HOME
+release SEL
+wait 7000
+expect bodies 0
+land 16
+wait 600
+expect latch 1
+expect level60 545
+expect bodies 1
+# STRUM dips each voice and the swell brings it back (the dip slides over 25 ms now, so it is heard as a dip and
+# not as a click): with SWELL long, a dipped voice stays down until PLAY stops
+reboot
+wait 700
+tap HOME
+wait 600
+key 7 down
+wait 60
+key 7 up
+wait 1000
+expect level60 1000
+param 8 100
+param 36 6
+param 25 127
+param 54 0
+param 24 20
+wait 30
+expect orbitmode 6
+tap PLAY
+wait 600
+expect level60 <600
+tap PLAY
+wait 30
+wait 12000
+expect level60 1000

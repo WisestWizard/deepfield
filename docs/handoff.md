@@ -2,7 +2,134 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the MIDI page's Bluetooth panel, and pairing when a keyboard refuses its notes (flashed 2026-11-07; not committed; site still 0.11)
+## Start here: the sound and dynamics pass, with the Bluetooth retry (flashed 2026-11-07; not committed; site still 0.11)
+
+Kyle: "things are sounding pretty good - what can we do to polish the sound or improve the dynamics - within the
+bounds of what we have already built are there any ways per voice/ effect/ motion to improve the sound or dynamics -
+also while you are doing that conduct another bug finding mission". Two calls were put to him and he took them both:
+VELOCITY **on out of the box**, and both of the character changes offered (a stereo shimmer and a real vibrato).
+
+**Flashed twice from this same tree, within a minute of each other, by two sessions that both had Kyle's word.**
+The Bluetooth session rebuilt and flashed on his "Wait, then flash" (its package kept as
+`scratchpad/deepfield-both.fwsc`, sha1 d53853e7...); this session then rebuilt and flashed on his "Flash it"
+(`AC79_SDK=~/fw-AC79_AIoT_SDK JIELI_TOOLCHAIN=~/.jieli/toolchain ./build.sh deepfield`, the 16:36 package, newer
+than every source; `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`). The sources
+were identical, so the firmware is: this pass and the Bluetooth session's le_midi.c pairing fix (below) together,
+image 408,324 B, RAM 77,628 B, 699 checks.
+
+The unit is on the 16:36 package. Verified after it: the installer said `done: the FM-1 runs FM-1_1400`; the log
+has no crash recorded, `BT ready: advertising as FM-1 F9FC` and `cpu 5% b0 ADDITIVE s0 x0`; the screen reader reads
+`DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%`. Not yet heard
+by Kyle, and neither this pass's test steps nor the piano test have been run on it. Nothing is committed and the
+site is still 0.11.
+
+**The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
+SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
+them. If they came back at their defaults instead, the migration dropped the record, and that is the thing to fix
+(either way VELOCITY ends up on, since the defaults carry it, so the switch alone does not tell you).
+
+### The dynamics: a strike now means something
+
+Every key struck the engine at one level (velocity reached it only through a switch most players never find, and
+even then it moved the level over 9 dB and nothing else). Now:
+
+- **VELOCITY is on by default** (`settings_defaults`, scenes.c). The settings record is DEF5; a DEF4 record is read
+  and everything in it kept, with VELOCITY switched on, so Kyle's unit gets it on the next flash without losing his
+  octave, scale, channels or Bluetooth. The switch is still GLO, SELECT once, KNOB 4, if the keybed's sensing turns
+  out to read badly. With it off a key strikes at 127 (full) where it used to strike at 100, so nothing is held back
+  when the switch is down.
+- **The level law is dB-linear over 18 dB**, a full strike unity (`vel_gain`, drone.c); it was `0.35 + 0.65 v/127`,
+  9 dB from a floor. Measured on a held C4 of SUPERSAW: vel 20 to 127 is +17.0 dB (the law alone +15.2; the rest is
+  the filter opening).
+- **A strike's weight is also its colour and its attack.** `v->vtouch` is the strike as -1..0 and feeds `vmass`
+  (0.26 of TIMBRE) and the swell's and the lead attack's rate (half as fast at the softest). Measured, vel 20 to
+  127: SUPERSAW at MASS 90, the spectral centre 356 -> 558 Hz (+3.9 dB of brightness); ADDITIVE at F1's own MASS 48,
+  299 -> 363 Hz (+1.7 dB). Where TIMBRE's filter already sits at the note it is clamped there (`fc < f * 1.2`), so
+  on a filtered model low down the colour moves less; the level and the attack always move.
+- **The factory bank keeps its balance.** A preset's chord is now struck full (127) with its weight in each voice's
+  own LEVEL, -3 to 0 dB (`scene_make` takes a dB trim, not a velocity), because a velocity is now a performance and
+  not a trim. Measured over the 15 presets with chords: median RMS -24.5 dB and the spread -1.9..+2.2 dB before,
+  -24.5 and -2.0..+1.8 after; peaks -17.1..-8.0 dBFS before, -17.2..-8.6 after, so nothing is nearer the limiter.
+- **A save stores the strike, not the level the voice happened to be at** (`dr_body_t.vel`, `scene_capture`): a
+  chord saved while it was still swelling used to come back quieter than it was played.
+- **The runner has a downbeat.** ARP struck every step at one velocity. The first step of each EUCLID bar is 127,
+  the one halfway 110, the rest 94 (`arp_acc`), and the accents go out over MIDI.
+- **LOOP replays the velocities you played** (`echo_ring_vel`), instead of every note at a flat 100.
+- **MIDI out carries the strike, not the gain.** GEN's moves and SEL's transposes sent `v->vel * 127` (the gain as a
+  velocity: a key struck at 100 went out as 109). They now send the velocity the voice was struck at.
+
+### The sound: the two character changes he picked
+
+- **A real vibrato.** VIBRATO's rate was welded to its own depth, `0.1 + 6 W²` Hz, so at every factory setting
+  (WOBBLE 8 to 30) it was a 0.1-0.3 Hz drift that RANDOM already does, and the only way to a 5 Hz vibrato was to
+  turn it full, where it is a 6 Hz warble. The rate is now DRIFT's, 3.6 to 6.8 Hz, and the depth runs to 40 cents
+  (`b->wob_inc`, `wob_depth * 0.40f`). Measured on C4 with DRIFT 35: VIBRATO 20 (what most presets carry) is 6.2
+  cents either way at 4.27 Hz, VIBRATO 127 is 39.5 cents at 4.02 Hz, VIBRATO 0 is flat. The mod wheel and aftertouch
+  ride the same LFO, so leaning on a key is a vibrato now and not a slow bend.
+- **A stereo shimmer.** The octave up was one pair of heads added to both channels: a mono cloud in the middle of a
+  wide hall. It is now two pairs, the right reading 35 ms further back with its grain a quarter out of step, one a
+  side (`shim_pair`, `SHIM_B`). Measured on the tail of a big hall, left against right: the hall alone +0.320, the
+  mono shimmer +0.558, this one +0.483 (above 500 Hz, +0.268 / +0.535). It costs one more pair of taps and one more
+  one-pole a sample while SHIMMER is up: too small to read on the host, **not yet read on the unit**.
+- **STRUM's dip slides.** It multiplied the envelope by a quarter inside one control tick (0.73 ms), which is a
+  click. It now slides over 34 ticks: measured on one latched voice, 14.4 dB deep, 90 % to 10 % in 23 ms, steepest
+  -2.5 dB a millisecond.
+
+### The bug hunt: five, each reproduced before it was fixed
+
+1. **LOOP left notes sounding for ever.** A pass was forgotten with a replay still held -- PLAY off, or GEN NOW,
+   between a replay and its note off -- and that note never stopped and never sent its note off. Reproduced: a
+   latched chord, two leads, LOOP, PLAY, PLAY off 150 ms in; 30 s later `leads` was still 1, at note 62. Fixed with
+   `echo_hush`, called from `orbit_reset` and before each new pass.
+2. **LOOP played nothing unless something unrelated was latched.** `orbit_plan` gave up at `if (!cnt) return` before
+   it reached the phrase, and the phrase is the leads' own. The branch moved above the candidate gathering.
+3. **LOOP was silenced at random by a knob it does not show.** The mode has no CHANCE knob, but the CHANCE left over
+   from another mode gated it: at INIT's 70, three passes in ten were silent for no visible reason. It now ignores
+   CHANCE.
+4. **A note off sent as a note on at velocity 0 reached only half the engine.** `0x80` goes to both the voice and the
+   lead path; `0x90 .. 00` went to whichever LATCH named, so switching LATCH between a note on and its note off left
+   the note sounding with nothing left to stop it. Reproduced over USB; fixed in `midi_in`.
+5. **Two fields of the header's change detector shared bits** (the noise layer with the move's flash, GEN's mode with
+   the recording flag), so two of them turning over together left the header undrawn. Each has its own bits now.
+
+Tidied while there: `dr_lead_body` left `target` unset (nothing read it).
+
+### Measured
+
+699 simulator checks (671 once the existing ones were brought to the new velocities, 647 before; new: the velocity
+law and the switch off, LOOP with nothing latched and ignoring CHANCE, LOOP's velocities, LOOP let go with PLAY, the
+note-on-at-nothing note off, a chord saved and recalled at its strike, the runner's accents through a bar, STRUM's
+dip and its recovery). All 16 renders rewritten as golden (the bank's velocities and trims, the vibrato and the
+shimmer all move them). Sanitizer clean but the known `fastmath.h:58`. Screenshots regenerated (a voice's LEVEL now
+opens at the preset's trim: NEBULA's reads -7 dB where it read -4). Device image 408,324 B (+1.7 KB), RAM 77,628 of
+98,304 (+16 B), pool 334,032 (unchanged, 10.0 KB spare). Docs: manual (sections 4, 6, 7, 9, 10), both cheat sheets,
+README, BUDGET, landing page, this handoff.
+
+Two things are **not** covered by a check: the DEF4 -> DEF5 settings migration (it needs a stored record to run
+against) and the device's CPU with the stereo shimmer. Both want the unit.
+
+One oddity to expect in the renders: F16 INIT has no chord, so `render_scenes.py` plays it with three MIDI notes at
+velocity 100, which under the new law is 2.5 dB under a full strike. Its render sits that much lower than before;
+the preset itself is unchanged.
+
+### How to test (numbered for the unit)
+
+1. On F1 FIRST LIGHT, play one key as softly as you can, then as hard as you can. The soft note is quiet, dark and
+   eases in; the hard one is loud, bright and arrives. Play a chord and lean into one note of it: it stands out.
+2. GLO, SELECT once, KNOB 4 to OFF. Play the same two ways: both strike full and alike. Turn it back ON.
+3. EDIT, ALGO to SUPERSAW, HOME, TIMBRE about three quarters up. Soft and hard strikes now open and close the filter
+   like a knob.
+4. LFO, VIBRATO from 0 to about a quarter: a gentle 4-5 Hz vibrato, each voice a little apart. Turn HOME's DRIFT up
+   and it gets faster. Lean on a held key: aftertouch is a vibrato now, not a bend.
+5. F3 GLASS ORBIT or F6 NEBULA on headphones: the shimmer sits out at the sides with the hall, not in the middle.
+6. F5 PULSAR, PLAY: the arpeggio has a downbeat. Record it into Live: the accents are in the clip.
+7. Tap SEL (LATCH off), play four notes, ARP, MODE to LOOP, PLAY, with **nothing latched**: the phrase comes back,
+   each note as hard as you played it. Press PLAY again mid-phrase: everything stops, nothing hangs.
+8. From Live, with LATCH off, hold a MIDI note, tap SEL (LATCH on), then release the note: it stops.
+9. F8 STARLIGHT, PLAY (STRUM): each voice dips without a click.
+10. Turn PRESETS through the bank: every preset sits where it did, none louder or quieter than before.
+
+## Bluetooth MIDI: the MIDI page's panel, and pairing when a keyboard refuses its notes (flashed 2026-11-07, the retry with the sound pass; site still 0.11)
 
 Flashed on Kyle's "Flash it" (`scratchpad/deepfield-btpanel.fwsc`, sha1 05be0139..., no source newer); the installer
 said `done: the FM-1 runs FM-1_1400`; booted clean: `no crash recorded`, `BT ready: advertising as FM-1 F9FC`,
@@ -16,7 +143,7 @@ FP-30X answers the notes-on write with 0x0F, insufficient encryption. First try:
 sent the instant the encryption comes up (no SM "pairing complete" sub-event exists to wait for: le_user.h has
 only RECONNECT_START, PIN_KEY_MISS, PAIR_FAIL, PAIR_TIMEOUT, ENCRYPTION_FAIL, SEND_DISCONN, ADD_LIST_*).
 
-**Fixed since, built, not flashed** (le_midi.c only): after `encryption 0` the write waits 0.6 s (`mc_due`, sent
+**Fixed since, flashed with the sound pass above** (le_midi.c only; the piano not yet tried on it): after `encryption 0` the write waits 0.6 s (`mc_due`, sent
 from `ble_midi_poll`), and a refusal after that is asked again every 0.7 s up to five more times before letting
 go; a failed encryption no longer lets go at once (the stack's `pair_redo` gets its second try; the 10 s guard
 still ends a link that never encrypts). The device package built clean, image 407,748 B, but it also carries the
@@ -79,7 +206,7 @@ How to test (numbered for the unit):
    pairing and the cause is still open.
 5. Press REC on the MIDI page: back to NOT CONNECTED and searching. HOME: the search stops.
 
-## The flash before: PLAY lands on the GEN page (flashed 2026-11-08; not committed; site 0.11)
+## The flash before: PLAY lands on the GEN page (flashed 2026-11-08; committed 5980167; site 0.11)
 
 Kyle: "when you hit play I think it should go to the arp page - what do you think?", then "build it now and then
 flash and update". Built: PLAY turning GEN on opens the GEN page (`button()` B_PLAY: `page_to(PG_ORBIT)` after
@@ -89,7 +216,8 @@ no page (a sequencer must not flip pages). The site cheat sheet's stale "hold PL
 it) is replaced. Checks: the PLAY block expects page 12 on and after, and HOME back to 0; screens.txt taps HOME after
 PLAY before the FREEZE shot. 647 checks, renders match, screenshots regenerated, image 404,676 B (+16 B), RAM and
 pool as the panel build. Manual (sections 2 and 7), both cheat sheets, this handoff. Flashed on his word (the 13:58
-package); see the log line below. Site 0.11 published. Not committed (the panel build below is not either).
+package); see the log line below. Site 0.11 published. Committed with the panel build below as 5980167 on
+2026-11-07, so the sound pass above stands as a diff of its own.
 
 How to test (numbered for the unit):
 
@@ -98,7 +226,7 @@ How to test (numbered for the unit):
 2. Tap ARP, turn SELECT once (GEN 2), press PLAY: GEN 2 stays under the knobs.
 3. From Live, send CC 58 at 127 on HOME: GEN starts, the page stays HOME.
 
-## The flash before: the panel's six (flashed 2026-11-08; not committed; site 0.10)
+## The flash before: the panel's six (flashed 2026-11-08; committed 5980167; site 0.10)
 
 Flashed on Kyle's "build and fix all six then flash and update" (`/usr/bin/python3 base/tools/fm1_install.py
 deepfield/build/deepfield.fwsc --yes`, the 13:33 package); the installer said `done: the FM-1 runs FM-1_1400`, the
@@ -106,8 +234,9 @@ log `no crash recorded` and `cpu 5% b0 ADDITIVE s0 x0`: booted clean on F1. Not 
 preset was dumped back from the unit over SysEx after the flash (`tools/fm1_bank.py dump --all`): 32 frames, the
 names as built (the tool first asked before CoreMIDI's input was ready and heard nothing: it now waits 0.3 s and
 asks up to three times). `fm1_remote.py screen` printed nothing this session while `log` answered; not chased. Site
-0.10 published (`deepfield/tools/publish_site.sh 0.10`, from the uncommitted tree). Committed: no (Kyle did not
-ask); the level work of the other session was committed apart first as 7234746, so this build sits on it.
+0.10 published (`deepfield/tools/publish_site.sh 0.10`, from the uncommitted tree). The level work of the other
+session was committed apart first as 7234746, so this build sits on it; this build and PLAY's page were committed
+together as 5980167 on 2026-11-07, before the sound pass above.
 
 Where it came from: a four-musician panel (a laptop-free live performer, an Ableton studio musician, a score
 artist, a generative patcher who sells preset packs) reviewed 0.9 in two rounds; the synthesis is the artifact

@@ -7,9 +7,10 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | Do | Result |
 | --- | --- |
 | LATCH on (SEL lit, the default) | A key strikes a voice that stays. The key it sounds on (lit) lets it go as you let go, however slowly you pressed. |
+| How hard you strike (VELOCITY on, the default; MIDI page) | The voice's level over 18 dB, how bright it is (as if you had moved TIMBRE) and how fast it arrives (a soft note eases in at up to half ATTACK's pace). Off: every key strikes full. |
 | Hold a lit key and turn a knob | VOICE opens: KNOB 1–4 = its own LEVEL (−24..+6 dB, MUTE) · TONE (its TIMBRE ±50 %) · TUNE (±50 cents) · LOCK (OFF / ON: never moved by GEN, out of the arp, a pedal). Several keys: all of them. Let go: back to the page, the voice kept; saved with the preset; out as NRPN |
 | LATCH off (SEL dark, the screen says KEYS PLAY) | The held chord stays; a key plays a lead over it: the preset's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its voice (an accent). |
-| Aftertouch (press harder on a held key) | Brighter, more vibrato, while you press. |
+| Aftertouch (press harder on a held key) | Brighter, more vibrato (at the LFO's own rate), while you press. |
 | Hold SEL (the chord's button, no timer) | + a key (pill SEL TRANS): the latched chord moves there, the lowest note to it, gliding over GLIDE · + PRESETS: the preset's chord comes in over yours (the old release, the new swell) · + PLAY: GEN's next move now · + HOME: ALL NOTES OFF, every voice let go, the keys strike again at once. Let go of SEL: the keys strike again, LATCH as it was. Held with nothing done: nothing. |
 | Keys light | One meaning a level: LIT = a voice sounds here (tap: let go; hold + knob: its values), a lead while held; MID = a voice fading, the held chord under LATCH off, a lead releasing; GLOW = the scale. The light moves with a moved voice. A lead's strike winks its key off. The screen's keys strip shows the same. |
 
@@ -24,7 +25,7 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | ARP | GEN page (SELECT for GEN 2) | |
 | GLO | GLOBAL page (SELECT for MIDI, again for USB) | |
 | SEL | LATCH on / off (lit while on) | The chord's button: + key moves the chord, + PRESETS brings the preset's chord, + PLAY GEN's next move now, + HOME every voice let go |
-| PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go), orange LOOP (your last notes replayed, fading) and STRUM (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
+| PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go; the bar's first step accented), orange LOOP (your last notes replayed at the velocities you played them, fading; it needs nothing latched and ignores CHANCE) and STRUM (a roll of dips across the chord); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
@@ -53,16 +54,16 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | NOISE 2 | TYPE (hiss → rain → crackle) | GUST (the swells now and then) | DUCK (under a chord) | WIDTH (its own) |
 | ENVELOPE | ATTACK (ms below 1 s) | RELEASE | AFTERTOUCH | GLIDE |
 | LEAD | ATTACK | RELEASE | TRANSPOSE (semitones up) | LEVEL |
-| LFO | TREM RATE | VIBRATO | RANDOM | WIDTH |
+| LFO | TREM RATE | VIBRATO (to 40 cents either way, DRIFT its rate: 3.6 to 6.8 Hz) | RANDOM | WIDTH |
 | VOICES | SPREAD (the voices unlike each other) | CROSS MOD (pairs bending pitch) | TIMBRE DRIFT (each wandering) | PAN DRIFT (each across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
 | FX DELAY | TYPE: PING PONG (left, right), TAPE (centre, worn, wavering), MULTI TAP (three a time; a held chord pulses in triplets), REVERSE (swells; a held chord breathes in), OCT UP (octaves up), OCT DOWN (octaves down), GRANULAR (pieces scattered, at the note, an octave either way or a fifth up) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from ARP's TEMPO or the MIDI clock, halved when too long; GRANULAR: how often a piece) | DLY FDBK | DLY MIX (full: the first echo about as loud as the note) |
 | FX DELAY 2 | TONE (repeats dark and full to bright and thin) | DIFFUSION (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | GATE (only a slice of each DLY TIME goes in: a held chord pulses) |
-| FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER | REVERB (the send, as on HOME) |
+| FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER (the octave up read twice, 35 ms apart, one a side: wide) | REVERB (the send, as on HOME) |
 | GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP, STRUM: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS; LOOP: OCT JUMP; STRUM: SPEED |
 | GEN 2 | RETURN | OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
 | GLOBAL | SCALE | ROOT | MORPH | – |
-| MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY |
+| MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY (on by default) |
 | USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
 
 

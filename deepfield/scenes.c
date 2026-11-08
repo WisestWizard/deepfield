@@ -4,8 +4,9 @@
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
  * Slots 0..7 are F1..F8, 8..23 are U1..U16. A scene is the whole instrument: every parameter and the bodies that
  * were latched when it was saved. */
-#define SET_MAGIC 0x34464544u            /* "DEF4": the settings record (SPEAKER); DEF3 is read and brought up to date,
-                                          * another magic loads defaults */
+#define SET_MAGIC 0x35464544u            /* "DEF5": the settings record (VELOCITY on by default); DEF4 and DEF3 are
+                                          * read and brought up to date, another magic loads defaults */
+#define SET_MAGIC_V4 0x34464544u
 #define SET_MAGIC_V3 0x33464544u
 enum { SPK_ON, SPK_AUTO, SPK_OFF };      /* SPEAKER: with the USB audio input; AUTO: silent while a computer records */
 typedef struct {
@@ -31,8 +32,9 @@ typedef struct {
 static settings_t set;
 static uint8_t set_dirty, scene_dirty;   /* changed since the last save: SAVE is lit */
 
-#define BANK_MAGIC 0x354E4353u           /* "SCN5": each body's own values, the pins and the chord's ROOT; EVERY from
-                                          * 0.1 s */
+#define BANK_MAGIC 0x364E4353u           /* "SCN6": a body's stored velocity is the strike it was played at, under
+                                          * the engine's 18 dB law */
+#define BANK_MAGIC_V5 0x354E4353u        /* "SCN5": the same layout, its velocities the old 9 dB law's gains */
 #define BANK_MAGIC_V4 0x344E4353u        /* "SCN4" (the LEAD page), "SCN3" (the noise layer) and "SCN2": read and
                                           * brought up to date */
 #define BANK_MAGIC_V3 0x334E4353u
@@ -129,9 +131,24 @@ static void scene_init(scene_t *s, const char *name)
     scene_name_set(s, name);
 }
 
+/* a scene saved before the velocity law changed: its velocity was the gain 0.35 + 0.65 v/127, so the strike that
+ * gives that gain now is 127 + (127/3) log2 of it. Its chord sounds as it did */
+static void vel_v5_to_v6(scene_t *s)
+{
+    uint32_t i;
+    for (i = 0; i < DR_NV; i++)
+        if (s->vel[i]) {
+            float g = 0.35f + 0.65f * (float)(s->vel[i] & 127u) * (1.0f / 127.0f);
+            int32_t v = 127 + (int32_t)(42.3333f * fm_log2f(g) - 0.5f);
+            s->vel[i] = (uint8_t)clamp(v, 1, 127);
+        }
+}
+
 typedef struct { uint8_t id, v; } change_t;
 #define END {255, 0}
-static void scene_make(scene_t *s, const char *name, const change_t *c, const uint8_t *notes, uint32_t vel)
+/* lvl: the preset's own balance in whole dB. Its chord is struck full (127), as VELOCITY off strikes a key, so the
+ * preset's weight is in each body's LEVEL and not in a velocity, which now means how hard a key was hit */
+static void scene_make(scene_t *s, const char *name, const change_t *c, const uint8_t *notes, int32_t lvl)
 {
     uint32_t i;
     scene_init(s, name);
@@ -139,7 +156,8 @@ static void scene_make(scene_t *s, const char *name, const change_t *c, const ui
         s->p[c->id] = c->v;
     for (i = 0; i < DR_NV && notes[i]; i++) {
         s->note[i] = notes[i];
-        s->vel[i] = (uint8_t)vel;
+        s->vel[i] = 127;
+        s->lvl[i] = (int8_t)lvl;
     }
     s->root = 1;                         /* every factory chord stands on C, and follows ROOT when it is recalled */
 }
@@ -292,21 +310,21 @@ static void factory_build(void)
                                           {P_ECHO_JUMP, 35}, {P_LD_ATTACK, 20}, {P_LD_RELEASE, 70}, {P_LD_LEVEL, 85},
                                           {P_CROSS, 30}, {P_SPREAD, 50}, {P_TWALK, 30}, {P_SWAY, 30}, END};
     static const uint8_t FOLDED_SUN_N[] = {48, 55, 64, 69, 74, 0};
-    scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, 100);
-    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 127);
-    scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, 96);
-    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, 84);
-    scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, 100);
-    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, 64);
-    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 127);
-    scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, 92);
-    scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, 84);
-    scene_make(&factory[9], "RAIN CLOCK", RAIN_CLOCK, RAIN_CLOCK_N, 86);
-    scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, 100);
-    scene_make(&factory[11], "BRONZE BOWL", BRONZE_BOWL, BRONZE_BOWL_N, 84);
-    scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, 100);
-    scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, 100);
-    scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, 100);
+    scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, -1);
+    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 0);
+    scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, -2);
+    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, -2);
+    scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, -1);
+    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, -3);
+    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 0);
+    scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, -2);
+    scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, -2);
+    scene_make(&factory[9], "RAIN CLOCK", RAIN_CLOCK, RAIN_CLOCK_N, -2);
+    scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, -1);
+    scene_make(&factory[11], "BRONZE BOWL", BRONZE_BOWL, BRONZE_BOWL_N, -2);
+    scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, -1);
+    scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, -1);
+    scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, -1);
     scene_init(&factory[15], "INIT");    /* F16: the INIT scene as it is, no chord */
 }
 
@@ -318,7 +336,8 @@ static void settings_defaults(void)
     set.scene = 0;
     set.scale = SC_MAJOR;
     set.root = 0;
-    set.vel = 0;
+    set.vel = 1;                         /* how hard a key is struck is its voice's weight: its level, how bright it
+                                          * is and how fast it arrives. GLO, SELECT once turns it off */
     set.view = 0;
     set.morph = 4;
     set.midi_in = 0;
@@ -377,12 +396,17 @@ static void project_load(void)
     {
         int got = plat_store_load(OBJ_SETTINGS, &set, sizeof set);
         if (got == (int)SET_SIZE_V3 && set.magic == SET_MAGIC_V3) {   /* DEF3: the same, without SPEAKER */
-            set.magic = SET_MAGIC;
+            set.magic = SET_MAGIC_V4;
             set.speaker = SPK_AUTO;
             set.usb_level = 2;
             set.clock_out = 0;
             set.rsv = 0;
             got = (int)sizeof set;
+        }
+        if (got == (int)sizeof set && set.magic == SET_MAGIC_V4) {   /* DEF4: everything kept, VELOCITY switched on
+                                          * (a unit saved before it meant anything would never have heard it) */
+            set.magic = SET_MAGIC;
+            set.vel = 1;
         }
         if (got != (int)sizeof set || set.magic != SET_MAGIC
             || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
@@ -427,6 +451,12 @@ static void project_load(void)
             bank.magic = BANK_MAGIC;
             bank.ssize = (uint8_t)sizeof(scene_t);
             got = (int)sizeof bank;
+        }
+        if (got == (int)sizeof bank && bank.magic == BANK_MAGIC_V5 && bank.count == NUSER
+            && bank.ssize == sizeof(scene_t)) {   /* SCN5: its chords sound as they did under the new law */
+            for (i = 0; i < NUSER; i++)
+                vel_v5_to_v6(&bank.u[i]);
+            bank.magic = BANK_MAGIC;
         }
         if (got != (int)sizeof bank || bank.magic != BANK_MAGIC || bank.count != NUSER || bank.ssize != sizeof(scene_t))
             bank_defaults();
@@ -492,9 +522,9 @@ static void scene_capture(scene_t *s)
     s->pins = 0;
     for (i = 0; i < DR_NV; i++)
         if (dr_body(i, &b) && !b.fading) {
-            float lv = b.lvl == DR_LVL_MUTE || b.level <= 0.0f ? 0.0f : b.level / fm_exp2f((float)b.lvl * (1.0f / 6.0206f));
             s->note[n] = b.home;
-            s->vel[n] = (uint8_t)(lv > 0.0f ? clamp((int32_t)(lv * 127.0f), 40, 127) : 100);
+            s->vel[n] = (uint8_t)clamp(b.vel, 1, 127);   /* the strike it was played at: it used to store the level
+                                          * the body happened to be at, so a chord saved mid-swell came back quiet */
             s->lvl[n] = b.lvl;
             s->tone[n] = b.tone;
             s->tune[n] = b.tune;

@@ -142,7 +142,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">ENV</span></dt>
     <dd>ENVELOPE: attack, release, aftertouch, glide. Turn SELECT for LEAD.</dd>
     <dt><span class="v">tap</span><span class="c">LFO</span></dt>
-    <dd>LFO: tremolo rate, vibrato, random, width. Turn SELECT for VOICES: spread, cross mod, timbre drift, pan drift (what makes eight voices sound like eight).</dd>
+    <dd>LFO: tremolo rate, vibrato (to 40 cents either way, DRIFT its rate), random, width. Turn SELECT for VOICES: spread, cross mod, timbre drift, pan drift (what makes eight voices sound like eight).</dd>
     <dt><span class="v">tap</span><span class="c">FX</span></dt>
     <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
@@ -158,13 +158,13 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>Playing</h2>
   <dl>
     <dt><span class="v">tap</span><span class="c w">any key</span></dt>
-    <dd>Start a voice: it swells in and keeps sounding (LATCH on, SEL lit).</dd>
+    <dd>Start a voice: it swells in and keeps sounding (LATCH on, SEL lit). How hard you strike it is its weight: the level over 18&nbsp;dB, how bright it is, and how fast it arrives (VELOCITY, on by default; off, every key strikes full).</dd>
     <dt><span class="v">tap</span><span class="c w">its lit key</span></dt>
     <dd>Stop that voice; it fades out as you let go, however slowly you pressed. If GEN moved it, its light moved too: tap the key it sounds on.</dd>
     <dt><span class="v">hold</span><span class="c w">its key</span><span class="p">+</span><span class="v">turn</span><span class="c k">KNOB 1–4</span></dt>
     <dd>That voice alone: LEVEL (−24 to +6 dB, or MUTE), TONE (its own TIMBRE), TUNE (±50 cents), LOCK (ON: GEN and the arp leave it be). Several keys held: all of them. Saved with the preset.</dd>
     <dt><span class="v">press harder on</span><span class="c w">a held key</span></dt>
-    <dd>Aftertouch: brighter, with more vibrato, while you press. The top seven keys have no aftertouch.</dd>
+    <dd>Aftertouch: brighter, with more vibrato (at the LFO's own rate), while you press. The top seven keys have no aftertouch.</dd>
     <dt><span class="v">tap</span><span class="c">SEL</span></dt>
     <dd>LATCH off: the voices keep sounding, and each key plays a lead over them while you hold it. Tap again for LATCH on.</dd>
     <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">keys</span></dt>
@@ -208,13 +208,13 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="mode"><span class="dot o"></span> RANDOM</span></dt>
     <dd>Several move at once, each its own way.</dd>
     <dt><span class="mode"><span class="dot r"></span> ARP</span></dt>
-    <dd>An arpeggio through the voices' notes. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar).</dd>
+    <dd>An arpeggio through the voices' notes, the first step of each bar accented. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar).</dd>
     <dt><span class="mode"><span class="dot o"></span> PROG</span></dt>
     <dd>The chord walks a progression (I IV V and seven more).</dd>
     <dt><span class="mode"><span class="dot o"></span> LOOP</span></dt>
-    <dd>Your last eight leads (LATCH off, over a held chord) come back, quieter each time.</dd>
+    <dd>Your last eight leads (LATCH off) come back at the velocities you played them, the phrase quieter each time. It needs nothing latched under it.</dd>
     <dt><span class="mode"><span class="dot o"></span> STRUM</span></dt>
-    <dd>Each voice dips and swells back in turn: a slow strum.</dd>
+    <dd>Each voice dips (over about 25 ms) and swells back in turn: a slow strum.</dd>
     <dt><span class="v">turn</span><span class="c k">KNOB 2</span><span class="v">left</span></dt>
     <dd>RATE down to 0.1 s: below a second GEN plays the chord instead of changing it.</dd>
   </dl>
@@ -230,7 +230,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">SEQ</span></dt>
     <dd>FREEZE: the reverb holds what it has. Tap again to let it go.</dd>
     <dt><span class="v">tap</span><span class="c">FX</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
-    <dd>DELAY: type, time, feedback, mix. DELAY 2: tone, diffusion, wow, gate. REVERB: decay, damping, shimmer, reverb.</dd>
+    <dd>DELAY: type, time, feedback, mix. DELAY 2: tone, diffusion, wow, gate. REVERB: decay, damping, shimmer (the octave up read twice, one a side, so it is as wide as the hall), reverb.</dd>
   </dl>
 </section>
 
@@ -260,7 +260,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">hold</span><span class="c">REC</span><span class="v">1 s</span></dt>
     <dd>Bluetooth on or off.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
-    <dd>MIDI: in and out channels, local, velocity. Turn again for USB: recording and clock out.</dd>
+    <dd>MIDI: in and out channels, local, velocity (on by default). Turn again for USB: recording and clock out.</dd>
     <dt><span class="v">send</span><span class="c">a CC</span></dt>
     <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
     <dt><span class="v">send</span><span class="c">CC 57–63</span></dt>
@@ -306,7 +306,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <li>On the screen only sound gives off light. Sun means latched, white your hand (a lead, an open voice), cyan where you are, teal an effect on, orange something to look at.</li>
     <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a preset. SAVE is lit while a sound or a setting is unsaved.</li>
     <li>SEL is a button (LATCH) and SELECT is a knob (pages): different controls.</li>
-    <li>The keys send the velocity you struck them at over MIDI, whatever VELOCITY says; that switch only decides whether DEEP FIELD itself listens.</li>
+    <li>The keys send the velocity you struck them at over MIDI, whatever VELOCITY says; that switch only decides whether DEEP FIELD itself listens. A factory preset's chord is struck full, and its balance against the rest of the bank sits in each voice's LEVEL.</li>
     <li>Update mode: hold REC while you switch on. Hardware calibration (buttons and knobs): hold OCT- and OCT+ while you switch on.</li>
     <li>Back to the stock firmware: the installer puts M-VAVE's own back.</li>
   </ul>

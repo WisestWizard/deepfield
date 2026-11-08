@@ -1,7 +1,8 @@
 # DEEP FIELD
 
 DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Each key you press starts a *voice*: a note that
-swells in, keeps sounding, slowly breathes and drifts, and fades out when you stop it. Up to eight play at once.
+swells in, keeps sounding, slowly breathes and drifts, and fades out when you stop it. How hard you strike the key
+is its weight — its level, how bright it is, and how fast it arrives. Up to eight play at once.
 Four knobs shape every voice at the same time, a held key sets one voice apart, GEN moves them to nearby notes or
 runs an arpeggio over them, thirteen models range from breathing harmonics to wavetables and FM, and the reverb can
 freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth; every

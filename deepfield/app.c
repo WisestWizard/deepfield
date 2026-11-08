@@ -134,10 +134,15 @@ static void midi_in(void)                    /* audio interrupt: the packets tha
             continue;
         switch (st) {
         case 0x90u:                      /* a MIDI note is a key: LATCH on holds a body, off plays a lead */
-            if (set.latch)
-                dr_note_now(d1, d2, d2 != 0u);
+            if (!d2) {                   /* a note off sent as a note on at nothing (much gear does): both, as 0x80
+                                          * is, so LATCH switched between the note on and the note off cannot leave
+                                          * the note sounding with nothing left to stop it */
+                dr_note_now(d1, 0, 0);
+                dr_lead_now(d1, 0, 0);
+            } else if (set.latch)
+                dr_note_now(d1, d2, 1);
             else
-                dr_lead_now(d1, d2, d2 != 0u);
+                dr_lead_now(d1, d2, 1);
             break;
         case 0x80u:
             dr_note_now(d1, 0, 0);
@@ -158,7 +163,8 @@ static void midi_settings_apply(void) {}
 /* the bank over SysEx (main loop; the manual's section 10): F0 7D 44 46 cmd .. F7 ("DF").
  *   01 ss        a request: slot ss (0..15 F1..F16, 16..31 U1..U16) comes back as a 02 frame; 40 every user slot,
  *                41 every slot, one frame each
- *   02 ss 05 d.. a preset for slot ss: the scene (118 bytes, SCN5's layout, 05 says so) packed seven bytes to eight
+ *   02 ss 06 d.. a preset for slot ss: the scene (118 bytes, SCN6's layout, 06 says so; an 05 frame is taken and
+ *                its velocities brought up to the engine's law) packed seven bytes to eight
  *                (the high bits first, then the seven bytes with them stripped). In: written to user slot ss (a
  *                factory slot is refused) and the bank saved once the frames stop; out: the answer to 01.
  * A sound heard now is left alone: the slot's next recall plays what came in. A .syx from a computer is the same
@@ -204,7 +210,7 @@ static uint32_t dfx_build(uint32_t slot)  /* a 02 frame for a slot into dfx_fram
     dfx_frame[3] = 0x46;
     dfx_frame[4] = 0x02;
     dfx_frame[5] = (uint8_t)(slot % NSLOTS);
-    dfx_frame[6] = 5;
+    dfx_frame[6] = 6;
     dfx_pack(slot_scene(slot % NSLOTS), dfx_frame + 1u + DFX_HEAD);
     dfx_frame[1u + DFX_HEAD + DFX_BODY] = 0xF7;
     return 2u + DFX_HEAD + DFX_BODY;
@@ -213,10 +219,12 @@ static int dfx_take(const uint8_t *p, uint32_t n)   /* a 02 frame in: the preset
 {
     uint32_t slot = p[4];
     scene_t sc;
-    if (n < DFX_HEAD + DFX_BODY || p[5] != 5u || slot < NFACTORY || slot >= NSLOTS)
+    if (n < DFX_HEAD + DFX_BODY || (p[5] != 6u && p[5] != 5u) || slot < NFACTORY || slot >= NSLOTS)
         return 0;
     dfx_unpack(p + DFX_HEAD, &sc);
     sc.name[SCENE_NAME - 1u] = 0;
+    if (p[5] == 5u)                       /* a .syx from before the velocity law changed: its chord sounds as it did */
+        vel_v5_to_v6(&sc);
     bank.u[slot - NFACTORY] = sc;
     bank_check(slot - NFACTORY);
     ui.bank_save_t = plat_ms();

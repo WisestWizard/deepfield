@@ -138,8 +138,12 @@ over ATTACK seconds (ENVELOPE page). Aftertouch, pressing harder on a key once i
 adds vibrato for as long as you press; AFTERTOUCH (ENVELOPE page) sets how much. The top seven keys (C#5 to G5) have
 no aftertouch.
 
-With **VELOCITY** off (the default, on the MIDI page), every key starts its voice at the same level, so chords are
-even. With it on, how hard you strike a key sets its voice's level. MIDI notes always use their own velocity.
+**VELOCITY** (on by default; MIDI page) makes how hard you strike a key the weight of its voice. It sets three
+things at once: the level, over 18 dB from the softest touch to the hardest; how bright the voice is, as if you had
+moved TIMBRE (up to two octaves of filter on the models where TIMBRE is a filter, a gentler tilt of the harmonics on
+the others); and how fast it arrives, a soft note easing in at up to half ATTACK's pace. Switch VELOCITY off and
+every key strikes full, so chords are even and nothing is held back. MIDI notes always use their own velocity,
+whatever the switch says.
 
 If you start a ninth voice, one fades out quickly to make room: a voice that is already fading if there is one, or
 else the oldest.
@@ -157,7 +161,8 @@ preset's chord (section 9) latches its voices and turns LATCH on.
    other beams dim. That first turn already sets the value.
 3. The four knobs are now that voice's own:
    - **LEVEL**: -24 to +6 dB, one dB a click, and MUTE below -24. A muted voice stays latched and silent, so ARP and
-     GEN still use its note.
+     GEN still use its note. A factory preset's voices carry its balance here, -3 to 0 dB, so its chord sits where
+     the rest of the bank sits; its own velocity stays a full strike.
    - **TONE**: the voice's own TIMBRE, -50% to +50%: a dark root under a bright top.
    - **TUNE**: -50 to +50 cents, a cent a click. A few cents on a fifth makes it beat slowly; -14 cents on a major
      third makes it pure.
@@ -220,7 +225,7 @@ at once.
 | Knob | Name | What it does |
 | --- | --- | --- |
 | KNOB 1 | TIMBRE | How full and bright the sound is. What it changes depends on the model: on ADDITIVE, how many harmonics and how bright; on SUPERSAW, the filter cutoff (shown in Hz); on FM and FM 4-OP, the FM depth; on BOWED, the string's brightness; on WAVETABLE, a filter that follows the note. The screen names it for the model (section 6). Aftertouch adds to it for that voice, and so does the voice's own TONE. |
-| KNOB 2 | DRIFT | How much everything wanders: the detuning, the slow drift of pitch, the vibrato, the breathing of the harmonics, and how fast the stars move on the screen. |
+| KNOB 2 | DRIFT | How much everything wanders: the detuning, the slow drift of pitch, the breathing of the harmonics, and how fast the stars move on the screen. It also sets the vibrato's rate, 3.6 Hz at zero to 6.8 Hz at full. |
 | KNOB 3 | REVERB | How much reverb, and a little delay. The dry sound stays as it is. |
 | KNOB 4 | TREMOLO | How much each voice fades down and back up on its own slow cycle. At full, each voice goes all the way to silence and back. TREM RATE (LFO page) sets how fast. |
 
@@ -254,7 +259,7 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | EDIT, SELECT twice | NOISE 2 | TYPE (hiss, rain, crackle) | GUST (how much it swells now and then) | DUCK (how far it drops under a chord) | WIDTH (its own stereo width) |
 | ENV | ENVELOPE | ATTACK (fade-in, 30 ms to 20 s) | RELEASE (fade-out, 30 ms to 20 s) | AFTERTOUCH (how much pressing harder brightens) | GLIDE (how long a GEN move or a transpose takes; 0.13 s on the factory presets) |
 | ENV, SELECT once | LEAD | ATTACK (1 ms to 2 s) | RELEASE (30 ms to 7.7 s) | TRANSPOSE (0 to +2 octaves, in semitones) | LEVEL |
-| LFO | LFO | TREM RATE | VIBRATO | RANDOM (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
+| LFO | LFO | TREM RATE | VIBRATO (up to 40 cents either way, at DRIFT's rate; each voice a little faster than the one below) | RANDOM (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
 | LFO, SELECT once | VOICES | SPREAD (how unlike each other the voices are) | CROSS MOD (pairs bending each other's pitch) | TIMBRE DRIFT (each voice's TIMBRE wandering) | PAN DRIFT (each voice drifting across the stereo field) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest) | ENS MIX | – | – |
 | FX, SELECT once | DELAY | TYPE (PING PONG, TAPE, MULTI TAP, REVERSE, OCT UP, OCT DOWN, GRANULAR) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
@@ -382,14 +387,14 @@ and PLAY's colour shows it:
 | WALK | green | RATE, CHANCE, RANGE | Every RATE seconds (give or take a quarter), with a CHANCE, one voice moves to a nearby note in the scale, up to RANGE scale steps away. It never moves onto a note another voice is playing. |
 | SHIFT | orange | RATE, CHANCE, RANGE | All the voices move together by the same number of scale steps, up to RANGE, so the whole chord shifts to a related one. |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
-| ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
+| ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
 | PROG | orange | RATE, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord. |
-| LOOP | orange | RATE, DECAY, OCT JUMP | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every RATE seconds, quieter each time, losing notes (DECAY) and jumping octaves (OCT JUMP) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. |
-| STRUM | orange | RATE, CHANCE, SPEED | Every RATE seconds, with a CHANCE, each voice dips and swells back at ATTACK speed, from low to high, SPEED apart: a slow strum across the chord. |
+| LOOP | orange | RATE, DECAY, OCT JUMP | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every RATE seconds, each note at the velocity you played it at and the whole phrase quieter each time, losing notes (DECAY) and jumping octaves (OCT JUMP) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. |
+| STRUM | orange | RATE, CHANCE, SPEED | Every RATE seconds, with a CHANCE, each voice dips (over about 25 ms, so it is heard as a dip and not a click) and swells back at ATTACK speed, from low to high, SPEED apart: a slow strum across the chord. |
 
-Every mode but ARP needs at least one latched voice: with none, nothing moves (so LOOP needs a held chord under the leads).
-RANDOM and LOOP have no CHANCE knob, but they still use the CHANCE last set in another mode. A locked voice (section
-4) is never moved.
+ARP and LOOP play from the keys, so they need nothing latched. Every other mode moves latched voices: with none,
+nothing moves. RANDOM has no CHANCE knob but still uses the CHANCE last set in another mode; LOOP ignores CHANCE
+altogether. A locked voice (section 4) is never moved.
 
 **RATE** runs from 0.1 s to 60 s, shown in tenths of a second below ten. Under a second GEN stops changing the
 chord and starts playing it: at half a second WALK and RANDOM make a slow melody inside the chord, and with GLIDE
@@ -446,8 +451,9 @@ stops moving.
 
 ![Frozen: ice brackets in the view's corners, SEQ FRZ lit, GEN running](img/screen-frozen.png "FREEZE on")
 
-**SHIMMER** (REVERB page) feeds the reverb back into itself an octave higher: a rising cloud. It can't run away,
-whatever the reverb's size.
+**SHIMMER** (REVERB page) feeds the reverb back into itself an octave higher: a rising cloud. It reads the reverb
+twice, 35 ms apart, one reading a side, so the cloud stands as wide as the hall instead of sitting in its middle. It
+can't run away, whatever the reverb's size.
 
 **Switching effects on and off.** Hold FX, and the five lowest white keys become switches, on every preset:
 
@@ -627,9 +633,10 @@ A program change loads a preset's sound, as PRESETS does: 0–15 F1–F16, and 1
 
 **The presets as SysEx.** Over USB, DEEP FIELD sends and takes its presets as SysEx, so a bank can live on a
 computer, go to another FM-1, or be shared as a file. `F0 7D 44 46 01 ss F7` asks for slot ss (0–15 F1–F16, 16–31
-U1–U16; 64 every user slot, 65 every slot), and each comes back as `F0 7D 44 46 02 ss 05 <the preset> F7`, the
+U1–U16; 64 every user slot, 65 every slot), and each comes back as `F0 7D 44 46 02 ss 06 <the preset> F7`, the
 preset's 118 bytes packed seven to eight (the high bits first). Send such a frame and the preset goes into user slot
-ss (a factory slot is refused); about a second after the last one the bank is saved (BANK SAVED on the screen),
+ss (a factory slot is refused); a frame marked 05, from a build before the velocity law changed, is taken too and
+its chord brought up to the new law, so it sounds as it did; about a second after the last one the bank is saved (BANK SAVED on the screen),
 which silences the sound for a moment, so load presets between takes. A preset that is sounding is left alone: the
 slot's next recall plays what came in. `deepfield/tools/fm1_bank.py` in the source code does this from a terminal:
 `fm1_bank.py dump bank.syx` saves U1–U16 to a file, `fm1_bank.py load bank.syx` sends a file back, `--slot U5`

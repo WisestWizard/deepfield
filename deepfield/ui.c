@@ -885,8 +885,9 @@ static uint32_t key_note(uint32_t k)     /* the key's own note: the scale glows 
 }
 static void key_on(uint32_t k, uint32_t vel)
 {
-    uint32_t note = key_note(k), evel = set.vel ? vel : 100u;   /* VELOCITY off: the engine hears every key the
-                                                                  * same; MIDI out carries the key as struck */
+    uint32_t note = key_note(k), evel = set.vel ? vel : 127u;   /* VELOCITY off: the engine hears every key struck
+                                                                  * full, so none is coloured or held back; MIDI out
+                                                                  * carries the key as struck either way */
     ui.keynote[k] = (uint8_t)note;
     ui.keynotes |= 1u << k;
     ui.prs[k] = 0;
@@ -2765,10 +2766,12 @@ static void ui_frame(void)
             ui.redraw_head = 1;
         }
     }
-    states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2 | dr_orbit_mode() << 10
-           | (uint32_t)usb_recording() << 12 | (uint32_t)dr_clock_ext() << 13 | (uint32_t)transposing() << 14
+    states = (uint32_t)set.latch | (uint32_t)dr_orbit_on() << 1 | (uint32_t)dr_frozen() << 2 | dr_orbit_mode() << 11
+           | (uint32_t)usb_recording() << 14 | (uint32_t)dr_clock_ext() << 15 | (uint32_t)transposing() << 16
            | (uint32_t)dr_morphing() << 3 | (uint32_t)overload_seen << 4 | dr_fx_active() << 5
-           | (uint32_t)(now - ui.orbit_flash_t < 300u) << 9;
+           | (uint32_t)(now - ui.orbit_flash_t < 300u) << 10;   /* a field each: the noise layer (bit 4 of five) used
+                                          * to share bit 9 with the move's flash and GEN's mode bit 2 bit 12 with the
+                                          * recording, so two of them turning over together left the header undrawn */
     if (states != last_states || dirty != last_dirty || (dr_morphing() && now - ui.head_t > 100u)) {
         last_states = states;
         last_dirty = dirty;

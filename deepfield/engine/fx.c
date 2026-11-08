@@ -10,6 +10,9 @@
 #define DLY_LEN FX_DLY_LEN
 #define SHIM_LEN FX_SHIM_LEN
 #define SHIM_W 2048.0f               /* the shimmer's grain: 46 ms, two heads half a grain apart */
+#define SHIM_B 1536.0f               /* and the right side's pair reads 35 ms further back, its grain a quarter out
+                                      * of step: the octave up is two voices, one a side, instead of one in the
+                                      * middle of a wide hall (SHIM_B + SHIM_W + 2 must fit SHIM_LEN) */
 #define TWO_PI 6.28318531f
 
 /* The hall: a feedback delay network of eight lines (45 to 131 ms) through a Hadamard mix, stereo in and out, with
@@ -78,7 +81,7 @@ static line_t rv_pre[2], rv_ap[4], rv_fd[8];
 static float rv_hp_l, rv_hp_r, rv_lp[8], rv_mod_ph;
 static int16_t *shim;                    /* the plate's output, read back an octave up (two crossfading heads) */
 static uint32_t shim_pos;
-static float shim_ph, shim_lp, shim_last, frz_g = 1.0f;   /* frozen, the cloud comes up to the level the dry had */
+static float shim_ph, shim_lp, shim_lp2, frz_g = 1.0f;   /* frozen, the cloud comes up to the level the dry had */
 
 static float lim_gain = 1.0f, lim_min = 1.0f;
 #define LIM_LA 64u                       /* the limiter's lookahead, 1.5 ms: a power of two */
@@ -117,6 +120,30 @@ void fx_peaks(float *ens, float *dly, float *rev)
 uint32_t fx_bytes(void) { return FX_BYTES; }
 
 static inline float tri(float ph) { return ph < 0.5f ? 4.0f * ph - 1.0f : 3.0f - 4.0f * ph; }
+/* the shimmer: one pair of heads a half grain apart over the plate's own output, read an octave up (the distance
+ * falls a grain over a grain), windowed into each other and softened. Two pairs make it stereo */
+static float shim_pair(float base, float w, float *lp, float lpc)
+{
+    float w2 = w + 0.5f, d1, d2, g1, sv;
+    uint32_t b, i0, i1;
+    if (w >= 1.0f)
+        w -= 1.0f;
+    if (w2 >= 1.0f)
+        w2 -= 1.0f;
+    d1 = base + SHIM_W * (1.0f - w);
+    d2 = base + SHIM_W * (1.0f - w2);
+    g1 = 1.0f - fm_fabsf(2.0f * w - 1.0f);
+    b = (uint32_t)d1;
+    i0 = (shim_pos + SHIM_LEN - b) & (SHIM_LEN - 1u);
+    i1 = (i0 + SHIM_LEN - 1u) & (SHIM_LEN - 1u);
+    sv = g1 * ((float)shim[i0] + ((float)shim[i1] - (float)shim[i0]) * (d1 - (float)b));
+    b = (uint32_t)d2;
+    i0 = (shim_pos + SHIM_LEN - b) & (SHIM_LEN - 1u);
+    i1 = (i0 + SHIM_LEN - 1u) & (SHIM_LEN - 1u);
+    sv += (1.0f - g1) * ((float)shim[i0] + ((float)shim[i1] - (float)shim[i0]) * (d2 - (float)b));
+    *lp += (sv * (1.0f / 32767.0f) - *lp) * lpc;   /* softened: the octaves pile up without glare */
+    return *lp;
+}
 
 /* a 16-bit delay line: write, read at an integer or fractional distance back */
 static inline void line_put(line_t *d, float v)
@@ -177,7 +204,7 @@ void fx_init(void *arena)
     for (i = 0; i < SHIM_LEN; i++)
         shim[i] = 0;
     shim_pos = 0;
-    shim_ph = shim_lp = shim_last = 0.0f;
+    shim_ph = shim_lp = shim_lp2 = 0.0f;
     lines[0] = &rv_pre[0];
     lines[1] = &rv_pre[1];
     for (i = 0; i < 4u; i++)
@@ -666,33 +693,17 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
         }
         out_g = 0.8f + 4.0f * (1.0f - gm);   /* the lines' sum: 6 dB under the dry at F1's SPACE, 3 under at full (measured) */
         if (shim_on) {                   /* the octave up fed back, less the longer the hall already rings; the loop
-                                          * stays bounded up to the cap (measured: a let-go chord dies away at every size) */
+                                          * stays bounded up to the cap (measured: a let-go chord dies away at every
+                                          * size; each side carries one pair, so the energy a side is as it was) */
             shim_g = p->shimmer * 0.6f * (1.0f - gm);
             if (shim_g > 0.3f)
                 shim_g = 0.3f;
         }
         for (i = 0; i < n; i++) {
-            float xl = l[i] * send, xr = r[i] * send, al, ar, v[8], y[8], outl, outr, sh = 0.0f;
-            if (shim_on) {               /* the last output an octave up: two heads a half grain apart, triangle windows */
-                float w1 = shim_ph, w2 = shim_ph + 0.5f, d1, d2, g1, g2, sv;
-                uint32_t b, i0, i1;
-                if (w2 >= 1.0f)
-                    w2 -= 1.0f;
-                d1 = 1.0f + SHIM_W * (1.0f - w1);
-                d2 = 1.0f + SHIM_W * (1.0f - w2);
-                g1 = 1.0f - fm_fabsf(2.0f * w1 - 1.0f);
-                g2 = 1.0f - g1;
-                b = (uint32_t)d1;
-                i0 = (shim_pos + SHIM_LEN - b) & (SHIM_LEN - 1u);
-                i1 = (i0 + SHIM_LEN - 1u) & (SHIM_LEN - 1u);
-                sv = g1 * ((float)shim[i0] + ((float)shim[i1] - (float)shim[i0]) * (d1 - (float)b));
-                b = (uint32_t)d2;
-                i0 = (shim_pos + SHIM_LEN - b) & (SHIM_LEN - 1u);
-                i1 = (i0 + SHIM_LEN - 1u) & (SHIM_LEN - 1u);
-                sv += g2 * ((float)shim[i0] + ((float)shim[i1] - (float)shim[i0]) * (d2 - (float)b));
-                sv *= 1.0f / 32767.0f;
-                shim_lp += (sv - shim_lp) * shim_lpc;       /* softened: the octaves pile up without glare */
-                sh = shim_lp * shim_g;
+            float xl = l[i] * send, xr = r[i] * send, al, ar, v[8], y[8], outl, outr, shl = 0.0f, shr = 0.0f;
+            if (shim_on) {               /* the last output an octave up, a pair of heads a side */
+                shl = shim_pair(1.0f, shim_ph, &shim_lp, shim_lpc) * shim_g;
+                shr = shim_pair(1.0f + SHIM_B, shim_ph + 0.25f, &shim_lp2, shim_lpc) * shim_g;
                 shim_ph += shim_inc;
                 if (shim_ph >= 1.0f)
                     shim_ph -= 1.0f;
@@ -707,8 +718,8 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
             ar = line_at(&rv_pre[1], RV_PRE - 1u);
             al = allpass(&rv_ap[0], al, 0.65f);   /* one diffusing allpass a side: the network does the rest */
             ar = allpass(&rv_ap[2], ar, 0.65f);
-            al += sh;
-            ar += sh;
+            al += shl;
+            ar += shr;
             for (k = 0; k < 8u; k++) {   /* the lines out, damped and decayed; the odd four wander a little */
                 v[k] = (k & 1u) ? line_at_f(&rv_fd[k], (float)RV_L[k] + wander[k >> 1]) : line_at(&rv_fd[k], RV_L[k]);
                 rv_lp[k] += (v[k] - rv_lp[k]) * dampc;
@@ -747,10 +758,10 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
                 shim[shim_pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
                 shim_pos = (shim_pos + 1u) & (SHIM_LEN - 1u);
             }
-            if (shim_on) {               /* and the octave up heard straight away, outside the loop */
-                float so = shim_lp * p->shimmer * 6.0f;
-                outl += so;
-                outr += so;
+            if (shim_on) {               /* and the octave up heard straight away, outside the loop, each side its
+                                          * own pair: it stands apart from the hall instead of sitting in its middle */
+                outl += shim_lp * p->shimmer * 6.0f;
+                outr += shim_lp2 * p->shimmer * 6.0f;
             }
             outl_b[i] = outl;
             outr_b[i] = outr;
@@ -760,6 +771,7 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
         rv_hp_l = fm_flush(rv_hp_l);
         rv_hp_r = fm_flush(rv_hp_r);
         shim_lp = fm_flush(shim_lp);
+        shim_lp2 = fm_flush(shim_lp2);
         rv_live = live > 0.0f;
         pk_rev = block_peak(outl_b, outr_b, n);
     } else {

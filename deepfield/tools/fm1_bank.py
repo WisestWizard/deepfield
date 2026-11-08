@@ -7,7 +7,7 @@
   fm1_bank.py load FILE.syx [--slot U5]     the file's presets to the FM-1 (each into the slot it names; --slot: a
                                             one-preset file into that slot). The FM-1 saves the bank once they stop
   fm1_bank.py show FILE.syx                 the presets in a file
-A .syx is the FM-1's own frames one after another: F0 7D 44 46 02 slot 05 <the scene, seven bytes to eight> F7."""
+A .syx is the FM-1's own frames one after another: F0 7D 44 46 02 slot 06 <the scene, seven bytes to eight> F7."""
 import sys, time
 
 HEAD = [0x7D, 0x44, 0x46]

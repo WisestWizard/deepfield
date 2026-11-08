@@ -170,6 +170,7 @@ typedef struct {
     float pitch;                         /* where it is now, MIDI note (ORBIT and glide move it) */
     float target;                        /* where it is going (or stands): the key that addresses it */
     float level;                         /* 0..1, what is heard */
+    uint8_t vel;                         /* the velocity it was struck at, 1..127 (what a save stores) */
     float spark;                         /* its breathing, 0..1 */
     int8_t lvl, tone, tune;              /* its own values (dr_body_edit) */
     uint8_t pinned;
