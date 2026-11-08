@@ -26,28 +26,22 @@ release FM-1_14001200): deepfield.fog.baby serves the new landing page, the manu
 on this engine and `deepfield-0.12.fwsc`. The Bluetooth session then committed its le_midi.c fix (base a2db753) and
 pointed the submodule at it (2101207). Master pushed through 293f52b on Kyle's "Push master".
 
-**github.com/WisestWizard/deepfield is not cloneable as it stands, and it broke with 2101207.** base a2db753 exists
-on this machine only: the submodule's remote is charlesvestal/fm1-base, where Kyle has READ, and there is no fork
-under his account. Proved both ways against the pushed repo: at 293f52b, `git submodule update --init base` fails
-`upload-pack: not our ref a2db7534...`; at 598feb0, the commit before the pointer moved, it checks out d8ff8f4 and
-succeeds. Building here is unaffected -- base/main holds the commit.
+**The submodule now points at a fork, because the pin carries a commit upstream does not have.** base a2db753
+(the Bluetooth MIDI pairing fix) lived only on this machine, so for a few minutes the pushed repository could not
+be cloned at all: `git submodule update --init base` failed `upload-pack: not our ref a2db7534...`. Kyle has READ
+on charlesvestal/fm1-base, so on his "Fork it": github.com/WisestWizard/fm1-base, the commit pushed to the branch
+`deepfield-pin` (a branch of its own, so the fork's main stays upstream's and nothing collects the commit), and
+`.gitmodules` repointed at the fork (2eebe7b, pushed). Inside `base/`, `origin` is the fork and `upstream` is
+charlesvestal/fm1-base, so upstream pulls still work.
 
-Two ways out, Kyle's call (he was asked; creating the fork needs his permission and was refused by the session's
-check):
+Verified from a clean checkout of what is on GitHub: `git clone --recurse-submodules` lands base at a2db753 with
+the pairing fix in it, `./build.sh deepfield --host` builds, and all 699 checks pass.
 
-- **Fork fm1-base under WisestWizard** and point the submodule at it. The real fix: the tree then both clones and
-  rebuilds the unit's firmware. `gh repo fork charlesvestal/fm1-base --clone=false --remote=false`, then from
-  `base/`: `git remote add fork https://github.com/WisestWizard/fm1-base` and
-  `git push fork HEAD:refs/heads/deepfield-pin` (a branch of its own, so the fork's main stays upstream's and the
-  commit cannot be collected); then in the superproject set `.gitmodules` url to the fork, `git submodule sync`,
-  commit and push. Note base is 139 commits behind upstream as well as 1 ahead, so the fork's main and the pin
-  are different things.
-- **Point the submodule back at d8ff8f4** (`git revert` the pointer in 2101207, or `git -C base checkout d8ff8f4`
-  and commit the superproject). Clones work again at once, no new public surface, but the tree no longer rebuilds
-  what is on the unit and the pairing fix stays on this machine.
-
-A third, slower: offer the fix to charlesvestal/fm1-base as a pull request (which still needs the fork first, and
-the fix sits on a 139-commit-old base, so it may not apply to upstream main).
+Two things to keep in mind. base is 139 commits **behind** upstream as well as 1 ahead, so the fork's main and the
+pin are different things, and the fm1-base bump the Firmware Hub listing wants is still ahead. And the pairing
+fix's proper home is upstream: a pull request from `deepfield-pin` to charlesvestal/fm1-base would put it where
+every fm1-base app can have it, though it sits on a 139-commit-old base and may not apply to upstream main as it
+stands. Not opened; Kyle's call.
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
