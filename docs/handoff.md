@@ -38,10 +38,15 @@ Verified from a clean checkout of what is on GitHub: `git clone --recurse-submod
 the pairing fix in it, `./build.sh deepfield --host` builds, and all 699 checks pass.
 
 Two things to keep in mind. base is 139 commits **behind** upstream as well as 1 ahead, so the fork's main and the
-pin are different things, and the fm1-base bump the Firmware Hub listing wants is still ahead. And the pairing
-fix's proper home is upstream: a pull request from `deepfield-pin` to charlesvestal/fm1-base would put it where
-every fm1-base app can have it, though it sits on a 139-commit-old base and may not apply to upstream main as it
-stands. Not opened; Kyle's call.
+pin are different things, and the fm1-base bump the Firmware Hub listing wants is still ahead. And the pairing fix has been offered upstream on Kyle's "Open the PR":
+charlesvestal/fm1-base#44, one file, +69/-7, mergeable. Not from `deepfield-pin`, which is 139 commits behind
+upstream and would have read as reverting all of it: the commit was cherry-picked onto upstream/main as
+`midi-central-pairing` on the fork (it applied cleanly; `ble/midi/le_midi.c` and every header it includes are
+byte-identical between d8ff8f4 and upstream main, so the translation unit is the one that ran on the unit). The
+PR says plainly that it has not been compiled against current main -- `tools/build.py template` in a standalone
+fm1-base checkout fails on a missing `bsp/loader/crt0_ldr.S` before reaching any of it, which looks like
+something absent from the repo. If it is merged, the submodule can point back at upstream and the fork becomes
+unnecessary.
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
