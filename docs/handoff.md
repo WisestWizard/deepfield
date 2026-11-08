@@ -2,7 +2,45 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the sound and dynamics pass, with the Bluetooth retry (flashed 2026-11-07; committed 598feb0; site 0.12)
+## Start here: the base bump to upstream main, with #44 merged (built 2026-11-08; not flashed; not committed)
+
+charlesvestal merged the Bluetooth MIDI pairing fix as charlesvestal/fm1-base#44 (merge `b0976f2`), with one commit
+of his own on top: `ff0a007` widens the 10 s give-up to a link that encrypts but never turns its notes on (it stands
+down as soon as the CCC write succeeds) and drops the per-note log line. So the fork carries nothing upstream lacks,
+and on Kyle's "ok go ahead" the submodule was pointed back at charlesvestal/fm1-base and moved from `a2db753` to
+upstream main `b0976f2`: 142 commits, 245 files, +18,935/-831, and `base/bsp` with it from `305c372` to felucca-bsp
+`5b0879b`. `.gitmodules` no longer carries the fork's note, and `base/` has one remote, upstream. The fork
+github.com/WisestWizard/fm1-base can go.
+
+Built, not flashed. All three apps build on the device toolchain: deepfield 414,292 B (it was 408,324 B, so the
+upstream work costs about 6 KB), RAM 77,692 of 98,304, pool 334,032 of 344,064; pocketpoly and gnomnom likewise. The
+deepfield image still carries the pairing fix's own strings (`ccc %x pair %d`, `paired: no answer`, `ccc refused,
+let go`). Simulator checks: deepfield 699, pocketpoly 310, gnomnom 50, none failing.
+
+**The golden renders moved, and the old ones were wrong.** 12 of deepfield's 16 and 5 of pocketpoly's 16 changed
+their hash on the bump. The cause, found by bisect and confirmed from both ends: `8a3acf0` ("A fourth plat_data
+window on request") also made build.py give the host's and the web's o2 units the optional parts' flags, "as the
+device's always did". Both apps set `cpu2 = true` and build their engine as an o2 unit, so until that commit the
+host compiled `drone.c` / `engine.c` **without** FM1B_CPU2 while the device always compiled them with it: the host
+ran the one-core path, where the hall runs inside the block, and the device ran the two-core path, where the hall
+runs a block behind. The goldens had been recording an engine the unit never ran. Confirmed: upstream main with
+`FM1B_CPU2=0` matches the old goldens exactly, and with it on 12 change, so 142 commits of upstream change the sound
+by nothing at all and what moved is the host catching up to the device. Both golden files were re-recorded on the
+two-core build (`python3 tools/render_all.py --golden`, `python3 deepfield/tools/render_scenes.py --golden`); from
+here a render difference means something real. Nothing Kyle has heard on the unit changes.
+
+**One real regression, found and fixed.** GNOMNOM's host simulator segfaulted on the bump (`gnomnom/tests/basic.txt`,
+exit 139 against upstream main, exit 0 at the old pin). Same root cause: with the host finally compiling FM1B_CPU2,
+`bd_job` ran for the first time off the device, and `band.c` was handing it the job pointer through
+`plat_cpu2_run`'s `arg`, a `uint32_t` -- fine on the device's 32-bit core, truncated to `0xed378` on a 64-bit host.
+`bd_job` now reads the job through a file-scope `bd_job_line`, as DEEP FIELD's `half_job` already reads its statics,
+and the arg is 0. Device behaviour is unchanged; the host sim runs its 50 checks again.
+
+**What is not done:** nothing flashed, nothing committed. The unit is still on the 11-07 16:36 package built from
+the fork. After a flash the one thing to try is the FP-30X over Bluetooth, since `ff0a007` changed when a paired
+link is let go.
+
+## The sound and dynamics pass, with the Bluetooth retry (flashed 2026-11-07; committed 598feb0; site 0.12)
 
 Kyle: "things are sounding pretty good - what can we do to polish the sound or improve the dynamics - within the
 bounds of what we have already built are there any ways per voice/ effect/ motion to improve the sound or dynamics -
@@ -29,34 +67,18 @@ release FM-1_14001200): deepfield.fog.baby serves the new landing page, the manu
 on this engine and `deepfield-0.12.fwsc`. The Bluetooth session then committed its le_midi.c fix (base a2db753) and
 pointed the submodule at it (2101207). Master pushed through 293f52b on Kyle's "Push master".
 
-**The submodule now points at a fork, because the pin carries a commit upstream does not have.** base a2db753
-(the Bluetooth MIDI pairing fix) lived only on this machine, so for a few minutes the pushed repository could not
-be cloned at all: `git submodule update --init base` failed `upload-pack: not our ref a2db7534...`. Kyle has READ
-on charlesvestal/fm1-base, so on his "Fork it": github.com/WisestWizard/fm1-base, the commit pushed to the branch
-`deepfield-pin` (a branch of its own, so the fork's main stays upstream's and nothing collects the commit), and
-`.gitmodules` repointed at the fork (2eebe7b, pushed).
-
-Kyle then asked for "a single stream" with "the bluetooth fixes" still in the build. Those two cannot both be had
-against charlesvestal until #44 lands: the pin has to carry the fix, there is no way for an app to override a base
-source (build.py globs `base/ble/midi/*.c`), and pinning upstream's d8ff8f4 drops the fix out of the firmware. So
-**the fork is the one fm1-base to track** (6ae6a07): `base/` has a single remote, `origin`, the fork; the
-`upstream` remote is gone; and `.gitmodules` says in a line what the fork is for and that it goes when #44 is
-merged. Verified: a clean `--recurse-submodules` clone lands base at a2db753 with one remote and the fix in it,
-and the device image (408,324 B) carries the fix's own log strings (`ccc %x pair %d`, `paired: no answer`).
-
-Verified from a clean checkout of what is on GitHub: `git clone --recurse-submodules` lands base at a2db753 with
-the pairing fix in it, `./build.sh deepfield --host` builds, and all 699 checks pass.
-
-Two things to keep in mind. base is 139 commits **behind** upstream as well as 1 ahead, so the fork's main and the
-pin are different things, and the fm1-base bump the Firmware Hub listing wants is still ahead. And the pairing fix has been offered upstream on Kyle's "Open the PR":
-charlesvestal/fm1-base#44, one file, +69/-7, mergeable. Not from `deepfield-pin`, which is 139 commits behind
-upstream and would have read as reverting all of it: the commit was cherry-picked onto upstream/main as
-`midi-central-pairing` on the fork (it applied cleanly; `ble/midi/le_midi.c` and every header it includes are
-byte-identical between d8ff8f4 and upstream main, so the translation unit is the one that ran on the unit). The
-PR says plainly that it has not been compiled against current main -- `tools/build.py template` in a standalone
-fm1-base checkout fails on a missing `bsp/loader/crt0_ldr.S` before reaching any of it, which looks like
-something absent from the repo. If it is merged, the submodule can point back at upstream and the fork becomes
-unnecessary.
+**The submodule pointed at a fork for a day, because the pin carried a commit upstream did not have.** base
+`a2db753` (the Bluetooth MIDI pairing fix) lived only on this machine, so the pushed repository could not be cloned:
+`git submodule update --init base` failed `upload-pack: not our ref a2db7534...`. On Kyle's "Fork it" the commit went
+to github.com/WisestWizard/fm1-base and `.gitmodules` was repointed at the fork (2eebe7b), then the fork was made the
+one fm1-base to track (6ae6a07) since upstream and the fix could not both be had until #44 landed. The fix was
+offered upstream on Kyle's "Open the PR" as charlesvestal/fm1-base#44, cherry-picked onto upstream/main as
+`midi-central-pairing` rather than sent from `deepfield-pin`, which was 139 commits behind and would have read as
+reverting all of it. The PR said it had not been compiled against current main, because `tools/build.py template` in
+a standalone fm1-base checkout failed on a missing `bsp/loader/crt0_ldr.S`; charlesvestal's answer was that this is
+the bsp submodule not checked out (`git submodule update --init --recursive`), not something absent from the repo.
+**All of this is now history:** #44 is merged, the submodule points at upstream again, and the fork can be
+deleted.
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left

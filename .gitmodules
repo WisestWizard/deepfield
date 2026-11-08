@@ -1,6 +1,3 @@
 [submodule "base"]
 	path = base
-	url = https://github.com/WisestWizard/fm1-base
-	# Kyle's fork of charlesvestal/fm1-base, and the only fm1-base to track. It is upstream's d8ff8f4 plus the
-	# Bluetooth MIDI pairing fix the FP-30X needs, which the firmware is built and flashed with. Offered upstream
-	# as charlesvestal/fm1-base#44: once that is merged, point this back at charlesvestal and delete the fork.
+	url = https://github.com/charlesvestal/fm1-base
