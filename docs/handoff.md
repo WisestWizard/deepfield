@@ -146,7 +146,10 @@ FP-30X answers the notes-on write with 0x0F, insufficient encryption. First try:
 sent the instant the encryption comes up (no SM "pairing complete" sub-event exists to wait for: le_user.h has
 only RECONNECT_START, PIN_KEY_MISS, PAIR_FAIL, PAIR_TIMEOUT, ENCRYPTION_FAIL, SEND_DISCONN, ADD_LIST_*).
 
-**Fixed since, flashed with the sound pass above** (le_midi.c only; the piano not yet tried on it): after `encryption 0` the write waits 0.6 s (`mc_due`, sent
+**Fixed since, flashed with the sound pass above, and it works** (le_midi.c only). Kyle connected the FP-30X from
+the MIDI page and played: the log shows `notes 1: 97 a4 90` and `notes 2: 9f a5 90` (BLE MIDI note-ons), then `cpu
+..% bN` climbing to 8 voices on ADDITIVE, FM and BOWED; the pairing lines had already rolled out of the 32-line log.
+What was built: after `encryption 0` the write waits 0.6 s (`mc_due`, sent
 from `ble_midi_poll`), and a refusal after that is asked again every 0.7 s up to five more times before letting
 go; a failed encryption no longer lets go at once (the stack's `pair_redo` gets its second try; the 10 s guard
 still ends a link that never encrypts). The device package built clean, image 407,748 B, but it also carries the
