@@ -23,8 +23,10 @@ has no crash recorded, `BT ready: advertising as FM-1 F9FC` and `cpu 5% b0 ADDIT
 by Kyle, and neither this pass's test steps nor the piano test have been run on it. Committed on his "Commit and
 publish" as 598feb0 (not pushed), and site 0.12 published the same way (`deepfield/tools/publish_site.sh 0.12`,
 release FM-1_14001200): deepfield.fog.baby serves the new landing page, the manual, both cheat sheets, the emulator
-on this engine and `deepfield-0.12.fwsc`. The Bluetooth session's le_midi.c fix is in the flashed firmware but is
-**still uncommitted in the base submodule**, so 598feb0 alone does not rebuild what is on the unit.
+on this engine and `deepfield-0.12.fwsc`. The Bluetooth session then committed its le_midi.c fix (base a2db753) and
+pointed the submodule at it (2101207), so the tree does rebuild what is on the unit. Master pushed through 2101207
+on Kyle's "Push master". One caveat: base a2db753 is on this machine only — its remote is charlesvestal/fm1-base,
+upstream — so a fresh clone cannot resolve the submodule pointer until that commit has somewhere to live.
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
