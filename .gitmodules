@@ -1,3 +1,6 @@
 [submodule "base"]
 	path = base
-	url = https://github.com/charlesvestal/fm1-base
+	url = https://github.com/WisestWizard/fm1-base
+	# a fork of charlesvestal/fm1-base. The pin carries one commit that upstream does not have (the Bluetooth
+	# MIDI pairing fix, on the branch deepfield-pin), so a clone must fetch it from here. Pull upstream with
+	# the `upstream` remote inside base/.
