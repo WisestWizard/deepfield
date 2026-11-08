@@ -31,7 +31,7 @@ wait 100
 expect sounding60 1
 expect note 60
 expect bodies 1
-expect_out USB 90 3C 64
+expect_out USB 90 3C 75
 out
 shot key.png
 key 7 up
@@ -55,7 +55,7 @@ wait 200
 expect sounding60 0
 expect sounding62 1
 expect_out USB 80 3C 00
-expect_no_out USB 90 3C 64
+expect_no_out USB 90 3C 75
 out
 press SEL
 wait 30
@@ -80,7 +80,7 @@ expect leads 1
 expect lead60 1
 expect sounding60 0
 expect bodies 0
-expect_out USB 90 3C 64
+expect_out USB 90 3C 75
 out
 key 7 up
 wait 100
@@ -140,12 +140,13 @@ tap SEL
 wait 50
 expect latchmode 1
 # VELOCITY (GLO, SELECT once): on out of the box, so how hard a key is struck is its voice's weight. Its level
-# spans 18 dB, a full strike unity (it was 9 dB from a floor of 0.35): 60 is a third of full. Off, every key
-# strikes full. MIDI out carries the key as struck whatever the switch says
+# spans 18 dB, a full strike unity (it was 9 dB from a floor of 0.35). The keybed reads full at 108, so a key
+# the sensing reads as 60 strikes at 70 and lands at 0.39 of full. Off, every key strikes full. MIDI out carries
+# the key as the keybed read it, whatever the switch says
 expect velon 1
 key 7 down 60
 wait 400
-expect level60 333
+expect level60 393
 key 7 up
 wait 200
 key 7 down
@@ -165,7 +166,7 @@ expect velon 0
 key 7 down 60
 wait 400
 expect level60 1000
-expect_out USB 90 3C 3C
+expect_out USB 90 3C 46
 out
 key 7 up
 wait 200
@@ -177,7 +178,7 @@ expect bodies 0
 tap SEL
 key 7 down 60
 wait 100
-expect_out USB 90 3C 3C
+expect_out USB 90 3C 46
 out
 key 7 up
 wait 7000
@@ -264,8 +265,8 @@ expect sounding62 1
 wav chord.wav
 wait 2000
 wavstop
-# MASTER half: -24 dB (cubed, under the output's -6 dB trim)
-expect peak_db_min -30
+# MASTER half: -12 dB (squared, under the output's -3 dB trim)
+expect peak_db_min -22
 midi B0 7B 00
 wait 200
 expect sounding62 0
@@ -859,6 +860,18 @@ expect usblevel 4
 spin K2 -2
 wait 30
 expect usblevel 2
+# MASTER sets the recording as well as the speaker, so the knob always moves what leaves the FM-1 (it used to
+# render the recording at USB LEVEL alone, and turning MASTER with Live armed did nothing). MASTER is half here
+expect recgain 512
+master 4096
+expect recgain 2048
+spin K2 2
+expect usblevel 4
+expect recgain 1024
+spin K2 -2
+master 2048
+expect usblevel 2
+expect recgain 512
 tap HOME
 # MIDI clock: the runner steps every twelve clocks while they come (120 BPM: 21 ms apart) and says EXT; two
 # seconds without one, RATE's own tempo returns; CLOCK OUT (USB page) sends 24 a beat while the runner runs

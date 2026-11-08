@@ -7,7 +7,7 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | Do | Result |
 | --- | --- |
 | LATCH on (SEL lit, the default) | A key strikes a voice that stays. The key it sounds on (lit) lets it go as you let go, however slowly you pressed. |
-| How hard you strike (VELOCITY on, the default; MIDI page) | The voice's level over 18 dB, how bright it is (as if you had moved TIMBRE) and how fast it arrives (a soft note eases in at up to half ATTACK's pace). Off: every key strikes full. |
+| How hard you strike (VELOCITY on, the default; MIDI page) | The voice's level over 18 dB, how bright it is (as if you had moved TIMBRE) and how fast it arrives (a soft note eases in at up to half ATTACK's pace). A firm press is already full: the keybed counts its hardest 15 % as a full strike. Off: every key strikes full. |
 | Hold a lit key and turn a knob | VOICE opens: KNOB 1–4 = its own LEVEL (−24..+6 dB, MUTE) · TONE (its TIMBRE ±50 %) · TUNE (±50 cents) · LOCK (OFF / ON: never moved by GEN, out of the arp, a pedal). Several keys: all of them. Let go: back to the page, the voice kept; saved with the preset; out as NRPN |
 | LATCH off (SEL dark, the screen says KEYS PLAY) | The held chord stays; a key plays a lead over it: the preset's model struck short (LEAD page), held while the key is down, released after. A latched key plays a lead on top of its voice (an accent). |
 | Aftertouch (press harder on a held key) | Brighter, more vibrato (at the LFO's own rate), while you press. |
@@ -43,7 +43,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too) |
 | ALGO | Model (the algorithm): ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC, TAPE, RESONATOR (each voice crosses over in 0.8 s) |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click |
-| MASTER | Volume |
+| MASTER | Volume: the speaker, the headphones and the USB recording (USB LEVEL trims the recording under it) |
 
 ## Pages (KNOB 1 · 2 · 3 · 4)
 | Page | 1 | 2 | 3 | 4 |

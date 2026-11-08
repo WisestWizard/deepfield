@@ -13,7 +13,16 @@ cpu2 = true                    # the second core renders half the bodies (plat_c
 cpu2_fallback = true           # if it misreads or is late: one core until power-off, no restart
 usb_audio_in = true            # the master output recordable over USB
 usb_audio_out = false
-# the site (tools/make_site.py)
+# the site (tools/make_site.py) and firmware.json, which the hubs read and a release build requires
+# (base/docs/FIRMWARE-JSON.md)
+title = "DEEP FIELD"           # the name people know it by; the USB manufacturer is "Deep Field"
 tagline = "an ambient drone machine for the FM-1"
 licence = "MPL-2.0"
+author = "Kyle McCann"
+description = "DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Every key starts a voice that swells in, keeps sounding, breathes and drifts, and fades out when you let it go, as hard as you struck it; eight play at once across thirteen models, from breathing harmonics to wavetables and FM. Four knobs shape them all at once, a held key sets one apart, GEN moves them to nearby notes or runs an arpeggio over them, presets morph into each other, and the reverb can freeze and shimmer. MIDI comes in over USB, Bluetooth and TRS, and goes out over USB and Bluetooth."
+tags = ["synth", "ambient", "generative", "fm"]
+install = "https://deepfield.fog.baby/install/"
+site = "https://deepfield.fog.baby/"
+repo = "https://github.com/WisestWizard/deepfield"
+screenshot = "docs/img/screen-home.png"   # relative to deepfield/, which the build takes as the repository root
 credits = "Built on fm1-base and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments)."

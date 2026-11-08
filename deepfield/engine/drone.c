@@ -2829,9 +2829,10 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     blk_t *b = &g_blk;
     fx_params_t fx;
     uint32_t i;
-    float gain = (float)master_q12 * (1.0f / 4096.0f) * 4350000.0f * volume, space;   /* the limiter's ceiling
-                                          * at -6 dBFS, not -0.1: Kyle's USB recordings redlined in Live, and the
-                                          * headphones were loud a third of the way up */
+    float gain = (float)master_q12 * (1.0f / 4096.0f) * 6150000.0f * volume, space;   /* the limiter's ceiling
+                                          * at -3.1 dBFS, not -0.1: Kyle's USB recordings redlined in Live. 4.35 M
+                                          * (-6 dB) with MASTER cubed took too much; with the law back to squared,
+                                          * this trim alone holds every output 3 dB under where 0.9 had it */
     int on_two = 0;
     if (n > MAXBLOCK)
         n = MAXBLOCK;

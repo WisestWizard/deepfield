@@ -11,6 +11,11 @@ V="${1:?usage: deepfield/tools/publish_site.sh VERSION}"
 PY="${PYTHON:-/opt/homebrew/bin/python3.14}"
 DOMAIN=deepfield.fog.baby
 export JIELI_TOOLCHAIN="${JIELI_TOOLCHAIN:-$HOME/.jieli/toolchain}" AC79_SDK="${AC79_SDK:-$HOME/fw-AC79_AIoT_SDK}"
+# firmware.json's screenshot, for the hubs: the build resolves it inside deepfield/ (fm1.toml screenshot, since
+# repo_root takes an APP_DIR not named app as the root), while a hub fetches it from the repository at the release's
+# tag, where deepfield/ is a subfolder. The repository's own copy is refreshed here so the two cannot drift.
+mkdir -p "$ROOT/docs/img"
+cp "$APP/docs/img/screen-home.png" "$ROOT/docs/img/screen-home.png"
 "$PY" "$ROOT/base/tools/build.py" "$APP" --release "$V"
 "$PY" "$ROOT/base/tools/build.py" "$APP" --web --release "$V"
 "$PY" "$ROOT/base/tools/make_site.py" "$APP" "$APP/build/deepfield-$V.fwsc" "$V" "$APP/build/site"

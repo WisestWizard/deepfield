@@ -141,9 +141,10 @@ no aftertouch.
 **VELOCITY** (on by default; MIDI page) makes how hard you strike a key the weight of its voice. It sets three
 things at once: the level, over 18 dB from the softest touch to the hardest; how bright the voice is, as if you had
 moved TIMBRE (up to two octaves of filter on the models where TIMBRE is a filter, a gentler tilt of the harmonics on
-the others); and how fast it arrives, a soft note easing in at up to half ATTACK's pace. Switch VELOCITY off and
-every key strikes full, so chords are even and nothing is held back. MIDI notes always use their own velocity,
-whatever the switch says.
+the others); and how fast it arrives, a soft note easing in at up to half ATTACK's pace. You do not have to bottom a key
+out for a full strike: the keybed counts its hardest 15 % as full, so a firm press is full weight and only lighter
+touches are held back. Switch VELOCITY off and every key strikes full, so chords are even and nothing is held back.
+MIDI notes always use their own velocity, whatever the switch says.
 
 If you start a ninth voice, one fades out quickly to make room: a voice that is already fading if there is one, or
 else the oldest.
@@ -229,9 +230,10 @@ at once.
 | KNOB 3 | REVERB | How much reverb, and a little delay. The dry sound stays as it is. |
 | KNOB 4 | TREMOLO | How much each voice fades down and back up on its own slow cycle. At full, each voice goes all the way to silence and back. TREM RATE (LFO page) sets how fast. |
 
-MASTER is the volume of the speaker and headphones. It is gentle at the bottom so headphones stay usable: a third
-of the way up is about 29 dB under full, halfway about 18 dB under, three quarters about 7 dB under. At full, the
-loudest playing still stops 6 dB short of the top of the output, so nothing clips.
+MASTER is the volume of everything the FM-1 sends out: the speaker, the headphones and the USB recording. It is
+gentle at the bottom so headphones stay usable: a third of the way up is about 19 dB under full, halfway about
+12 dB under, three quarters about 5 dB under. At full, the loudest playing still stops about 3 dB short of the top
+of the output, so nothing clips.
 
 ---
 
@@ -648,15 +650,16 @@ the same.
 while you record:
 
 - **AUTO** (the default): when a program on the computer starts using the input (an armed track in Live, a
-  recorder), the speaker and headphones go quiet and the header says USB MUTE. The recording is set by USB LEVEL,
-  whatever MASTER is set to. When the program stops using the input, the speaker comes back at MASTER.
+  recorder), the speaker and headphones go quiet and the header says USB MUTE. The recording follows MASTER with
+  USB LEVEL's trim under it. When the program stops using the input, the speaker comes back at MASTER.
 - **ON**: the speaker and the recording both follow MASTER, as on M-VAVE's firmware. USB LEVEL does nothing.
-- **OFF**: the speaker stays silent, and the recording is set by USB LEVEL.
+- **OFF**: the speaker stays silent, and the recording follows MASTER with USB LEVEL's trim under it.
 
-The header says USB while a computer is recording. **USB LEVEL** sets the recording's level with AUTO and OFF,
-without touching the speaker. It is -6 dB by default: a held chord peaks between -14 and -22 dB in the recording,
-and even eight voices played hard on top stop at -12 dB, which leaves room in Live's meters. At 0 dB the loudest
-playing reaches -6 dB, so no setting clips the recording. The recording is 16-bit stereo; the computer picks 44.1
+The header says USB while a computer is recording. **USB LEVEL** takes a fixed amount off the recording with AUTO
+and OFF, under MASTER, without touching the speaker. It is -6 dB by default: with MASTER full a held chord peaks
+between -12 and -20 dB in the recording, and even eight voices played hard on top stop at -9 dB, which leaves room
+in Live's meters. At 0 dB the loudest playing reaches -3 dB, so no setting clips the recording, and MASTER below
+full leaves more room still. The recording is 16-bit stereo; the computer picks 44.1
 or 48 kHz.
 
 If the recording ever drops a frame (the processor was too busy for a moment to feed the cable), the header shows

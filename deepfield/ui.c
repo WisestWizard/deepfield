@@ -883,6 +883,14 @@ static uint32_t key_note(uint32_t k)     /* the key's own note: the scale glows 
 {
     return (uint32_t)clamp(53 + (int32_t)k + 12 * set.octave, 0, 127);
 }
+/* the keybed's own curve: a strike the sensing reads as 108 is already full, and every lighter one reads that
+ * much heavier. Kyle had to lean on a key to reach the top of the 18 dB level law; full comes 15 % sooner now,
+ * and the key reads the same to the engine and to MIDI out */
+static uint32_t key_vel(uint32_t k)
+{
+    uint32_t v = touch_vel(k) * 127u / 108u;
+    return v > 127u ? 127u : v;
+}
 static void key_on(uint32_t k, uint32_t vel)
 {
     uint32_t note = key_note(k), evel = set.vel ? vel : 127u;   /* VELOCITY off: the engine hears every key struck
@@ -1338,7 +1346,7 @@ static void input(void)
                 ui.keynote[k] = (uint8_t)at;
                 continue;
             }
-            key_on(k, touch_vel(k));
+            key_on(k, key_vel(k));
         } else if (!(keys & bit) && (ui.keys & bit)) {
             if (ui.bk_down & bit) {
                 if (!(ui.bk_open & bit))

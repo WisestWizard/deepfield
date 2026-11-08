@@ -280,13 +280,14 @@ static uint32_t usb_underruns(void) { return uac.underruns; }   /* the ring ran 
 static int usb_recording(void) { return 0; }
 static uint32_t usb_underruns(void) { return 0; }
 #endif
-uint32_t df_gain(uint32_t m)             /* the speaker and headphones (audio interrupt): MASTER cubed, or nothing;
-                                          * cubed, a third of the way up is -29 dB (squared it was -19, loud on
-                                          * headphones) and the top end still reaches full */
+uint32_t df_gain(uint32_t m)             /* the speaker and headphones (audio interrupt): MASTER squared, or
+                                          * nothing. It was cubed for one build, which put a third of the way up at
+                                          * -29 dB and left the bottom half of the knob unusable; squared, a third
+                                          * is -19 dB. The output's own trim is what keeps it off the scale's top */
 {
     if (set.speaker == SPK_OFF || (set.speaker == SPK_AUTO && usb_recording()))
         return 0;
-    return (m * m >> 12) * m >> 12;
+    return m * m >> 12;
 }
 
 /* the keys' note offs and ORBIT's moves, out over MIDI (render context) */
@@ -319,13 +320,21 @@ void app_init(void)
     scene_dirty = 0;
 }
 static const uint16_t USB_TRIM_Q12[7] = {4096, 2896, 2048, 1448, 1024, 724, 512};   /* 0 .. -18 dB by 3 */
+static uint32_t rec_gain(void)           /* what a computer records: MASTER squared under USB LEVEL's trim. The knob
+                                          * sets everything that leaves the FM-1; the recording used to ignore it,
+                                          * so turning MASTER did nothing at all while Live was armed. The speaker
+                                          * is silent while a computer records here (df_gain returns 0), so the
+                                          * MASTER the platform puts on it after this never lands twice */
+{
+    uint32_t m = plat_master();
+    return (uint32_t)USB_TRIM_Q12[set.usb_level < 7u ? set.usb_level : 2u] * (m * m >> 12) >> 12;
+}
 void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 {
     crumb.render = 1;
     midi_in();
-    if (set.speaker != SPK_ON && usb_recording())   /* the recording at USB LEVEL (the speaker is silent or at MASTER
-                                                     * after it, so it costs the room nothing) */
-        master_q12 = USB_TRIM_Q12[set.usb_level < 7u ? set.usb_level : 2u];
+    if (set.speaker != SPK_ON && usb_recording())
+        master_q12 = rec_gain();
     dr_render(lr, n, master_q12);
     crumb.render = 0;
 }
@@ -510,6 +519,8 @@ int app_expect(const char *what, int *got)
         *got = (int)(fx_lim_min() * 1000.0f);
     else if (!strcmp(what, "gain"))         /* the speaker's gain at MASTER full, 0..4096 */
         *got = (int)df_gain(4096u);
+    else if (!strcmp(what, "recgain"))      /* what a computer records, at MASTER as it stands, 0..4096 */
+        *got = (int)rec_gain();
     else if (!strcmp(what, "vel")) {
         uint32_t k;
         *got = 0;

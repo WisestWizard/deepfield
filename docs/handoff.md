@@ -2,7 +2,130 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the base bump to upstream main, with #44 merged (built 2026-11-08; not flashed; not committed)
+## Start here: the volume law put back, the keys easier, MASTER on the recording (flashed 2026-11-08; site 0.13; not committed)
+
+Kyle, after playing the 11-07 build: "the velocity sensitivity of the keys is a little off - you have to press
+really hard to get it to full volume - also we backed off the overall volume too much when we changed the master";
+then, on where to land it: "Speaker is too qeuiet overall - on headphones or recording it was too quiet at the low
+and not quite loud enough in the upper ranges. basically we went too far when we alteredt the volume before and I
+want to just back that off a bit"; then "I also noticed when hooked into ableton via usbc the master knob did
+nothing - that needs to wokr always".
+
+### The volume, in order
+
+| | output's full scale | MASTER's law | a third up | halfway | full |
+| --- | --- | --- | --- | --- | --- |
+| 0.9 and before | 8.7 M (ceiling -0.1 dBFS) | squared | -19 dB | -12 dB | 0 dB |
+| 11-08 (7234746, flashed) | 4.35 M (-6 dB) | cubed | -35 dB | -24 dB | -6 dB |
+| now | 6.15 M (-3 dB) | squared | -22 dB | -15 dB | -3 dB |
+
+The 11-08 pass turned two dials at once to stop the USB recordings redlining, and that is what went too far: the
+trim took 6 dB off everything and the cubed law took another 10 dB out of the bottom half of the knob, which is
+exactly the two things he described (quiet at the low end, not loud enough at the top). The law is back to squared,
+so the knob feels as it did, and the trim is 3 dB instead of 6: **every position is now exactly 3 dB under where
+0.9 had it**, and 3 to 13 dB over the build he has been playing (+3 at full, +9 halfway, +13 a third up).
+
+### What changed
+
+- **`dr_render` (engine/drone.c): the output's full scale 4.35 M -> 6.15 M.** The limiter's ceiling -6.1 -> -3.1
+  dBFS on every output. The sound is untouched: all 16 renders are the old ones times 1.178 to within 1 LSB.
+- **`df_gain` (app.c): MASTER cubed -> squared,** as it was before 11-08.
+- **`key_vel` (ui.c): the keybed's own curve.** The sensing's reading is scaled by 127/108 and clamped, so a strike
+  it reads as 108 is already a full one and everything lighter reads that much heavier. The softest touch is where
+  it was, so nothing came off the bottom of the 18 dB law; the key reads the same to the engine and to MIDI out.
+- **`rec_gain` (app.c): what a computer records follows MASTER,** with USB LEVEL's trim under it. It used to render
+  at USB LEVEL alone, so with SPEAKER on AUTO and a track armed in Live the knob did nothing anywhere: the speaker
+  is muted by AUTO and the recording ignored the knob. The speaker's own MASTER is applied by the platform after
+  the recording is taken (`uac_mix`), and `df_gain` returns 0 in that case, so MASTER never lands twice.
+
+### Measured
+
+The voice's level as the simulator hears it (1/1000 of full) by the velocity the sensing reads, before -> after:
+
+| struck | 1 | 20 | 40 | 60 | 80 | 90 | 100 | 108 | 127 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| before | 127 | 173 | 241 | 334 | 463 | 546 | 643 | 733 | 1000 |
+| after | 127 | 182 | 270 | 393 | 583 | 698 | 849 | 1000 | 1000 |
+| | +0.0 | +0.4 | +1.0 | +1.4 | +2.0 | +2.1 | +2.4 | +2.7 | +0.0 dB |
+
+So a full strike is no louder than it was -- it arrives at 108 instead of 127 -- and firm playing in the top third
+is 2 to 2.7 dB up, with the output's 3 dB on top of all of it.
+
+The renders: the 4.35 M build reproduces the committed goldens exactly, and every render at 6.15 M is that one
+times 1.178 to within 1 LSB, checked sample by sample, so the output change moves nothing but the level. Goldens
+re-recorded. Peaks at MASTER full are now -5.6 (CATHEDRAL) to -14.3 dBFS (INIT); eight voices at MASTER half peak
+-20.5 dBFS (`basic.txt`'s bound moved -30 -> -22).
+
+The recording, CATHEDRAL latched, the same window at three knob positions (identical runs, only `master` differing):
+-16.0 dBFS at full, -28.1 at half, -35.2 a third up -- the squared law to the hundredth of a dB, where before it
+sat at one level whatever the knob did. The hardest playing at MASTER full reaches -9 dBFS at the -6 dB USB LEVEL
+default, -3 at 0 dB.
+
+705 simulator checks pass (six new on `recgain`), and screens.txt. `basic.txt` also moved with the keybed curve:
+`level60` 333 -> 393, the keys' MIDI out 0x64 -> 0x75 (a strike read as 100) and 0x3C -> 0x46 (60). Device package:
+image 414,308 B, RAM 77,692 of 98,304, pool 334,032 of 344,064, identity FM-1_1400, build CFFC4244.
+
+### How to test (numbered for the unit)
+
+1. Headphones in, MASTER a third of the way up, F1 FIRST LIGHT, latch a chord: it should be 13 dB louder than the last
+   build at that position, and the bottom half of the knob useful again.
+2. Sweep MASTER from a third to full: the climb should feel even, not back-loaded.
+3. Speaker, MASTER full: 3 dB louder than the last build and 3 dB under 0.9. Say if the top still is not enough --
+   it is one constant.
+4. Play a chord as softly as you can: as quiet as it was. Then play firmly, not hard: full weight now (brightest,
+   fastest attack, loudest). The old build needed a dig.
+5. USB-C to the Mac, arm a track in Live on DEEP FIELD FM-1 (the header says USB MUTE): turn MASTER and watch
+   Live's meter follow it. At MASTER full, playing hard should peak around -9 dBFS and never clip.
+6. While that track is armed, the FM-1's own speaker and headphones stay silent -- that is SPEAKER AUTO, unchanged.
+   GLO, SELECT twice, SPEAKER ON if you want to hear the unit while Live records.
+7. A keyboard on TRS or Bluetooth: MIDI in is untouched, its velocities read as they always did.
+
+Flashed on Kyle's "Flash it" (`/usr/bin/python3 base/tools/fm1_install.py deepfield/build/deepfield.fwsc --yes`,
+the 11:24 package, newer than every source, carrying 6.15 M and the squared law; a fast install, only the changed
+sectors). Booted clean: the unit says DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%.
+TREMOLO 27%. VOICES 0. CPU 5%; `log` records no crash and Bluetooth advertises as FM-1 F9FC (heap peak 11,352 of
+24,576). Not yet heard by Kyle.
+
+### firmware.json's metadata, filled in on the way (Kyle: "also fill in the info")
+
+Since the base bump a `--release` build refuses an fm1.toml without `author`, `licence`, `tagline`, `description`,
+`tags`, `install`, `repo` and a square screenshot PNG (`base/tools/firmware_json.py`, `base/docs/FIRMWARE-JSON.md`),
+and `publish_site.sh` runs `--release`, so publishing 0.13 would have failed. `deepfield/fm1.toml` now carries all
+of them: author Kyle McCann, title DEEP FIELD (the USB manufacturer is "Deep Field", so the hub card would have
+read that), a 565-character description, tags synth / ambient / generative / fm, install
+https://deepfield.fog.baby/install/, site https://deepfield.fog.baby/, repo
+https://github.com/WisestWizard/deepfield, screenshot `docs/img/screen-home.png`. The host build is warning-free
+and `deepfield/build/firmware.json` carries the lot.
+
+Both warts that turned up with it are fixed (Kyle: "fix the warts first"):
+
+- **The screenshot a hub would fetch.** `repo_root` takes an APP_DIR not named `app` as the repository's root, so
+  the build resolves `screenshot` inside `deepfield/` while a hub resolves it against the GitHub repository, where
+  `deepfield/` is a subfolder: `raw.githubusercontent.com/WisestWizard/deepfield/vX.Y/docs/img/screen-home.png`
+  would have 404'd. Moving the app to `app/` is not open (Pocket Poly is there), so the repository now carries its
+  own `docs/img/screen-home.png`, and `publish_site.sh` copies it from `deepfield/docs/img/` before every release
+  build, so the two cannot drift -- the manual's shots are regenerated by `deepfield/tests/screens.txt`, which
+  writes only into `deepfield/docs/img`. Proved by deleting the repository's copy and running
+  `deepfield/tools/publish_site.sh 0.13 --local`: it came back and the site built.
+- **Pocket Poly's own metadata.** `app/fm1.toml` was missing the same keys and would refuse a release. It now has
+  author, a 569-character description, tags synth / fm / sequencer / generative, the repo URL and
+  `app/docs/img/screen-home.png` (relative to the repository's root, which for an APP_DIR named `app` is also the
+  hub's frame, so there is no wart to fix there). `install` and `site` are deliberately still missing, and the
+  build still names `install`: Pocket Poly has no published site, `app/site/landing.md` goes nowhere yet, and a
+  URL that 404s in a hub's catalogue is worse than a key a dev build warns about. Fill it in when the site exists.
+  The repository-root `firmware.json` is its generated file, now carrying all of the above.
+
+Published on Kyle's "Publish it": `deepfield/tools/publish_site.sh 0.13` pushed gh-pages, and
+https://deepfield.fog.baby serves Version 0.13 with the CNAME intact -- the landing page, the cheat sheet (the new
+MASTER line), the manual (the squared law and the keybed's 15 %), the installer (FM-1_14001300), the emulator and
+`firmware/deepfield-0.13.fwsc`, all 200. The gh-pages commit says "from 6d3ad70", which is the base bump: the
+published content is from the uncommitted tree, so committing this work tidies that provenance up.
+
+**What is not done:** nothing committed, nothing pushed. Until it is, the repository's own
+`docs/img/screen-home.png` is local only -- `raw.githubusercontent.com/WisestWizard/deepfield/master/docs/img/
+screen-home.png` is still a 404, and a hub fetches it at the release's tag, so a listing also wants a tag.
+
+## The base bump to upstream main, with #44 merged (built 2026-11-08; committed 6d3ad70; not flashed)
 
 charlesvestal merged the Bluetooth MIDI pairing fix as charlesvestal/fm1-base#44 (merge `b0976f2`), with one commit
 of his own on top: `ff0a007` widens the 10 s give-up to a link that encrypts but never turns its notes on (it stands
@@ -36,7 +159,7 @@ exit 139 against upstream main, exit 0 at the old pin). Same root cause: with th
 `bd_job` now reads the job through a file-scope `bd_job_line`, as DEEP FIELD's `half_job` already reads its statics,
 and the arg is 0. Device behaviour is unchanged; the host sim runs its 50 checks again.
 
-**What is not done:** nothing flashed, nothing committed. The unit is still on the 11-07 16:36 package built from
+**What is not done:** not flashed. Committed as 6d3ad70. The unit is still on the 11-07 16:36 package built from
 the fork. After a flash the one thing to try is the FP-30X over Bluetooth, since `ff0a007` changed when a paired
 link is let go.
 
