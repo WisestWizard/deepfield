@@ -6,7 +6,23 @@ The one page to read before the next session. Status first, then how to resume, 
 
 Flashed on Kyle's "Flash it" (`scratchpad/deepfield-btpanel.fwsc`, sha1 05be0139..., no source newer); the installer
 said `done: the FM-1 runs FM-1_1400`; booted clean: `no crash recorded`, `BT ready: advertising as FM-1 F9FC`,
-`cpu 5% b0 ADDITIVE s0 x0`, the screen FIRST LIGHT on HOME. The piano test (below) not yet run.
+`cpu 5% b0 ADDITIVE s0 x0`, the screen FIRST LIGHT on HOME.
+
+**The piano test on that flash confirmed the cause**, and showed the fix half right. The log: `ccc f pair 0`, so the
+FP-30X answers the notes-on write with 0x0F, insufficient encryption. First try: `pairing 5` (twice, folded),
+`encryption 6` (key missing), `paired: 6`, and the FM-1 let go at once. After Kyle switched Bluetooth off and on:
+`sm: just works`, `encryption 0`, `paired: 0`, then the write sent at once was refused again (`ccc f pair 2`),
+`ccc refused, let go`. So the piano refuses notes until the link is encrypted, and still says unencrypted to a write
+sent the instant the encryption comes up (no SM "pairing complete" sub-event exists to wait for: le_user.h has
+only RECONNECT_START, PIN_KEY_MISS, PAIR_FAIL, PAIR_TIMEOUT, ENCRYPTION_FAIL, SEND_DISCONN, ADD_LIST_*).
+
+**Fixed since, built, not flashed** (le_midi.c only): after `encryption 0` the write waits 0.6 s (`mc_due`, sent
+from `ble_midi_poll`), and a refusal after that is asked again every 0.7 s up to five more times before letting
+go; a failed encryption no longer lets go at once (the stack's `pair_redo` gets its second try; the 10 s guard
+still ends a link that never encrypts). The device package built clean, image 407,748 B, but it also carries the
+"Sound polish and dynamics" session's engine edits (drone.c 15:48, drone.h 15:47, mid-work), so it was NOT
+flashed: the next build from this folder carries both. Expected log when it works: `ccc f pair 0`, `paired: 0`,
+`ccc 0 pair 2` (or a `ccc f pair 2` or two first), then `notes 1: ...`.
 
 Kyle wanted to play DEEP FIELD from his Roland FP-30X over Bluetooth MIDI. Found: the FM-1 found it (a first "no
 device" was the piano not yet advertising), connected and said CONNECTED, but nothing played. The log
