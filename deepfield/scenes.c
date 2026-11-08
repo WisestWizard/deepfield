@@ -2,8 +2,8 @@
  * Copyright (C) 2026 Kyle McCann */
 /* What DEEP FIELD saves: the settings (octave, scale, latch, the view, MIDI, Bluetooth) and the bank of user
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
- * Slots 0..7 are F1..F8, 8..23 are U1..U16. A scene is the whole instrument: every parameter and the bodies that
- * were latched when it was saved. */
+ * Slots 0..15 are F1..F16, 16..31 are U1..U16. A scene is the whole instrument: every parameter and the bodies
+ * that were latched when it was saved. */
 #define SET_MAGIC 0x35464544u            /* "DEF5": the settings record (VELOCITY on by default); DEF4 and DEF3 are
                                           * read and brought up to date, another magic loads defaults */
 #define SET_MAGIC_V4 0x34464544u
@@ -418,8 +418,10 @@ static void project_load(void)
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
         uint32_t oldp = (bank.magic == BANK_MAGIC_V4 || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2)
-                        && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0) ? bank.ssize - OLD_SCENE_SIZE(0) : 0u;   /* an older
-                         * record of any of our magics: its size says how many parameters it held */
+                        && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0)
+                        && bank.ssize - OLD_SCENE_SIZE(0) <= P_COUNT ? bank.ssize - OLD_SCENE_SIZE(0) : 0u;   /* an older
+                         * record of any of our magics: its size says how many parameters it held, and never more than
+                         * this build has (a flash holding a size that fits no build of ours loads the defaults) */
         if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
             && bank.ssize == OLD_SCENE_SIZE(oldp)) {   /* an older bank: the same scenes, a few bytes short each;
                                                         * unpacked from the end, so nothing is overwritten before it

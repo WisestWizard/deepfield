@@ -274,6 +274,9 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->vel_raw = (uint8_t)(vel ? vel & 127u : 1u);
     v->vtouch = (float)v->vel_raw * (1.0f / 127.0f) - 1.0f;
     v->press = 0.0f;
+    press[note & 127u] = 0;              /* a strike starts from no pressure: aftertouch sent for this note before
+                                          * (a key leaned on, or a computer's poly pressure) used to stay behind and
+                                          * colour the next voice struck here, with nothing to clear it */
     v->walk = 0.0f;
     if (!steal)
         v->lvl_s = 0.0f;
@@ -377,6 +380,7 @@ static void note_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t latch,
         v = find_body(note, 1);
         if (v) {                         /* fading: swell back from where it is, gliding home if ORBIT had moved it */
             v->fading = 0;
+            press[note] = 0;             /* a strike, so its pressure starts over (as voice_strike has it) */
             v->target = (float)note;
             v->latched = (uint8_t)latch;
             v->sustained = 0;
@@ -437,7 +441,7 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
                     v = &vc[i];
         if (v->on) {                     /* stolen: a short fade first, and its note off out if still owed */
             if (note_out && v->midi == 0u && v->held)
-                note_out((uint32_t)(v->target + 0.5f), 0, 0);
+                note_out(v->home, 0, 0);
             v->restart = 2;
         }
         voice_strike(v, note, vel, 0, midi);
@@ -464,7 +468,8 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         }
         v->held = 0;
         if (note_out && v->midi == 0u)
-            note_out((uint32_t)(v->target + 0.5f), 0, 0);
+            note_out(v->home, 0, 0);   /* the note its note on went out at: TRANSPOSE (LIFT) moves target, and an
+                                        * off at the moved note left the key's own note held on the computer */
     }
 }
 static void latch_hold(void)             /* SEL: latch what the keys hold, or let every latched body go */
@@ -626,6 +631,9 @@ int dr_body_latched(uint32_t note)
 }
 
 void dr_pressure(uint32_t note, uint32_t v) { press[note & 127u] = (uint8_t)(v & 127u); }
+#ifdef PLAT_HOST
+uint32_t dr_press_at(uint32_t note) { return press[note & 127u]; }   /* the simulator's "prsat" check */
+#endif
 void dr_channel_pressure(uint32_t v) { chan_press = (float)(v & 127u) * (1.0f / 127.0f); }
 void dr_wheel(uint32_t v) { wheel = (float)(v & 127u) * (1.0f / 127.0f); }
 void dr_bend(uint32_t b) { bend = ((float)(b & 16383u) - 8192.0f) * (2.0f / 8192.0f); }
@@ -648,18 +656,27 @@ static void all_off(void)
 {
     uint32_t i;
     for (i = 0; i < NV_ALL; i++) {
-        if (vc[i].lead)
+        if (vc[i].lead) {
+            if (vc[i].on && vc[i].held && note_out && vc[i].midi == 0u)   /* the key's note on is still out there:
+                                                                           * released here, as a key release would */
+                note_out(vc[i].home, 0, 0);
             vc[i].held = 0;
-        else
+            vc[i].sustained = 0;
+        } else
             let_go(&vc[i]);
     }
 }
 void dr_all_off(void) { queue_put(0, 0, 0, 4); }   /* through the queue: the render owns the bodies */
-void dr_panic(void)
+void dr_panic(void)                      /* CC 120, and the platform before a backup, a restart or an update */
 {
     uint32_t i;
     for (i = 0; i < NV_ALL; i++) {
+        if (vc[i].on && note_out && vc[i].midi == 0u   /* the notes this unit still owes: silence here used to leave
+                                                        * them held on whatever was listening */
+            && (vc[i].lead ? vc[i].held != 0u : vc[i].fading == 0u))
+            note_out(vc[i].lead ? vc[i].home : (uint32_t)(vc[i].target + 0.5f), 0, 0);
         vc[i].on = 0;
+        vc[i].held = vc[i].latched = vc[i].sustained = 0;
         vc[i].env = vc[i].lvl_s = 0.0f;
     }
     q_tail = q_head;                     /* the queue dropped: one store of the render's own word */
@@ -2179,7 +2196,9 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
         cur = (int32_t)(v->target + 0.5f);
         if (nxt == cur)
             continue;
-        if (note_out) {                  /* the velocity it was struck at, not the gain that came of it */
+        if (note_out && v->midi == 0u) {   /* the velocity it was struck at, not the gain that came of it; a voice
+                                            * a computer struck is its note to hold, as let_go and transpose_to have
+                                            * it (a preset's chord can latch one), so a move of it is not reported */
             note_out((uint32_t)cur, 0, 0);
             note_out((uint32_t)nxt, v->vel_raw, 1);
         }

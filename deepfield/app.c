@@ -493,6 +493,8 @@ int app_expect(const char *what, int *got)
         *got = set.usb_level;
     else if (what[0] == 'h' && what[1] >= '0' && what[1] <= '9')   /* "h3": parameter 3 as heard, 0..127 */
         *got = (int)(dr_heard((uint32_t)atoi(what + 1)) + 0.5f);
+    else if (!strncmp(what, "prsat", 5))
+        *got = (int)dr_press_at((uint32_t)atoi(what + 5));
     else if (!strcmp(what, "pressure")) {   /* the pressure of the keys held, the most */
         uint32_t k;
         *got = 0;

@@ -571,14 +571,17 @@ the preset as meant.
 
 **MIDI in** comes over USB, Bluetooth and the TRS jack, on IN CH (OMNI, any channel, by default). With LATCH on, a
 MIDI note plays a voice until its note off; with LATCH off, it plays a lead (section 4). The sustain pedal (CC 64)
-keeps the voices going. Poly and channel pressure brighten the sound, like aftertouch on the keys. Pitch bend bends
+keeps the voices going. Poly and channel pressure brighten the sound, like aftertouch on the keys; a voice starts
+from no pressure, so what you sent for a note before does not colour the next voice struck there. Pitch bend bends
 everything up to two semitones either way. MIDI clock times GEN (section 7).
 
 **MIDI out** goes over USB and Bluetooth, on OUT CH. The TRS jack is in only. A key sends a note on when you press
 it, with the velocity you struck it at (whatever VELOCITY says: that switch only decides whether DEEP FIELD itself
 listens), and a note off when its voice starts to fade, which is later than your release if the voice was latched.
-Aftertouch on a key sends poly pressure. GEN's moves go out too. With LOCAL off (MIDI page), the keys only send MIDI
-and don't play DEEP FIELD.
+Aftertouch on a key sends poly pressure. GEN's moves go out too. A note off always goes out at the note its note on
+used, whatever TRANSPOSE (the LEAD page) has done to the voice's pitch, and anything that stops the voices -- SEL and
+HOME, CC 123, CC 120 -- releases every note DEEP FIELD sent, so nothing is left held on a computer. With LOCAL off
+(MIDI page), the keys only send MIDI and don't play DEEP FIELD.
 
 **Every knob has a CC.** Turn a knob and its CC goes out with the value; send the CC and the value is set, as if the
 knob had turned. A knob with a few values (MODEL, MODE, TYPE, PATTERN, SCALE...) is spread over 0–127 in equal
@@ -619,7 +622,7 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 109, 110, 111, 112, 113 | MODE, RATE, CHANCE, RANGE, RETURN (GEN) |
 | 114, 115 | RANGE (SHIFT), VOICES (RANDOM) |
 | 116, 117, 118, 119 | TEMPO, GATE, PATTERN, OCTAVES (ARP) |
-| 120 | Silence at once · 121 Controllers back to rest · 123 Stop every voice |
+| 120 | Silence at once · 121 Controllers back to rest · 123 Stop every voice (120 and 123 send the note offs) |
 
 A voice's own values (section 4) go out, and come in, as NRPN: CC 99 picks the value, CC 98 the voice (the note it
 was struck at), CC 6 sets it. They go out as you turn the knobs, so a computer can record and play them back.

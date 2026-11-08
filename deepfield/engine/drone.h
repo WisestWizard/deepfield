@@ -105,6 +105,9 @@ void dr_body_edit(uint32_t note, uint32_t what, int32_t v);       /* the keys (m
 void dr_body_edit_now(uint32_t note, uint32_t what, int32_t v);   /* MIDI NRPN, from the render */
 int32_t dr_body_value(uint32_t note, uint32_t what);             /* 0 when there is no such body */
 void dr_pressure(uint32_t note, uint32_t v);        /* poly aftertouch, 0..127: brighter, more wobble */
+#ifdef PLAT_HOST
+uint32_t dr_press_at(uint32_t note);               /* the pressure remembered for a note (the simulator) */
+#endif
 void dr_channel_pressure(uint32_t v);
 void dr_wheel(uint32_t v);                          /* CC 1: wobble */
 void dr_bend(uint32_t bend14);                      /* +-2 semitones */

@@ -2,7 +2,105 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the volume law put back, the keys easier, MASTER on the recording (flashed 2026-11-08; site 0.13; not committed)
+## Start here: everything on one version, and the MIDI pass before the hub (built 2026-11-08; not flashed; 1.0 is next)
+
+Kyle: "every part of this project from the device, to github, to docs, website etc needs to get alligned so
+everythign is up to date on the same version - after that I want to do a last deep dive for bugs and then publishe
+to the firmware sharing site". His three answers: the hub release is **1.0**, Pocket Poly and GNOMNOM **move out to
+their own repositories first**, and the dive covers **DEEP FIELD plus the fm1-base paths it drives**.
+
+### Where the versions stood
+
+The unit, the site and the docs were all on the 0.13 pass; git was two steps behind it (6d3ad70 unpushed, the whole
+0.13 tree uncommitted) and had no tag or release, ever. That is closed: 0.13 is **fdd6cff**, pushed, and the
+repository now carries `docs/img/screen-home.png`, so the picture a hub fetches is no longer a 404.
+
+### The dive: five bugs, all in MIDI out or the state behind it
+
+Every one was proved in the simulator before the fix and is now a check in `deepfield/tests/basic.txt` (728 checks,
+up from 705). The manual's own contract is the standard they failed ("a key sends a note on ... and a note off when
+its voice starts to fade"), and every fix is MIDI only: **all 16 golden renders are unchanged**.
+
+1. **A lead's note off went out at the note TRANSPOSE moved it to.** With LIFT up an octave the key sent note on
+   C4 and the engine sent note off C5, so C4 stayed held on the computer for ever. Measured: `90 3C 75` then
+   `80 48 00`. F7 DEEP VOID is LIFT 61 (an octave) with LOOP, so every replay leaked one -- and because LIFT morphs
+   when a preset lands, the off landed on whatever note the morph had reached (an off at D4 in the trace).
+   `lead_event` now releases at `v->home`, the note the note on used.
+2. **Every voice let go while a lead was held sent no note off.** SEL + HOME, and CC 123, which is what a DAW's
+   panic sends: `all_off` dropped the lead by clearing `held`, bypassing the path that owes the off. Both leaked.
+3. **CC 120 (all sound off) the same**, and the platform's own silence before a backup, a restart or an update:
+   `dr_panic` zeroed the voices and sent nothing. It now releases what the unit owes first.
+4. **A note's pressure outlived its voice.** `press[]` is per note and nothing cleared it, so poly aftertouch sent
+   for a note (or a key leaned on) coloured the next voice struck there, with no way back. Measured on a dry C4 at
+   AFTERTOUCH full: a strike six seconds later rendered 4.4 dB off a clean one, and the probe showed `press[60]`
+   still 127. Both strike paths (`voice_strike` and the revived fading body) now start from no pressure.
+5. **GEN reported moves for voices a computer struck.** `orbit_apply` sent note off and note on for any latched
+   voice it moved, while `let_go` and `transpose_to` stay quiet for MIDI's own notes; a preset's chord can latch a
+   voice a keyboard is holding, and then the move's note on was never released. Guarded like the other two.
+
+Two more things the dive found and left alone, for Kyle to decide:
+
+- **A preset's chord sends no note ons, but letting it go sends note offs.** The keys, GEN's moves, the arp and
+  LOOP all report themselves; `load_bodies` does not, so a computer sees offs for notes it never saw start (the
+  suite's log shows six on 48 and 55). Harmless on a synth, but layering a preset's chord on one does nothing. The
+  manual does not promise either way.
+- **`fx_pre` assumes an even block** (it steps the delay two samples at a time and divides by `n / 2`). Every path
+  calls `app_render` with APP_BLOCK = 256, so nothing can reach it today.
+
+Smaller, fixed on the way: the old-bank migration now refuses a stored scene size that claims more parameters than
+this build has (it stayed inside the struct, but could have scrambled a user slot), and `scenes.c` said slots 0..7
+were F1..F8 when there are sixteen of each.
+
+The host build is warning-free, the device build too: image 414,116 B (192 B under 0.13), RAM 77,692 of 98,304,
+pool 334,032 of 344,064, identity FM-1_1400, build **E273E52A**. `screens.txt` passes and the 16 renders match
+golden to the byte.
+
+### The hub's six rules, re-read today (thefirmwarehub.com/fmhub.md and /submit)
+
+Met: the open licence with the source public, the FM-1_14 identity nobody else uses, the update loader in the
+package (and the loader has no JEDEC gate of its own, while the data area takes both the Puya and the UC25HQ80, so
+a new unit saves and can install another firmware afterwards).
+
+Prepared here, not yet committed: **`fmhub.json`** at the repository root -- the hub reads only that file, eight
+fields and no others, "no file, no listing" -- with `what` (268 characters), `author`, `kinds` ["synth"], `play`
+the emulator, `cheat` the cheat sheet, `image` `docs/img/screen-home.png` (240 x 240, 173 KB, inside the 300 KB
+cap) and `color` #E5482E, the site's own accent. The root **`firmware.json`** is DEEP FIELD's now (it was Pocket
+Poly's, which the hubs and RemoteFM1 would have read in a repository called deepfield), and `publish_site.sh`
+refreshes it from each release build so the two cannot drift. The root README leads with DEEP FIELD.
+
+Still to do, in order:
+
+1. **The two repositories.** The split is ready and verified: `WisestWizard/pocketpoly` (9 commits of its own
+   history, `app/` with `tools/`, `tests/`, the research docs) and `WisestWizard/gnomnom` (9 commits, its firmware
+   moved to `app/` so a release writes the metadata where a catalogue looks). Both build `--host` and pass their
+   own `basic.txt`. Creating them was refused by this session's permission check as a public push, so it needs
+   Kyle's word; then this repository drops `app/` and `gnomnom/` and commits the root it has been given.
+2. **Flash 1.0 and hear it** (the test steps below).
+3. **The hub's install tests, on the unit:** from the stock V15 firmware, from another firmware, and another
+   firmware installed from this one.
+4. **Publish the site at 1.0** (`deepfield/tools/publish_site.sh 1.0`), **tag v1.0** and make the **GitHub release**
+   with `deepfield-1.0.fwsc` attached. The hub takes the newest release carrying a `.fwsc`, so no release in this
+   repository may ever carry Pocket Poly's or GNOMNOM's package.
+5. **The mail to zven@thefirmwarehub.com**, which Kyle sends: the name, his name, the repository, the FM-1_
+   identity, the licence, and that it was tested on a real FM-1 and leaving it again works. Nothing else goes in
+   the mail -- the text, the picture and the links come from `fmhub.json`.
+
+### How to test the flash (numbered for the unit)
+
+1. Headphones in, F1 FIRST LIGHT, play a chord: it should sound exactly as the build you have been playing. Nothing
+   in this pass touches the sound, and the renders prove it to the byte.
+2. USB-C to the Mac, a track armed in Live on DEEP FIELD FM-1, LATCH off (SEL tapped), LEAD page, TRANSPOSE up an
+   octave: play a few notes. Live should show them starting and stopping; before, every note you played stayed
+   stuck on.
+3. F7 DEEP VOID with GEN on (LOOP): let it replay for half a minute with Live recording. No held notes should pile
+   up.
+4. Hold SEL and tap HOME while a lead sounds: the note should stop on the computer too.
+5. Live's panic button (or stop): everything should release.
+6. Lean on a key hard, let it go, then play the same key gently: it should sound as gentle as any other key -- the
+   old build kept the aftertouch on that note and the next voice there came back bright.
+7. The FP-30X over Bluetooth, as always: pair, play, and the keyboard's own notes should be unaffected.
+
+## The volume law put back, the keys easier, MASTER on the recording (flashed 2026-11-08; site 0.13; committed fdd6cff)
 
 Kyle, after playing the 11-07 build: "the velocity sensitivity of the keys is a little off - you have to press
 really hard to get it to full volume - also we backed off the overall volume too much when we changed the master";
