@@ -31,8 +31,15 @@ pointed the submodule at it (2101207). Master pushed through 293f52b on Kyle's "
 be cloned at all: `git submodule update --init base` failed `upload-pack: not our ref a2db7534...`. Kyle has READ
 on charlesvestal/fm1-base, so on his "Fork it": github.com/WisestWizard/fm1-base, the commit pushed to the branch
 `deepfield-pin` (a branch of its own, so the fork's main stays upstream's and nothing collects the commit), and
-`.gitmodules` repointed at the fork (2eebe7b, pushed). Inside `base/`, `origin` is the fork and `upstream` is
-charlesvestal/fm1-base, so upstream pulls still work.
+`.gitmodules` repointed at the fork (2eebe7b, pushed).
+
+Kyle then asked for "a single stream" with "the bluetooth fixes" still in the build. Those two cannot both be had
+against charlesvestal until #44 lands: the pin has to carry the fix, there is no way for an app to override a base
+source (build.py globs `base/ble/midi/*.c`), and pinning upstream's d8ff8f4 drops the fix out of the firmware. So
+**the fork is the one fm1-base to track** (6ae6a07): `base/` has a single remote, `origin`, the fork; the
+`upstream` remote is gone; and `.gitmodules` says in a line what the fork is for and that it goes when #44 is
+merged. Verified: a clean `--recurse-submodules` clone lands base at a2db753 with one remote and the fix in it,
+and the device image (408,324 B) carries the fix's own log strings (`ccc %x pair %d`, `paired: no answer`).
 
 Verified from a clean checkout of what is on GitHub: `git clone --recurse-submodules` lands base at a2db753 with
 the pairing fix in it, `./build.sh deepfield --host` builds, and all 699 checks pass.
