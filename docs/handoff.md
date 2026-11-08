@@ -17,7 +17,10 @@ than every source; `/usr/bin/python3 base/tools/fm1_install.py deepfield/build/d
 were identical, so the firmware is: this pass and the Bluetooth session's le_midi.c pairing fix (below) together,
 image 408,324 B, RAM 77,628 B, 699 checks.
 
-The unit is on the 16:36 package. Verified after it: the installer said `done: the FM-1 runs FM-1_1400`; the log
+Flashed once more at 23:39 on his "Flash it" after the submodule was settled, from the same sources (image
+408,324 B again, with the pairing fix's log strings in it); booted clean, `no crash recorded`, `BT ready:
+advertising as FM-1 F9FC`, `cpu 5% b0 ADDITIVE s0 x0`, `late 00000000`, the screen reader the same FIRST LIGHT
+line. The unit is on that package. Verified after it: the installer said `done: the FM-1 runs FM-1_1400`; the log
 has no crash recorded, `BT ready: advertising as FM-1 F9FC` and `cpu 5% b0 ADDITIVE s0 x0`; the screen reader reads
 `DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%`. Not yet heard
 by Kyle, and neither this pass's test steps nor the piano test have been run on it. Committed on his "Commit and
