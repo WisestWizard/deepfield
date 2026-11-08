@@ -24,9 +24,30 @@ by Kyle, and neither this pass's test steps nor the piano test have been run on 
 publish" as 598feb0 (not pushed), and site 0.12 published the same way (`deepfield/tools/publish_site.sh 0.12`,
 release FM-1_14001200): deepfield.fog.baby serves the new landing page, the manual, both cheat sheets, the emulator
 on this engine and `deepfield-0.12.fwsc`. The Bluetooth session then committed its le_midi.c fix (base a2db753) and
-pointed the submodule at it (2101207), so the tree does rebuild what is on the unit. Master pushed through 2101207
-on Kyle's "Push master". One caveat: base a2db753 is on this machine only — its remote is charlesvestal/fm1-base,
-upstream — so a fresh clone cannot resolve the submodule pointer until that commit has somewhere to live.
+pointed the submodule at it (2101207). Master pushed through 293f52b on Kyle's "Push master".
+
+**github.com/WisestWizard/deepfield is not cloneable as it stands, and it broke with 2101207.** base a2db753 exists
+on this machine only: the submodule's remote is charlesvestal/fm1-base, where Kyle has READ, and there is no fork
+under his account. Proved both ways against the pushed repo: at 293f52b, `git submodule update --init base` fails
+`upload-pack: not our ref a2db7534...`; at 598feb0, the commit before the pointer moved, it checks out d8ff8f4 and
+succeeds. Building here is unaffected -- base/main holds the commit.
+
+Two ways out, Kyle's call (he was asked; creating the fork needs his permission and was refused by the session's
+check):
+
+- **Fork fm1-base under WisestWizard** and point the submodule at it. The real fix: the tree then both clones and
+  rebuilds the unit's firmware. `gh repo fork charlesvestal/fm1-base --clone=false --remote=false`, then from
+  `base/`: `git remote add fork https://github.com/WisestWizard/fm1-base` and
+  `git push fork HEAD:refs/heads/deepfield-pin` (a branch of its own, so the fork's main stays upstream's and the
+  commit cannot be collected); then in the superproject set `.gitmodules` url to the fork, `git submodule sync`,
+  commit and push. Note base is 139 commits behind upstream as well as 1 ahead, so the fork's main and the pin
+  are different things.
+- **Point the submodule back at d8ff8f4** (`git revert` the pointer in 2101207, or `git -C base checkout d8ff8f4`
+  and commit the superproject). Clones work again at once, no new public surface, but the tree no longer rebuilds
+  what is on the unit and the pairing fix stays on this machine.
+
+A third, slower: offer the fix to charlesvestal/fm1-base as a pull request (which still needs the fork first, and
+the fix sits on a 139-commit-old base, so it may not apply to upstream main).
 
 **The one thing to confirm on the unit first:** the DEF4 -> DEF5 settings migration has no check behind it. GLO,
 SELECT once should read VELOCITY ON, and the octave, scale, root, channels and Bluetooth should be as Kyle left
