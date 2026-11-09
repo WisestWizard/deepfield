@@ -17,7 +17,8 @@ once.
 
 ![The screen at rest: F6 NEBULA in the header with the SEL LATCH pill lit, four voices as beams over the keys strip, the HOME page's four macros in a row below](img/screen-home.png "DEEP FIELD at rest")
 
-**The mixer.** HOME and SELECT once is the MIX page: **BED** is the level of everything latched, **LEAD** the
+**The mixer.** GLO opens the MIX page, and SELECT once from there the FX MIX page: the two levels pages sit
+together, ahead of the scale and the rest. On MIX, **BED** is the level of everything latched, **LEAD** the
 notes you play over it, and **OUT** a trim that sits under the MASTER pot and applies to the speaker, the
 headphones and a USB recording alike. A thick latched chord buries an echo; take BED down a little and the delay
 and the hall come back into the room without touching a single effect. BED and LEAD belong to the preset; OUT is
@@ -264,7 +265,6 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | Button | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- | --- | --- |
 | HOME | HOME | TIMBRE | DRIFT | REVERB | TREMOLO |
-| HOME, SELECT once | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
 | EDIT | OSC | MODEL (also on ALGORITHM) | SHAPE (named for the model) | SUB | NOISE (named for the model) |
 | EDIT, SELECT once | NOISE | LEVEL (0 is off) | COLOR (brown to white) | RATE (how fast it moves, how often it gusts) | BANDPASS (wide, narrow, or on the voices: see below) |
 | EDIT, SELECT twice | NOISE 2 | TYPE (hiss, rain, crackle) | GUST (how much it swells now and then) | DUCK (how far it drops under a chord) | WIDTH (its own stereo width) |
@@ -276,12 +276,13 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | FX, SELECT once | DELAY | TYPE (PING PONG, TAPE, DUB, REVERSE, OCT UP, OCT DOWN, GRANULAR) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
 | FX, SELECT twice | DELAY 2 | TONE (dark or bright repeats) | DIFFUSION (echoes blurred into a cloud) | WOW (how far the tape wanders) | GATE (only slices of the sound go in) |
 | FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (the same as on HOME) |
-| FX, SELECT four times | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
 | ARP | GEN | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
 | ARP, SELECT once | GEN 2 | RETURN | OCTAVES (ARP, 1 to 3) | EUCLID (ARP: its hits and rests) | DIV (ARP: a step's length) |
-| GLO | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | – |
-| GLO, SELECT once | MIDI (and the Bluetooth device, in place of the view: section 10) | IN CH (OMNI or 1–16) | OUT CH (1–16) | LOCAL | VELOCITY |
-| GLO, SELECT twice | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (the recording's level, 0 to -18 dB) | CLOCK OUT | – |
+| GLO | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
+| GLO, SELECT once | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
+| GLO, SELECT twice | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | – |
+| GLO, SELECT three times | MIDI (and the Bluetooth device, in place of the view: section 10) | IN CH (OMNI or 1–16) | OUT CH (1–16) | LOCAL | VELOCITY |
+| GLO, SELECT four times | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (the recording's level, 0 to -18 dB) | CLOCK OUT | – |
 
 **The models** (turn ALGORITHM, or KNOB 1 on OSC). A new model crosses every voice over in under a second, the new
 sound rising as the old one fades, as a preset in another model does over MORPH (section 9).
@@ -379,7 +380,11 @@ held, REVERB down.
 - **GATE** (DELAY 2) lets only slices of the sound into the delay, one at the start of every DLY TIME: at 0
   everything goes in, at full a short slice. A held chord then comes back as a pulse of itself, in time with the
   delay. The slices are made louder as they get shorter, so the echoes stay as loud overall.
-- Changing DLY TIME bends the pitch on its way, like tape.
+- Changing DLY TIME no longer swoops. A move of more than a few milliseconds takes the repeats out over 12 ms,
+  lands the heads on the new time and brings them back; smaller moves glide, with the bend held inside a tone and
+  a half. On TAPE the glide is kept, bounded the same way, because sliding is what a tape does. Before 1.1 one
+  detent in the synced part of the knob walked the heads 2.2 samples a sample, which replayed the whole buffer at
+  3.2x - twenty semitones up - and that shriek was the loudest thing the delay did.
 
 ---
 
@@ -400,10 +405,26 @@ and PLAY's colour shows it:
 | SHIFT | orange | RATE, CHANCE, RANGE | All the voices move together by the same number of scale steps, up to RANGE, so the whole chord shifts to a related one. |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
-| PROG | orange | RATE, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord, so the chords' colour comes from SCALE. |
-| LOOP | orange | RATE, DECAY, OCT JUMP | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every RATE seconds, each note at the velocity you played it at and the whole phrase quieter each time, losing notes (DECAY) and jumping octaves (OCT JUMP) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. The pill counts the phrase (LOOP 5) and lights while it plays; with nothing caught it reads LOOP EMPTY, which is what you see with LATCH on, since the keys make voices then and no lead is ever played. |
+| PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time over a pinned pedal. ROAM (GEN 2) sets how far the generator may develop it. |
+| LOOP | orange | RATE, DECAY, OCT JUMP | A phrase you played, coming back every RATE seconds at the velocities you played it with, keeping the rhythm you played it in. Record one with REC (below), or just play with LATCH off and your last eight notes are caught on their own. DECAY drops notes and fades the phrase, OCT JUMP throws notes an octave; ROAM (GEN 2) carries each pass to another degree of the scale. The pill counts the phrase (LOOP 5) and lights while it plays. |
 
-ARP and LOOP play from the keys, so they need nothing latched. Every other mode moves latched voices: with none,
+**Recording a phrase (LOOP).** With the GEN page showing and MODE on LOOP, **REC** takes a phrase:
+
+1. Press **REC**. The screen says LOOP RECORDING and the pill counts the notes as they go in. **LATCH comes off for
+   the take**, so the keys play rather than pile up a drone - it goes back on by itself afterwards.
+2. Play your phrase, up to eight notes. The gaps between them are kept, so it comes back in the rhythm you played
+   it, not spread evenly over the bar.
+3. Press **REC** again. The screen says LOOP PLAYING and the phrase starts looping at once.
+
+RATE sets how long one pass takes, so the phrase is stretched or squeezed to fit it while keeping its own
+proportions. **At DECAY 0 a recorded phrase never fades** - it is a loop you made, not an echo of something played
+in passing, and only a phrase that was caught rather than recorded still dies away. **ROAM** (GEN 2) is how far it
+travels: at 0 it repeats at the pitches you played, and turned up each pass is carried to another degree of the
+scale, chosen by the same weights PROG uses, so it walks somewhere rather than wandering. REC is the Bluetooth
+button everywhere else - it only takes a phrase while the GEN page is up with LOOP showing.
+
+ARP plays from the voices you have latched, not from the keys - with nothing latched it has no notes and stays
+silent. LOOP plays from the keys. Every other mode moves latched voices: with none,
 nothing moves. RANDOM has no CHANCE knob but still uses the CHANCE last set in another mode; LOOP ignores CHANCE
 altogether. A locked voice (section 4) is never moved.
 
@@ -421,21 +442,65 @@ RELEASE (LEAD page) toll like bells.
 
 ![The GEN 2 page: RETURN, OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
 
-PROG's progressions are loops for a held chord, not cadences: one or two notes move at a time and none of them
-leans on a chord that wants to resolve, which is what made the old I IV V sets sound unfinished under a drone.
-Each is a walk in scale degrees from where you played the chord, so the colour comes from SCALE; all of them use
-only the degrees that stand as a full chord in a major and a minor scale alike.
+**PROG leads the chord; it does not shift it.** Each step names the notes the next chord should contain, counted
+in scale degrees from where you played the chord, so the colour comes from SCALE. A voice already on one of those
+notes stays where it is, and of the rest only one or two move, each to the nearest note it can reach, never
+further than a major third and never across another voice. That is what makes it sound like harmony: the held
+notes are the ground, and the ear hears the others move against them. Before 1.2 every voice moved the same
+distance at the same moment, which the ear reads as the whole instrument sliding rather than as a chord change -
+parallel motion of everything is a pitch bend, not a progression. Where a voice cannot reach a note of the new
+chord it hangs on instead, as a suspension, and rejoins on the next long step.
+
+**The pedal.** When PROG starts with three or more notes held, the lowest is pinned and never moves, so there is
+always one note under the harmony. It is the only note held through every change, and it turns each step into a
+chord over a bass rather than a transposition - which is also what takes the pull out of the degree the old
+cadences leaned on. Pin a voice yourself (section 4) and PROG leaves your choice alone; with only one or two notes
+held it pins nothing, since a pedal costs a voice and there would be nothing left to lead.
+
+**Steps are different lengths.** Every progression below holds some chords two, four or more times as long as
+others. With every step the same length nothing is an arrival and nothing is a departure, and the eight old
+four-step tables were square waves the ear had finished with inside two turns. The numbers are multiples of RATE,
+so RATE sets the pace and the table sets the shape.
 
 | CHORDS | Where the chord goes |
 |---|---|
-| VAMP | Home, a third below, home, a third below: the two-chord rock vamp. |
-| PLAGAL | Home and a fourth above, back and forth: the amen fall. |
-| MEDIANT | Home and a third above: one note moves, the other two stay. |
-| SUSPENDED | Home and its fifth: open, and never resolved. |
-| DESCENT | Home, a sixth, a fifth, a fourth: the bass walks down. |
-| RISE | Up through the thirds and settling a third below home. |
-| ROUND | The turn a canon makes, without the chord that would end it. |
-| DRIFT | Four chords that never point home. |
+| ROUND | A full circle down through the thirds, touching every chord in the scale and arriving home from below. Two notes are shared at every step, so it is the one that most rewards the leading. |
+| UNDERTOW | Down a third, back up a step, over and over: a receding wave that keeps reaching back. |
+| SLOW RISE | The mirror of it - a climb that sags back a step each time, so the brightening never turns triumphant. |
+| TWO ROOMS | Really only two chords, like the old VAMP, but every arrival comes through a different door and by a different length, so it never becomes a trill. |
+| OPEN DOOR | Hangs on the chord a fourth above and keeps falling home: weight and lift with nothing resolved. |
+| COLOUR | Leans on the chord one step above home - the one chord that tells you which mode you are in. In PHRYGIAN that is the flat second, in LYDIAN the bright second. |
+| BREATH | Home again and again, each trip away longer and one third further round, so the last return lands as an arrival. |
+| STONES | A drone that leans once in a while. The only one for which a 60 s RATE is the point. |
+
+**Where each step sits.** Every progression also carries a contour: how high or low the chord should sit at each
+step, in semitones from where you struck it. A voice already on a note of the chord keeps its pitch class and
+takes the octave nearer that mark, so the body of the sound really rises or falls while the harmony is untouched -
+one voice a step, so it reads as the music breathing. UNDERTOW sinks about eight semitones over its turn and comes
+home in one move; SLOW RISE climbs the same way; TWO ROOMS goes upstairs and then downstairs. **For a progression
+whose body sinks, the pedal is the ceiling rather than the floor** - the highest note is the one pinned and the
+chord falls away beneath it, which is the only way it can get down there at all.
+
+**ROAM** (GEN 2, knob 2) is how far the generator may take the written progression. At 0 the table is
+played exactly as written. Turned up, the progression becomes the theme: the next chord is chosen by weight
+instead of read from the table, pulled toward what is written, away from the chord it has just left and the one
+before that (which is what stops it swinging between two chords), toward the degrees that have had least time so
+it tours the scale, and toward home the longer it has been away - a gravity that grows, which reads as intention
+where a fixed chance of returning reads as noise. A turn of the table is a phrase, and four turns make a
+section: the theme, the theme with its ending turned home, a fresh phrase at the far end, then the theme again
+with a chord or two redrawn - repetition with a varied ending is the only reason anyone feels a shape in the first
+three minutes. The step lengths and the contour are kept from the table throughout, so the rhythm and the rise and
+fall rhyme even where the chords do not. Every fourth turn it comes home; between those it may re-centre a fifth
+either way, which sounds like a change of light rather than a change of key, and never leaves the scale you chose. Measured over the same half minute, ROAM full gave thirteen different chords where the
+written table gave four.
+
+**Degrees 1 and 6 are no longer held back.** Earlier versions used only degrees 0, 2, 3, 4 and 5, on the grounds
+that those five stand as a full chord in a major and a minor scale alike. That is true of those two scales and
+wrong in four others: in DORIAN degree 5 is the diminished one, in PHRYGIAN degree 4, in LYDIAN degree 3 and in
+MIXOLYDIAN degree 2 - all inside the supposedly safe set - while the chord that tells those modes apart sat
+outside it, which is why SCALE used to make so little difference to what you heard. DEEP FIELD now works out from
+the scale itself which degree carries the diminished chord and which acts as a dominant, and passes through both
+in one step instead of resting on them.
 
 **RETURN** (GEN 2) is the chance that a voice, or in SHIFT the whole chord, is pulled back to the key where it
 started. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
@@ -580,12 +645,12 @@ the preset as meant.
 | F6 NEBULA | ADDITIVE | C4 D4 E4 F4 G4 | RANDOM | GRANULAR | A hollow cluster, very slow swells, drowned in reverb, a wind bed |
 | F7 DEEP VOID | TAPE | C2 | LOOP | TAPE | One low note on worn tape, sub and crackle; your leads loop back an octave up |
 | F8 STARLIGHT | WAVETABLE | C4 G4 D5 G5 | WALK | PING PONG | High glass, drifting |
-| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | PROG VAMP | – | An open vowel in a big hall, walking a progression |
+| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | PROG ROUND | – | An open vowel in a big hall, led through a progression |
 | F10 RAIN CLOCK | FM 4-OP | C3 Bb3 Eb4 G4 D5 | ARP 92, 5/8, random | DUB, gated | An electric piano under rain, its echo ringing; nearly dry |
 | F11 GAMELAN | BELL | C4 D4 G4 A4 C5 | RANDOM, fast | PING PONG, gated | Bell ratios, gated echo pulses; nearly dry |
 | F12 BRONZE BOWL | RESONATOR | C3 G3 D4 A4 | WALK | GRANULAR | Singing bowls under glitter and shimmer |
 | F13 ASCENT | SHEPARD | C3 G3 C4 | SHIFT | OCT UP | Rising, the echoes climbing with it |
-| F14 DESCENT | SHEPARD | C2 G2 G3 | PROG DESCENT | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
+| F14 DESCENT | SHEPARD | C2 G2 G3 | PROG UNDERTOW | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
 | F15 FOLDED SUN | WAVEFOLD | C3 G3 E4 A4 D5 | LOOP | TAPE | Bright 6/9, ensemble; your leads loop back over it |
 | F16 INIT | ADDITIVE | none | WALK | – | Every value at its starting point: build your own from here |
 
@@ -622,6 +687,7 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 12 | The noise layer on or off (switch) |
 | 13 | The preset back as saved, like HOME held (trigger) |
 | 14 | GEN's next move now, like SEL + PLAY (trigger) |
+| 14 | ROAM (PROG, and how far LOOP travels) |
 | 15 | CHORDS (PROG) |
 | 16, 17, 18, 19 | TIMBRE, DRIFT, REVERB, TREMOLO (74 and 91 also set TIMBRE and REVERB on the way in) |
 | 20 | The noise layer's LEVEL |
@@ -702,7 +768,7 @@ connect one:
 
 1. Switch on the keyboard's Bluetooth, and disconnect it from any phone or tablet app: most keyboards take one
    Bluetooth MIDI connection at a time.
-2. On the FM-1, press GLO, then turn SELECT once: the MIDI page. While nothing is connected the panel reads NOT
+2. On the FM-1, press GLO, then turn SELECT three times: the MIDI page. While nothing is connected the panel reads NOT
    CONNECTED, searches by itself and lists the devices it finds.
 3. Turn ALGORITHM to pick one (the bar on the left marks it), and press REC: CONNECTING, then CONNECTED in green
    with the device's name. DEV lights in the header.

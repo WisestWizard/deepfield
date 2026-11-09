@@ -116,7 +116,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_NZ_TEXTURE] = 0, [P_NZ_GUST] = 0, [P_NZ_DUCK] = 30, [P_NZ_WIDTH] = 70,
         [P_ORB_PROG] = 0,
         [P_SPREAD] = 30, [P_CROSS] = 0, [P_TWALK] = 25, [P_SWAY] = 15,
-        [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50, [P_BED_LEVEL] = 127,
+        [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROAM] = 0, [P_BED_LEVEL] = 127,
         [P_DLY_DIFF] = 25, [P_DLY_COLOUR] = 50,
         [P_DLY_TYPE] = DT_PING, [P_DLY_WOW] = 40, [P_DLY_CHOP] = 0,   /* WOW 40: the wander the delay always had */
         [P_ARP_RHYTHM] = 0, [P_ARP_DIV] = 2,                          /* every step a note, an eighth: as before */
@@ -296,7 +296,7 @@ static void factory_build(void)
                                        {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
                                        {P_REV_DAMP, 55}, {P_DLY_TYPE, DT_FALL}, {P_DLY_MIX, 45}, {P_DLY_TIME, 99},
                                        {P_DLY_FDBK, 55}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 35}, {P_ORB_MODE, OM_CYCLE},
-                                       {P_ORB_PERIOD, 95}, {P_ORB_CHANCE, 127}, {P_ORB_PROG, 4}, {P_SPREAD, 35},
+                                       {P_ORB_PERIOD, 95}, {P_ORB_CHANCE, 127}, {P_ORB_PROG, 1}, {P_SPREAD, 35},
                                        {P_TWALK, 30}, {P_SWAY, 20}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25},
                                        {P_NZ_BAND, 5}, {P_NZ_TEXTURE, 5}, {P_NZ_GUST, 65}, {P_NZ_DUCK, 30},
                                        {P_NZ_WIDTH, 90}, END};

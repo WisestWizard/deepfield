@@ -1,8 +1,184 @@
-# Handoff — Pocket Poly, end of 2026-10-31
+# Handoff — DEEP FIELD, 2026-11-08
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: what Kyle heard on 1.0, and the pass that answers it (built 2026-11-08; NOT flashed; 1.1)
+## Start here: the two limits closed, and LOOP records a phrase (flashed 2026-11-08; 1.2 is on the unit)
+
+**On the unit:** installed 2026-11-08 with `fm1_install.py deepfield/build/deepfield.fwsc --yes`, image 419,840 B,
+build 4EA946D2. It came back as `FM-1_1400`, `log` shows no crash and Bluetooth MIDI advertising as FM-1 F9FC, and
+1.2 reads back where 1.1 cannot: with MODE on PROG the GEN page shows `CHORDS ROUND` and GEN 2 shows `ROAM 0%` in
+the slot that holds OCTAVES for every other mode. What is left is Kyle's listening pass - the eight progressions,
+UNDERTOW's sink and SLOW RISE's climb, ROAM's development of the written progression, the pedal, and a take
+recorded with REC on the GEN page with LOOP showing.
+
+Kyle read the two honest limits at the end of the PROG pass and said "fix this too", and chose LOOP over ARP for
+the phrase recorder.
+
+**A progression can now really sink or climb.** The limit was that a step names pitch classes, so a degree said
+nothing about register and the signed table bought nothing. Each progression now carries a contour as well -
+`PROG_R`, where each step wants to sit in semitones from the struck chord's middle. The leading reads it as a
+pull, and a voice already on a note of the chord keeps its pitch class and takes the octave nearer the mark: the
+harmony is untouched and the body of the sound moves, one voice a step. The first cut only biased the *search*
+direction, which did nothing at all, because a voice already on a correct note holds - measured, SLOW RISE drifted
+up four semitones and UNDERTOW did not move. Then the register move was blocked downward by the pedal: with the
+lowest note pinned at 60, nothing above it can get under it. **For a progression whose body sinks the pedal is now
+the ceiling** (`prog_falls`, `cyc_top`) - the highest note is pinned and the chord falls away beneath it, which is
+the held-ceiling sound the ambient composer asked for. Measured after: UNDERTOW's centre goes 64 down to 56 and
+back in one move, SLOW RISE climbs to 71.
+
+**ROAM has the phrase memory now.** A turn of the table is a phrase and four turns are a section: A the theme, A'
+the theme with its last two chords turned home, B fresh and furthest out, A" the theme with about one chord in
+seven redrawn. Step lengths and the contour are kept from the table throughout, so the rhythm and the rise and
+fall rhyme where the chords do not. Verified by printing the phrases: written ROUND is `0 5 3 1 6 4 2 0`; A came
+out `0 5 1 2 0 4 2 0`, A' `0 5 1 2 0 4 0 0` (the theme, ending turned home), B `5 1 3 1 6 4 2 0`, A" `0 5 3 2 6 4
+1 0`. The first cut produced `0 0 0 0 0 0 5 0` - a whole phrase picked against state that never advanced, so every
+chord came out as home; `cyc_step_seen` now walks the anti-oscillation, coverage and home-debt state with the
+phrase as it is written. A second wart found the same way: the theme array was only filled when ROAM was already
+up, so turning ROAM up mid-flight developed an empty progression; it is seeded from the table now.
+
+**LOOP records a phrase and moves it.** With the GEN page up and MODE on LOOP, REC opens a take: the screen says
+LOOP RECORDING, the pill counts the notes, and **LATCH comes off for the take** so the keys play a melody instead
+of piling up a drone, going back on by itself when the take closes. REC again closes it and it loops at once. The
+gaps between the notes are kept (`echo_gap`, in sixty-fourths of a sample count against a clock added to
+`orbit_tick`), so the phrase comes back in the rhythm it was played in, stretched to fit RATE rather than spread
+evenly over it. At DECAY 0 a recorded phrase never fades; a phrase merely caught from passing leads still does.
+ROAM carries each pass to another degree of the scale using the same weights PROG uses. REC is the Bluetooth
+button everywhere else, so the gesture is gated on the page and the mode. Measured: 300 ms and 700 ms played came
+back as 244 ms and 505 ms inside a one-second period, and with ROAM up the passes transpose. Two bugs on the way:
+the gap was being counted after the note rather than before, so the first two notes of every phrase landed on the
+same instant; and `loop_clk` first lived where it only advanced while the generator ran, so a whole take was
+stamped zero and fell back to the even spread.
+
+**ARP, settled.** Its engine was correct all along (struck 68, 60, 64: PLAYED gives 68 60 64 80 72 76, UP gives 60
+64 68 72 76 80). What was wrong was the manual: it said "ARP and LOOP play from the keys, so they need nothing
+latched", which is false for ARP - it arpeggiates the latched voices, so following the manual made it silent. That
+line is fixed, and the phrase feature Kyle wanted went into LOOP instead, where the capture and replay already
+existed.
+
+**Where it stands:** 751 checks pass (twelve new ones for the take), goldens unchanged and levels in band, manual
+and cheat sheet carry the recorder, the contours and the phrase form. Still not built: a per-step chord template
+(a seventh or a sixth where a step-move needs one) and a per-step accent, both of which the harmony specialist
+ranked third and fourth. Nothing is tagged, the site is still at 0.13.
+
+## PROG rebuilt on voice leading (built 2026-11-08; NOT flashed; 1.2)
+
+Kyle on the 1.1 progressions: "they are so short they just kind of beep back and forth - we need things that
+progress nicely - a user should be able to set the global scale and then use at least some of the chords, motion
+settings to have sequences play out across that scale - generated or in a fixed manner". He asked for the three
+musician personas to be consulted, so an ambient composer, a generative/modular musician and a harmony and
+voice-leading specialist were each briefed on the engine as it stood and asked for concrete, implementable advice.
+
+**All three independently named the same fix, and it was not longer tables.** A step must name a target *chord*
+and each voice must move to its nearest note of it or hold. The old code moved every held voice by the same number
+of degrees, so no note was ever retained; the harmony specialist's framing was that harmony is heard as a held
+pitch being re-interpreted, and with nothing held the ear parses eight voices as one timbre with a moving
+fundamental - a pitch bend, not a progression. The 0.13 s glide made it worse: eight voices sliding a sixth
+together *is* portamento, where one voice sliding a step against held ones is harmony.
+
+**What was measured before anything was written.** CATHEDRAL sat on VAMP `{0,5,0,5}` at 8 s a step - two chords
+alternating every eight seconds for ever, six of the eight tables being two-position oscillators. In MINOR
+PENTATONIC the note went 60 -> 72 -> 60 -> 72: five degrees in a five-note scale is an octave, so CATHEDRAL there
+was an octave bouncing, not a chord change. In WHOLE TONE a degree move left the chord's pitch classes unchanged
+(60 -> 64 -> 60), so PROG was harmonically inert. And the table was `uint8_t`, so every progression could only
+leave home upward.
+
+**The degree restriction was wrong, and this was checked against the firmware's own scale masks.** The old comment
+held that degrees 0, 2, 3, 4 and 5 are the five consonant in major and minor alike. Classifying every degree's
+0-2-4 stack in all ten scales: DORIAN's degree 5, PHRYGIAN's 4, LYDIAN's 3 and MIXOLYDIAN's 2 are the diminished
+one and were all *inside* the safe set, while each mode's signature chord (MIXOLYDIAN's flat seventh, PHRYGIAN's
+flat second, LYDIAN's second, minor's flat seventh) sat outside it. Right in two scales of ten, inert in three,
+wrong in four - and it was removing exactly the chords that make the modes sound unlike each other. `dr_scale` now
+derives the diminished degree and the dominant degree from the mask and caps each at one period.
+
+**Built.** `cycle_plan` in `engine/drone.c` leads the chord: the target is a pitch-class set, a voice already on
+one of its notes holds, the rest take the nearest reachable note, no voice crosses another, one or two move per
+step (three on a long step), moves over a major third are refused as suspensions and the leash opens to a fifth on
+a long step so a marooned voice can rejoin. Chord coverage is tracked so voices do not pile onto the same two
+notes - without it a triad wore down to a bare C-G-C shell inside a dozen steps. The outer voices are asked to
+close up or open out when the spread drifts more than five semitones from the struck spread. Eight new
+progressions of 8 to 15 steps with unequal step lengths; the pedal pins the lowest note when three or more are
+held; ROAM (GEN 2 knob 2 in PROG, CC 14, STRUM's old slot so saved banks still read) develops the written
+progression by weight - theme pull, anti-oscillation on the last two degrees, coverage pressure, and a home
+gravity that grows with the steps spent away - re-centring a fifth between turns and coming home every fourth.
+
+**Two bugs of my own that the measurements caught.** The motion budget cancelled the *smallest* moves first, so
+the one voice with the biggest leap did all the moving and the voices below it never changed; it now gives up the
+furthest. And auto-pinning the pedal with a single note held left nothing to lead, so PROG sat silent - it now
+needs three held notes before it claims one.
+
+**Honest limits.** Because a step names pitch classes and voices take the nearest, a degree and that degree plus
+the scale's length are now the same thing, so the signed table buys nothing and real descent - a chord sinking
+away over a progression - would need the heads biased downward over a run of steps, which is not built. The
+generator has the weights, the moving home and the anti-oscillation but not the phrase memory the generative
+musician specified (A A' B A", with the chord rhythm remembered and the ending varied). Measured over the same
+half minute, ROAM full gave thirteen distinct chords against the written table's four, with six of twenty-six
+changes a swing back to the chord before last - better than the old table and not yet as directed as it could be.
+
+**ARP, and what is still owed.** Kyle: "we also need to fix the played arp mode or make it make more sense how to
+do it". ARP's engine is correct - struck 68, 60, 64 in that order, PLAYED gives 68 60 64 80 72 76 and UP gives 60
+64 68 72 76 80. What he actually wants is a different feature: "it should have a way for a user to play a sequence
+in that the arp then imitates and moves", and his control sketch is to select the mode, hit REC, play a sequence
+possibly including chords, and hit REC again to close it. **This is designed and agreed but NOT built.** The
+decided shape: REC means record-a-phrase only while the GEN page is up with mode ARP and PATTERN PHRASE (REC is
+the Bluetooth button everywhere else, so the context has to be narrow), the pill reads `REC 3` while armed, keys
+stop latching so a melody can be played rather than a drone accumulated, notes within 60 ms are one chord step,
+REC again closes and starts it looping, 16 steps closes it itself. One question for Kyle before it is written: it
+may belong in LOOP rather than ARP, since LOOP already captures played notes with their timing and only lacks the
+transposition, and that would also answer his 1.1 complaint that LOOP reads EMPTY with LATCH on. Also still
+wrong: MANUAL.md line 411 says "ARP and LOOP play from the keys, so they need nothing latched", which is false for
+ARP - it arpeggiates the latched voices - and that alone would make ARP look broken.
+
+**Where it stands:** 739 checks pass, all 16 goldens re-recorded and levels in band (peaks -6.5 to -15.5 dBFS),
+screens regenerated, manual and cheat sheet carry the new progressions, the pedal, ROAM and the degree change. The
+DESCENT preset moved from the old DESCENT table to UNDERTOW and CATHEDRAL to ROUND. Nothing is tagged, the site is
+still at 0.13, and the delay and mixer work below is in the same uncommitted tree.
+
+## The delay's time change, and the mixer moved to GLO (built 2026-11-08; NOT flashed; 1.2)
+
+Kyle played 1.1 and said two things. "A lot of the delays when you change the delay time it makes a pretty loud
+sound - I think for this synth it should be more chill somehow", and "the mix controls should be together - after
+you hit global they should be the first two pages and then the scale and root etc".
+
+**The loud sound, found and fixed.** It was never the crunch it looked like in 1.0. The unit's own log settled
+that first: after twenty seconds of turning DLY TIME under a latched chord, every `cpu N% bM MODEL sS xK` line
+read **x0** - no xruns - with `late 00000000` and the CPU at 40%. So nothing was dropping out. The cause was the
+glide itself. `dly_read` chased the new time at `(tgt - dly_read) * 0.0008` a sample, and in the synced part of
+the knob one detent is a jump of about 5,500 half-rate samples: the read pointer set off at **2.2 samples a
+sample**, which replays the whole delay buffer at 3.2x - twenty semitones up - and further turns reach 5.4x and
+9.5x, running the buffer *backwards*. The comment called it "like tape", but no tape slid two octaves in sixty
+milliseconds. Measured in the simulator with five notes latched and DLY MIX at 77%, one detent raised the band
+above 4 kHz by **+3.9 to +4.7 dB** in the 10 ms at the turn on PING PONG, DUB, OCT DOWN, REVERSE and GRANULAR.
+
+The fix is two parts. A commanded move of more than 300 samples takes the wet path out over 12 ms (the feedback
+coefficient with it, so nothing of the loop is written back while it is down), lands the heads on the new time,
+resets REVERSE's swell and GRAINS' pieces so they do not start mid-window, and fades back. Anything smaller
+glides as before, but the walk is clamped to **0.19 samples a sample** - the content's pitch stays inside a tone
+and a half. TAPE is excluded from the mute and keeps its slide, bounded by the same clamp: verified directly, its
+walk would have been +4.4 (reversed at 3.4x) and is now held to 0.19. After the fix the spike at the turn is
+**+2.2 to +2.9 dB**, which is where TAPE and OCT UP already sat - the drone's own variation. GRANULAR's high band
+did not move (+4.9), and its broadband level is flat across the turn (-32.3 to -32.0 dB): that number is the
+randomness of its own grains, not a surge. A `dly_snap` flag makes the first time it is ever told land rather
+than slide, so a boot does not creep into place over a second.
+
+**Two measurement traps worth remembering.** FIRST LIGHT ships with **DLY MIX at 0**, so a script that does not
+set it measures a silent delay - four rounds of before/after came back byte-identical before a probe on the branch
+showed `send 0.000`. And **P_DLY_MIX is 19**, not the 16 a quick read of the enum suggests; `cc -I. ` on a
+four-line program that prints the constants is the way to get an index right.
+
+**The mixer under GLO.** MIX and FX MIX were the HOME button's second page and the FX button's fifth; they are
+now the GLO button's first two, with GLOBAL, MIDI and USB after them. The page enum and `PAGES` moved with them,
+`B_GLO` opens `PG_MIX`, and **`PAGE_BTN` was fixed**: it still had 17 entries for 19 pages from the 1.1 work, so
+every page from index 1 on lit the wrong button and the last two indexed past the end. Its existing values happen
+to be right for the new order, so it needed only two more `B_GLO`.
+
+**Where it stands:** 738 checks pass (the suite's page numbers remapped, each `tap GLO` advanced two pages to
+reach the scale, and the MIX block rewritten to walk MIX -> FX MIX -> GLOBAL). The screens script takes the two
+mixer shots under GLO now. 14 of the 16 goldens moved and all 16 levels sit in the same band (peaks -6.5 to
+-17.5 dBFS): a preset load is a 12 ms mute-and-land instead of a swoop, which changes the first instants of every
+render that uses the delay. The manual and the cheat sheet carry the new page order and what a time change does.
+**Nothing is tagged and the site is still at 0.13**: 1.2 goes out once Kyle has heard it.
+
+## What Kyle heard on 1.0, and the pass that answered it (flashed 2026-11-08; 1.1 was on the unit)
 
 He played the 1.0 flash and came back with five things. Four are built and verified here; the fifth needs twenty
 seconds of his hands on the unit before anything is written.
@@ -52,6 +228,11 @@ seconds of his hands on the unit before anything is written.
    which is what it always was with LATCH on, since the keys make voices then and no lead is ever played. That is
    why it looked broken.
 
+**On the unit:** installed 2026-11-08 with `fm1_install.py deepfield/build/deepfield.fwsc --yes` (the fast
+install: only the changed sectors). It came back as `FM-1_1400`, `log` shows no crash and Bluetooth MIDI
+advertising as FM-1 F9FC, and the new page reads back - one SELECT detent from HOME: `MIX. BED 100%. LEAD 59%.
+OUT 100%`, which only 1.1 has. **Without `--yes` the installer cancels** when it has no terminal to ask in.
+
 **Where it stands:** host and device builds warning-free, image 414,804 B (672 B over 1.0), build **F99E3E13**;
 `basic.txt` 736 checks (728 plus eight for the mixer and DUB), `screens.txt` writes the manual's shots including
 the two new pages, and the 16 golden renders differ in exactly two places, both expected: RAIN CLOCK (the FM 4-OP
@@ -59,6 +240,10 @@ fix and DUB) and GAMELAN's first instant (RAIN CLOCK's tail leaks into it: the r
 manual and the cheat sheet carry the mixer, DUB, the progressions and the FM 4-OP knob. **The site is not
 published and no release is tagged**: 1.1 goes out once Kyle has heard this build, so the public pages never
 describe something nobody has played.
+
+**What is left:** his listening pass on 1.1, and the twenty-second xrun test in item 2 above. Then
+`deepfield/tools/publish_site.sh 1.1`, the tag, the GitHub release with the `.fwsc` attached, the hub's three
+install tests on the unit, and the mail to zven@thefirmwarehub.com.
 
 ## The 1.0 flash, and the MIDI pass before the hub (flashed 2026-11-08; 1.0 is on the unit)
 
@@ -148,6 +333,14 @@ public surface; Kyle ran the two `gh repo edit --visibility public` commands him
 repositories are now public MPL-2.0 with master as the default branch, both new ones clone with
 `--recurse-submodules` from a clean directory (base b0976f2, `base/bsp` present, `app/fm1.toml` there), and this
 repository's master is pushed through **2c8058b**. The root README's links to them resolve.
+
+Each of the two carries its own `firmware.json` at the root now (**f652620**, **f1d6ca0**). The base writes that
+file whenever APP_DIR is `app`, so without it a plain `--host` build left the tree dirty and a flasher reading
+either root found no card at all. Checked from GitHub rather than from the push: both clone with
+`--recurse-submodules` into an empty directory (base b0976f2), build `--host` on the system cc and pass their own
+`app/tests/basic.txt` -- 310/310 and 50/50, exit 0 -- with nothing untracked left behind. Pocket Poly's card
+points its screenshot at `app/docs/img/screen-home.png`, which is in the repository, so it will not 404 the way
+this one's did.
 
 **The 1.0 package is built** (2026-11-08, Kyle's "Yes, build 1.0"): `./build.sh --release 1.0` ->
 `deepfield/build/deepfield-1.0.fwsc`, 614,938 B, identity **FM-1_14010000** (the first release identity; dev

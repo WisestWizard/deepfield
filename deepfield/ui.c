@@ -18,8 +18,8 @@
  * the one it stops on morphs in, the sound only; ALGO picks the model; SAVE saves a scene (PRESET picks the slot,
  * SAVE again saves, HOME cancels); REC is Bluetooth. Every knob sends its CC and takes it (CC_OF). */
 #include "art.h"                         /* the model glyphs and the page icons */
-enum { PG_HOME, PG_MIX, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY,
-       PG_FX_DLY2, PG_FX_REV, PG_FX_MIX, PG_ORBIT, PG_ORBIT2, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
+enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY,
+       PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_MIX, PG_FX_MIX, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_OUT_LEVEL, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_MORPH, K_CHIN, K_CHOUT,
@@ -31,8 +31,6 @@ typedef struct {
 } page_t;
 static const page_t PAGES[PG_COUNT] = {
     {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
-    {"MIX", "HOME", {P_BED_LEVEL, P_LD_LEVEL, PID_OUT_LEVEL, PID_NONE}},   /* the latched bed, the notes played over
-                                          * it, and the output under the MASTER pot: the balance in one place */
     {"OSC", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
     {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
     {"NOISE 2", "EDIT", {P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH}},   /* its kind, weather, ducking, width */
@@ -44,9 +42,11 @@ static const page_t PAGES[PG_COUNT] = {
     {"DELAY", "FX", {P_DLY_TYPE, P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX}},
     {"DELAY 2", "FX", {P_DLY_COLOUR, P_DLY_DIFF, P_DLY_WOW, P_DLY_CHOP}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
-    {"FX MIX", "FX", {P_ENS_MIX, P_DLY_MIX, P_SPACE, P_SHIMMER}},   /* every effect's level on one screen */
     {"GEN", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"GEN 2", "ARP", {P_GRAVITY, P_ARP_OCT, P_ARP_RHYTHM, P_ARP_DIV}},   /* RHYTHM and DIV: the runner's */
+    {"MIX", "GLO", {P_BED_LEVEL, P_LD_LEVEL, PID_OUT_LEVEL, PID_NONE}},   /* GLO opens the mixer: the latched bed,
+                                          * the notes played over it, and the output under the MASTER pot */
+    {"FX MIX", "GLO", {P_ENS_MIX, P_DLY_MIX, P_SPACE, P_SHIMMER}},   /* every effect's level on the next screen */
     {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_MORPH, PID_NONE}},
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
     {"USB", "GLO", {PID_SPEAKER, PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE}},   /* recording and clock over the cable */
@@ -76,7 +76,7 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_NZ_TEXTURE] = {"TYPE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
     [P_NZ_WIDTH] = {"WIDTH", K_PCT}, [P_ORB_PROG] = {"CHORDS", K_PROG},
     [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS MOD", K_PCT}, [P_TWALK] = {"TIMBRE DRIFT", K_PCT}, [P_SWAY] = {"PAN DRIFT", K_PCT},
-    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT},
+    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT}, [P_ORB_ROAM] = {"ROAM", K_PCT},
     [P_ARP_RHYTHM] = {"EUCLID", K_RHYTHM}, [P_ARP_DIV] = {"DIV", K_DIV},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
@@ -103,7 +103,8 @@ static const uint8_t CC_OF[PID_COUNT] = {
     [P_REV_SIZE] = 106, [P_REV_DAMP] = 107, [P_SHIMMER] = 108,
     [P_ORB_MODE] = 109, [P_ORB_PERIOD] = 110, [P_ORB_CHANCE] = 111, [P_ORB_RANGE] = 112, [P_GRAVITY] = 113,
     [P_ORB_DIST] = 114, [P_ORB_BODIES] = 115, [P_ARP_RATE] = 116, [P_ARP_GATE] = 117, [P_ARP_ORDER] = 118,
-    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53, [P_BED_LEVEL] = 54,
+    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ORB_ROAM] = 14, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53,
+    [P_BED_LEVEL] = 54,
     [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
     [PID_SCALE] = 2, [PID_ROOT] = 3,
 };
@@ -199,6 +200,7 @@ static struct {
     uint32_t keylead;                    /* bit k: it struck a lead (LATCH off), let go at its release */
     uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
     uint32_t rec_t, fx_t, fx_up, sel_t, sel_down;
+    uint8_t rec_latch;          /* LATCH as it was before a LOOP take lifted it */
     uint32_t home_t;                     /* HOME held: a second puts the scene back as saved (scene_reset) */
     uint8_t home_used;
     uint8_t fx_used, sel_used;
@@ -315,8 +317,8 @@ static void ui_say(const char *a, const char *b)
 
 /* ------------------------------------------------------------------ values --- */
 static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP"};
-static const char *const PROG_NAME[DR_PROGS] = {"VAMP", "PLAGAL", "MEDIANT", "SUSPENDED", "DESCENT", "RISE",
-                                                "ROUND", "DRIFT"};
+static const char *const PROG_NAME[DR_PROGS] = {"ROUND", "UNDERTOW", "SLOW RISE", "TWO ROOMS", "OPEN DOOR",
+                                                "COLOUR", "BREATH", "STONES"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
 static const char *const DTYPE_NAME[DT_COUNT] = {"PING PONG", "TAPE", "DUB", "REVERSE", "OCT UP", "OCT DOWN", "GRANULAR"};
 static const char *param_label(uint32_t id);
@@ -335,6 +337,9 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
+    if (pg == PG_ORBIT2 && k == 1u && dr_orbit_mode() == OM_CYCLE)
+        return P_ORB_ROAM;               /* PROG: how far the generator may take the written progression. The ARP
+                                          * knobs stay where they are for every other mode. */
     return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
 static uint32_t value_of(uint32_t id)
@@ -1225,7 +1230,7 @@ static void ble_device_button(void)  /* the MIDI page lists the devices already:
 
 /* ------------------------------------------------------------------ buttons --- */
 static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_FX,
-                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO};
+                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -1279,7 +1284,7 @@ static void button(uint32_t k, uint32_t now, uint32_t btn)
         ui.fx_used = 0;
         break;
     case B_ARP: page_to(PG_ORBIT); break;
-    case B_GLO: page_to(PG_GLOBAL); break;
+    case B_GLO: page_to(PG_MIX); break;   /* the mixer first, then FX MIX, then the scale and the rest */
     case B_SEL:
         ui.sel_down = now;
         ui.sel_used = ui.sel_keyed = ui.sel_cleared = 0;
@@ -1418,6 +1423,23 @@ static void input(void)
                 ui.rec_t = 0;
                 ble_toggle();
             }
+        } else if (ui.page == PG_ORBIT && dr_orbit_mode() == OM_ECHO) {
+            ui.rec_t = 0;                /* on GEN with LOOP showing, REC takes a phrase instead of reaching for
+                                          * Bluetooth: the take plays from the keys, so LATCH is lifted for it and
+                                          * put back when the take closes */
+            if (dr_loop_recording()) {
+                dr_loop_rec(0);
+                set.latch = ui.rec_latch;
+                if (!dr_orbit_on())
+                    dr_orbit(1);
+                ui_say("LOOP", "PLAYING");
+            } else {
+                ui.rec_latch = set.latch;
+                set.latch = 0;
+                dr_loop_rec(1);
+                ui_say("LOOP", "RECORDING");
+            }
+            ui.redraw_foot = 1;
         } else {
             ui.rec_t = 0;
             if (FM1B_BLE_CENTRAL && !set.ble_off)
@@ -2343,7 +2365,15 @@ static void draw_header(void)
         int flash = plat_ms() - ui.orbit_flash_t < 300u;
         if (m == OM_ECHO) {
             t[0] = 0;
-            text_cat(t, "LOOP ");
+            text_cat(t, dr_loop_recording() ? "REC " : "LOOP ");
+            if (dr_loop_recording()) {
+                int_text((int32_t)dr_loop_notes(), v);
+                text_cat(t, v);
+                s = t;
+                flash = 1;
+                pill(61, 69, s, 1, (float)ui.orbit_eighth * 0.125f, flash);
+                goto pill_done;
+            }
             if ((n = dr_loop_notes()) != 0u) {
                 int_text((int32_t)n, v);
                 text_cat(t, v);
@@ -2353,6 +2383,7 @@ static void draw_header(void)
             flash = flash || dr_echo_running();
         }
         pill(61, 69, s, dr_orbit_on(), (float)ui.orbit_eighth * 0.125f, flash);
+    pill_done:;
     }
     pill(134, 42, "SEQ FRZ", dr_frozen(), 0.0f, 0);
     for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */

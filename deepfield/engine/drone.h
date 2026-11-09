@@ -36,9 +36,10 @@ enum {
     P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH,               /* NOISE 2: its texture, weather, ducking, width */
     P_ORB_PROG,                                                   /* CYCLE: the progression it walks */
     P_SPREAD, P_CROSS, P_TWALK, P_SWAY,                           /* MOTION 2: the bodies apart, coupled, drifting in timbre, swaying */
-    P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROLL,                        /* LOOP's decay and octave jumps; ROLL is
-                                                                   * unused since STRUM went, its slot kept so a
-                                                                   * saved bank still reads straight */
+    P_ECHO_DECAY, P_ECHO_JUMP, P_ORB_ROAM,                        /* LOOP's decay and octave jumps; ROAM is how
+                                                                   * far PROG may stray from the written
+                                                                   * progression (STRUM's old slot, so a saved
+                                                                   * bank still reads straight) */
     P_DLY_DIFF,                                                   /* the delay's repeats smeared into a cloud */
     P_DLY_COLOUR,                                                 /* the delay's repeats dark and full to bright and thin */
     P_DLY_TYPE, P_DLY_WOW, P_DLY_CHOP,                            /* the delay's kind, its tape's wander, its input in slices */
@@ -132,7 +133,10 @@ int dr_orbit_pending(uint32_t i, uint32_t *to);     /* body i has a move planned
 #define DR_PROGS 8u
 uint32_t dr_orbit_cycle_pos(void);                  /* CYCLE: the progression's step the chord stands on now */
 int32_t dr_arp_note(void);                          /* ARP: the note of the step sounding now, -1 none */
-uint32_t dr_loop_notes(void);                       /* LOOP: how many notes its phrase holds, 0 empty */
+uint32_t dr_loop_notes(void);
+void dr_loop_rec(int on);                /* LOOP: REC opens a take, REC again closes it and leaves it looping */
+int dr_loop_recording(void);
+int dr_loop_have(void);                       /* LOOP: how many notes its phrase holds, 0 empty */
 int dr_arp_running(void);                           /* ARP runs and has notes (its own, or remembered) */
 int dr_echo_running(void);                          /* ECHO runs and holds a phrase */
 /* MIDI clock (from the render, app.c): while clocks come, the runner steps at its DIV in clocks and ORBIT counts

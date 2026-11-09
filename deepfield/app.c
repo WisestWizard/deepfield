@@ -511,6 +511,10 @@ int app_expect(const char *what, int *got)
     }
     else if (!strcmp(what, "echorun"))
         *got = dr_echo_running();
+    else if (!strcmp(what, "looprec"))
+        *got = dr_loop_recording();
+    else if (!strcmp(what, "loopnotes"))
+        *got = (int)dr_loop_notes();
     else if (!strcmp(what, "cyclepos"))
         *got = (int)dr_orbit_cycle_pos();
     else if (!strcmp(what, "arpsteps"))

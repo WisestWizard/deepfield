@@ -50,7 +50,6 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | --- | --- | --- | --- | --- |
 | HOME | TIMBRE (bright) | DRIFT (wander) | REVERB (the hall) | TREMOLO (ebb and swell) |
 | OSC | MODEL | SHAPE (named for the model) | SUB | NOISE (named for the model) |
-| MIX (HOME, SELECT once) | BED (everything latched) | LEAD (what you play over it) | OUT (a trim under the MASTER pot, speaker and USB alike) | – |
 | NOISE | LEVEL (0 = off) | COLOR (brown → white) | RATE (how fast the band wanders; how often a gust) | BANDPASS (wide → narrow on the newest note → past half, breath on every voice) |
 | NOISE 2 | TYPE (hiss → rain → crackle) | GUST (the swells now and then) | DUCK (under a chord) | WIDTH (its own) |
 | ENVELOPE | ATTACK (ms below 1 s) | RELEASE | AFTERTOUCH | GLIDE |
@@ -58,13 +57,14 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | LFO | TREM RATE | VIBRATO (to 40 cents either way, DRIFT its rate: 3.6 to 6.8 Hz) | RANDOM | WIDTH |
 | VOICES | SPREAD (the voices unlike each other) | CROSS MOD (pairs bending pitch) | TIMBRE DRIFT (each wandering) | PAN DRIFT (each across the field) |
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
-| FX DELAY | TYPE: PING PONG (left, right), TAPE (centre, worn, wavering), DUB (one echo, darker and ringing more each pass, wide; near full FDBK it sits and drones), REVERSE (swells; a held chord breathes in), OCT UP (octaves up), OCT DOWN (octaves down), GRANULAR (pieces scattered, at the note, an octave either way or a fifth up) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from ARP's TEMPO or the MIDI clock, halved when too long; GRANULAR: how often a piece) | DLY FDBK | DLY MIX (full: the first echo about as loud as the note) |
+| FX DELAY | TYPE: PING PONG (left, right), TAPE (centre, worn, wavering), DUB (one echo, darker and ringing more each pass, wide; near full FDBK it sits and drones), REVERSE (swells; a held chord breathes in), OCT UP (octaves up), OCT DOWN (octaves down), GRANULAR (pieces scattered, at the note, an octave either way or a fifth up) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from ARP's TEMPO or the MIDI clock, halved when too long; GRANULAR: how often a piece) | DLY FDBK | DLY MIX (full: the first echo about as loud as the note) — a DLY TIME move takes the repeats out for 12 ms and lands them on the new time, so it no longer swoops; TAPE still slides, inside a tone and a half |
 | FX DELAY 2 | TONE (repeats dark and full to bright and thin) | DIFFUSION (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | GATE (only a slice of each DLY TIME goes in: a held chord pulses) |
 | FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER (the octave up read twice, 35 ms apart, one a side: wide) | REVERB (the send, as on HOME) |
-| FX MIX (FX, SELECT four times) | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen |
-| GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS (VAMP, PLAGAL, MEDIANT, SUSPENDED, DESCENT, RISE, ROUND, DRIFT); LOOP: OCT JUMP |
-| GEN 2 | RETURN | OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
-| GLOBAL | SCALE | ROOT | MORPH | – |
+| GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS (ROUND, UNDERTOW, SLOW RISE, TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES - 8 to 15 steps, unequal lengths, the chord led one or two voices at a time over a pinned pedal); LOOP: OCT JUMP. REC on this page with LOOP showing records a phrase from the keys (LATCH lifted for the take, rhythm kept, REC again to close and play; DECAY 0 never fades) |
+| GEN 2 | RETURN | ROAM (PROG: 0 plays the table as written, up develops it; LOOP: how far each pass travels); OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
+| MIX (GLO) | BED (everything latched) | LEAD (what you play over it) | OUT (a trim under the MASTER pot, speaker and USB alike) | – |
+| FX MIX (GLO, SELECT once) | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen |
+| GLOBAL (GLO, SELECT twice) | SCALE | ROOT | MORPH | – |
 | MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY (on by default) |
 | USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
 
@@ -127,7 +127,7 @@ it does), then the last preset's sound in silence, no chord.
 In: notes hold while on (CC 64 keeps them), any channel by default; clock times GEN. Out: key down = note on at the
 struck velocity (VELOCITY only decides whether the engine listens), let go = note off (later if latched), GEN moves too.
 Every knob sends its CC as it turns and takes it (a CC in never lights SAVE); few-valued knobs spread over 0..127:
-2 SCALE · 3 ROOT · 5 GLIDE · 9 MODEL · 15 CHORDS · 16–19 TIMBRE DRIFT REVERB TREMOLO (74, 91 in) · 20 NOISE LEVEL ·
+2 SCALE · 3 ROOT · 5 GLIDE · 9 MODEL · 14 ROAM · 15 CHORDS · 16–19 TIMBRE DRIFT REVERB TREMOLO (74, 91 in) · 20 NOISE LEVEL ·
 21 SUB · 22 NOISE (OSC) · 23–25 COLOR RATE BANDPASS · 26–29 TYPE GUST DUCK WIDTH · 30 AFTERTOUCH · 52–54 LOOP DECAY, OCT
 JUMP · 54 BED · 55 EUCLID · 56 DIV · 71 SHAPE · 72 RELEASE · 73 ATTACK · 75–78 LEAD ATTACK RELEASE TRANSPOSE LEVEL ·
 79–82 TREM RATE VIBRATO RANDOM WIDTH · 83–86 SPREAD CROSS MOD TIMBRE DRIFT PAN DRIFT · 87 ENSEMBLE · 93 ENS MIX · 88 DLY

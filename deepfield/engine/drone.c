@@ -92,18 +92,69 @@ static uint8_t pend_to[NV];              /* ORBIT: a body's destination note, 0 
  * are the five that stand as a consonant triad in both a major and a minor scale (1 and 6 are the diminished one in
  * one of the two). They are loops for a held chord, not cadences - one or two notes move at a time and nothing
  * leans on a dominant waiting to resolve, which is what made a I IV V sound unfinished under a drone. */
-static const uint8_t PROG[DR_PROGS][4] = {{0, 5, 0, 5},   /* VAMP: home and a third below, the two-chord rock */
-                                          {0, 3, 0, 3},   /* PLAGAL: home and a fourth above, the amen fall */
-                                          {0, 2, 0, 2},   /* MEDIANT: home and a third above, one note moving */
-                                          {0, 4, 0, 4},   /* SUSPENDED: home and its fifth, open and unresolved */
-                                          {0, 5, 4, 3},   /* DESCENT: the bass walking down, home sixth fifth fourth */
-                                          {0, 2, 3, 5},   /* RISE: up through the thirds and settling a third below */
-                                          {0, 5, 2, 3},   /* ROUND: the canon's turn without its dominant */
-                                          {0, 3, 5, 2}};  /* DRIFT: four chords that never point home */
-static uint32_t cyc_pos;                 /* the step the chord stands on */
+/* CYCLE: the progressions, as scale degrees from where the chord was struck, each with how long it stands, in
+ * periods. Signed, because every progression used to be a bounce upward: the table was unsigned, so a chord could
+ * only ever leave home by going up and come back down the same road. Unequal lengths are the point - with every
+ * step the same length nothing is an arrival and nothing is a departure, and a four-step table of equal steps is
+ * a square wave the ear has finished with inside two turns. A step names the notes the chord should contain, not
+ * how far to shift it, so a degree and that degree plus the scale's length mean the same thing here and the
+ * register comes from the leading rather than from the table: a chord that sinks away over a whole progression
+ * would need the heads biased downward over a run of steps, which is not built. Degrees 1 and 6 are no longer
+ * banned: the old comment
+ * held that 0, 2, 3, 4 and 5 were the five that stand as a consonant triad in a major and a minor scale alike,
+ * which is true of those two scales and wrong in four others - in DORIAN degree 5 is the diminished one, in
+ * PHRYGIAN degree 4, in LYDIAN degree 3 and in MIXOLYDIAN degree 2, all of them inside the "safe" set, while the
+ * chord that tells those modes apart (MIXOLYDIAN's flat seventh, PHRYGIAN's flat second, LYDIAN's second) sat
+ * outside it. The diminished degree is found from the scale itself now (sc_dim) and passed through quickly
+ * instead. */
+#define DR_PROG_LEN 15u
+static const int8_t PROG_D[DR_PROGS][DR_PROG_LEN] = {
+    { 0,  5,  3,  1,  6,  4,  2,  0},                                   /* ROUND */
+    { 0,  5,  6,  4,  5,  3,  4,  2,  3,  1,  2,  0},                   /* UNDERTOW */
+    { 0,  2,  1,  3,  2,  4,  3,  5,  4,  6,  5,  0},                   /* SLOW RISE */
+    { 0,  5,  2,  0,  6,  5,  1,  0,  3,  5,  2,  0},                   /* TWO ROOMS */
+    { 0,  3,  0,  5,  3,  1,  3,  6,  3,  0},                           /* OPEN DOOR */
+    { 0,  1,  0,  5,  1,  3,  0,  1,  5,  1,  0},                       /* COLOUR */
+    { 0,  6,  0,  5,  0,  5,  3,  0,  3,  1,  0,  3,  1,  6,  0},       /* BREATH */
+    { 0,  6,  0,  1,  0,  5,  0,  3,  0}};                              /* STONES */
+static const uint8_t PROG_U[DR_PROGS][DR_PROG_LEN] = {
+    { 4,  2,  2,  1,  1,  1,  2,  4},
+    { 3,  2,  1,  1,  2,  2,  1,  2,  1,  2,  1,  4},
+    { 3,  2,  1,  2,  2,  1,  2,  2,  1,  2,  1,  4},
+    { 5,  3,  1,  4,  1,  3,  1,  5,  1,  4,  1,  6},
+    { 6,  4,  3,  2,  4,  1,  3,  1,  2,  6},
+    { 6,  3,  4,  2,  4,  2,  5,  3,  1,  2,  6},
+    { 8,  1,  6,  2,  5,  2,  2,  5,  3,  2,  4,  3,  3,  2, 10},
+    {16,  2, 12,  2, 14,  4, 10,  4, 32}};
+static const uint8_t PROG_N[DR_PROGS] = {8u, 12u, 12u, 12u, 10u, 11u, 15u, 9u};
+/* where each step wants to sit, in semitones from the middle of the chord as it was struck. A step names pitch
+ * classes, so a degree alone says nothing about register - without this row UNDERTOW and SLOW RISE were a sinking
+ * and a rising progression in name only, and the sinking-chord sound (the body falling away under a held ceiling)
+ * could not be written at all. The leading reads it as a pull: every voice prefers the direction that takes the
+ * chord toward where the step wants it, and the last step of a falling run comes home in one move, which lands
+ * as a page turning rather than as a cadence. */
+static const int8_t PROG_R[DR_PROGS][DR_PROG_LEN] = {
+    { 0,  0,  0,  0,  0,  0,  0,  0},                                   /* ROUND: a circle, near home */
+    { 0, -2, -3, -4, -5, -6, -7, -8, -9,-10,-11,  0},                   /* UNDERTOW: sinking, then home in one */
+    { 0,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,  0},                   /* SLOW RISE: the mirror of it */
+    { 0,  0,  0,  0,  7,  7,  7,  0, -5, -5, -5,  0},                   /* TWO ROOMS: upstairs, then downstairs */
+    { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0},                           /* OPEN DOOR */
+    { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0},                       /* COLOUR */
+    { 0, -2,  0,  3,  0, -4, -5,  0,  5,  6,  0, -6, -7, -8,  0},       /* BREATH: each trip further out */
+    { 0, -3,  0,  2,  0, -5,  0,  3,  0}};                              /* STONES: it leans, and stands again */
+static uint8_t sc_deg[12], sc_n = 12u, sc_dim = 255u, sc_dom = 255u;
+static uint32_t cyc_pos, cyc_left = 1u, cyc_pin, cyc_top;   /* cyc_top: the pedal is the ceiling, not the floor */
+static uint8_t cyc_recent[2], cyc_visit[12];   /* ROAM: the last two degrees, and how long each has had */
+static int32_t cyc_homeoff;              /* the generator's own home, in degrees from the struck chord */
+static uint32_t cyc_turn, cyc_debt;      /* turns of the table, and steps since the chord was last at home */  /* the step the chord stands on, and the periods it has left to stand */
 /* ECHO: the last eight lead notes the keys (or MIDI) played, replayed each period over the period, quieter each
  * time, notes dropped and jumped an octave with DECAY and JUMPS, until the phrase is gone or new notes come */
 static uint8_t echo_ring[8], echo_ring_vel[8], echo_n, echo_w, lead_machine;
+static uint16_t echo_gap[8];             /* LOOP: how long after the note before it each note was played, in
+                                          * sixty-fourths of a sample count, so a recorded phrase keeps its own
+                                          * rhythm instead of being spread evenly over the period */
+static uint32_t loop_clk, loop_t_last, loop_rec, loop_have;
+static int32_t loop_deg;
 static float echo_vel = 1.0f;
 static uint32_t echo_due[8], echo_off[8];
 static uint8_t echo_note[8], echo_nvel[8];   /* each replay's note and the velocity it was played at */
@@ -454,7 +505,10 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         voice_strike(v, note, vel, 0, midi);
         v->lead = 1;
         v->held = 1;
-        if (!lead_machine) {             /* a player's note: into ECHO's phrase, which wakes */
+        if (!lead_machine) {             /* a player's note: into LOOP's phrase, which wakes */
+            uint32_t gap = echo_n ? (loop_clk - loop_t_last) >> 6 : 0u;
+            echo_gap[echo_w] = (uint16_t)(gap > 60000u ? 60000u : gap);
+            loop_t_last = loop_clk;
             echo_ring[echo_w] = (uint8_t)note;
             echo_ring_vel[echo_w] = (uint8_t)(vel ? vel & 127u : 1u);   /* the phrase comes back as it was played */
             echo_w = (echo_w + 1u) % 8u;
@@ -692,14 +746,38 @@ void dr_scale(uint32_t mask12, uint32_t root)
 {
     scale_mask = (mask12 & 0xFFFu) ? mask12 & 0xFFFu : 0xFFFu;
     scale_root = root % 12u;
+    {                                    /* the scale's notes in order, and the two degrees a progression must not
+                                          * rest on: the one whose triad is diminished, and the one that acts as a
+                                          * dominant (a major triad on the fifth degree with the leading tone under
+                                          * the tonic - MAJOR, LYDIAN and HARMONIC MINOR have one, the other modes
+                                          * do not, so the old blanket fear of degree 4 was misplaced) */
+        uint32_t i;
+        sc_n = 0;
+        for (i = 0; i < 12u; i++)
+            if (scale_mask >> i & 1u)
+                sc_deg[sc_n++] = (uint8_t)i;
+        sc_dim = sc_dom = 255u;
+        if (sc_n >= 3u)
+            for (i = 0; i < sc_n; i++) {
+                uint32_t r = sc_deg[i];
+                uint32_t f = (uint32_t)sc_deg[(i + 4u) % sc_n] + 12u * ((i + 4u) / sc_n);
+                uint32_t t = (uint32_t)sc_deg[(i + 2u) % sc_n] + 12u * ((i + 2u) / sc_n);
+                if (sc_dim == 255u && (f - r) % 12u == 6u)
+                    sc_dim = (uint8_t)i;
+                if (i == 4u && sc_n == 7u && (scale_mask >> 11 & 1u) && (t - r) % 12u == 4u)
+                    sc_dom = 4u;
+            }
+    }
 }
 static void orbit_reset(void);
+static void cycle_pedal(int on);
 void dr_orbit(int on)
 {
     uint32_t was = orbit_on;
     orbit_on = on != 0;
     orbit_left = orbit_per = 0;
     orbit_reset();
+    cycle_pedal(orbit_on);
     if (clk_out && !clk_ext && rt_out && dr_orbit_mode() == OM_ARP && was != orbit_on) {   /* the runner's start and stop */
         rt_out(orbit_on ? 0xFAu : 0xFCu);
         clk_acc = 0.0f;
@@ -2061,6 +2139,371 @@ static void echo_hush(void)              /* LOOP: a replay still held is let go,
             lead_machine = 0;
         }
 }
+static int32_t deg_map(int32_t d)        /* a degree written for a seven-note scale, in the scale actually set */
+{
+    int32_t n = (int32_t)sc_n, r;
+    if (n == 7)
+        return d;
+    r = (d * n * 2 + (d < 0 ? -7 : 7)) / 14;   /* d * n / 7, rounded, sign kept */
+    return r;
+}
+static int32_t prog_falls(uint32_t prog)
+{                                        /* a progression whose body sinks wants a held ceiling with the chord
+                                          * falling away beneath it, not a floor it can never get under */
+    int32_t sum = 0;
+    uint32_t i, n = PROG_N[prog];
+    for (i = 0; i < n && i < DR_PROG_LEN; i++)
+        sum += PROG_R[prog][i];
+    return sum < -8;
+}
+static int32_t cyc_pick(int32_t written, uint32_t roam, uint32_t r0, uint32_t r1, uint32_t debt)
+{                                        /* ROAM: the written step is the theme, and this is the generator
+                                          * developing it. A plain random walk over the degrees never arrives
+                                          * anywhere, so the weights carry four pressures at once: the theme still
+                                          * pulls, a degree just left is unlikely (which is what stops the
+                                          * two-chord swinging back and forth), a degree that has had little time
+                                          * is favoured so the music tours the scale, and home grows heavier the
+                                          * longer it has been away - gravity that rises reads as intention, where
+                                          * a fixed chance of returning reads as noise. */
+    uint32_t w[12], tot = 0, i, r;
+    int32_t n = (int32_t)sc_n;
+    if (n < 3 || n > 12)
+        return written;
+    for (i = 0; i < sc_n; i++) {
+        uint32_t x = 100u;
+        if ((sc_dim != 255u && i == (uint32_t)sc_dim) || (sc_dom != 255u && i == (uint32_t)sc_dom))
+            x = 25u;                     /* the diminished degree and the dominant are passed through, not rested on */
+        if (i == r0)
+            x /= 5u;
+        else if (i == r1)
+            x /= 3u;                     /* two steps ago: A B A B is built out of exactly this */
+        if (i == (uint32_t)(((written % n) + n) % n))
+            x *= 4u;                     /* the theme */
+        x = x * (170u - (cyc_visit[i] > 60u ? 60u : cyc_visit[i]) * 2u) / 170u;
+        if (!i)
+            x = x * (100u + (debt > 12u ? 12u : debt) * 25u) / 100u;
+        w[i] = x ? x : 1u;
+        tot += w[i];
+    }
+    orbit_rng = orbit_rng * 1664525u + 1013904223u;
+    if ((orbit_rng >> 8) % 100u >= roam)
+        return written;                  /* at ROAM 0 the table is played exactly as written */
+    orbit_rng = orbit_rng * 1664525u + 1013904223u;
+    r = (orbit_rng >> 8) % (tot ? tot : 1u);
+    for (i = 0; i < sc_n; i++) {
+        if (r < w[i])
+            return (int32_t)i;
+        r -= w[i];
+    }
+    return written;
+}
+static void cyc_step_seen(int32_t d, uint32_t units)
+{                                        /* one chord of a phrase has been decided: it is remembered here, so the
+                                          * next is weighed against it. Picking a whole phrase against state that
+                                          * never moved made every chord come out as home - the first cut of this
+                                          * produced 0 0 0 0 0 0 5 0 and sounded like one chord. */
+    uint32_t k;
+    int32_t m = ((d % (int32_t)sc_n) + (int32_t)sc_n) % (int32_t)sc_n;
+    cyc_recent[1] = cyc_recent[0];
+    cyc_recent[0] = (uint8_t)m;
+    for (k = 0; k < 12u; k++)
+        cyc_visit[k] = (uint8_t)(cyc_visit[k] * 15u / 16u);
+    if (cyc_visit[m] + units < 255u)
+        cyc_visit[m] = (uint8_t)(cyc_visit[m] + units);
+    cyc_debt = m ? cyc_debt + units : 0u;
+}
+static int8_t gen_a[DR_PROG_LEN], gen_d[DR_PROG_LEN], gen_r[DR_PROG_LEN];
+static uint8_t gen_u[DR_PROG_LEN], gen_len, gen_phr;
+static void cyc_build(uint32_t prog, uint32_t roam)
+{                                        /* A turn of the table is a phrase, and four turns are a section: the
+                                          * theme, the theme with its ending turned home, a fresh phrase at the
+                                          * far end, then the theme again with a chord or two redrawn. Repetition
+                                          * with a varied ending is the only reason anyone feels a shape in the
+                                          * first three minutes - a freshly chosen chord every step is as dull as
+                                          * a fixed loop, differently. The step lengths and the register contour
+                                          * are kept from the table throughout, so the rhythm and the rise and
+                                          * fall rhyme even where the chords do not. */
+    uint32_t i, n = PROG_N[prog] < DR_PROG_LEN ? PROG_N[prog] : DR_PROG_LEN;
+    gen_len = (uint8_t)n;
+    for (i = 0; i < n; i++) {
+        gen_u[i] = PROG_U[prog][i];
+        gen_r[i] = PROG_R[prog][i];
+    }
+    if (!roam) {
+        for (i = 0; i < n; i++)
+            gen_d[i] = gen_a[i] = PROG_D[prog][i];
+        return;                          /* the theme is seeded here too, so turning ROAM up mid-flight develops
+                                          * the written progression rather than an empty one */
+    }
+    if (gen_phr == 0u || gen_phr == 2u) {   /* A, the theme; and B, a fresh phrase that goes furthest out */
+        uint32_t deep = gen_phr == 2u ? (roam > 60u ? roam : 60u) : roam;
+        for (i = 0; i < n; i++) {
+            int32_t pd = cyc_pick((int32_t)PROG_D[prog][i], deep, cyc_recent[0], cyc_recent[1], cyc_debt);
+            cyc_step_seen(pd, gen_u[i]);
+            gen_d[i] = (int8_t)pd;
+            if (gen_phr == 0u)
+                gen_a[i] = (int8_t)pd;
+        }
+    } else {
+        for (i = 0; i < n; i++)
+            gen_d[i] = gen_a[i];
+        if (gen_phr == 1u) {             /* A': the theme, turned home over its last two chords */
+            if (n > 2u)
+                gen_d[n - 2u] = (int8_t)cyc_pick(0, roam / 2u, cyc_recent[0], cyc_recent[1], cyc_debt);
+            gen_d[n - 1u] = 0;
+        } else {                         /* A": the theme with about one chord in seven redrawn */
+            for (i = 0; i < n; i++) {
+                orbit_rng = orbit_rng * 1664525u + 1013904223u;
+                if ((orbit_rng >> 8) % 100u < 14u)
+                    gen_d[i] = (int8_t)cyc_pick((int32_t)PROG_D[prog][i], roam,
+                                                cyc_recent[0], cyc_recent[1], cyc_debt);
+            }
+        }
+        for (i = 0; i < n; i++)
+            cyc_step_seen((int32_t)gen_d[i], gen_u[i]);
+    }
+}
+static uint32_t cyc_target_pc(voice_t **v, uint32_t cnt, int32_t d)
+{                                        /* the chord this step asks for, as the twelve pitch classes it contains:
+                                          * where the struck chord's notes land d degrees along the scale */
+    uint32_t pc = 0, i;
+    for (i = 0; i < cnt; i++)
+        pc |= 1u << (uint32_t)((scale_step((int32_t)dr_snap(v[i]->home), d) + 120) % 12);
+    return pc;
+}
+static int32_t cyc_near(int32_t cur, uint32_t pc, int32_t lo, int32_t hi, int32_t away)
+{                                        /* the nearest note of the chord to where this voice stands; away -1 or 1
+                                          * asks for that direction, 0 for either (down wins a tie: a voice that
+                                          * falls to its new note sounds like a part, one that rises like a lead) */
+    int32_t k, c;
+    for (k = 1; k <= 7; k++) {
+        if (away <= 0) {
+            c = cur - k;
+            if (c >= lo && c <= hi && (pc >> (uint32_t)(((c % 12) + 12) % 12) & 1u))
+                return c;
+        }
+        if (away >= 0) {
+            c = cur + k;
+            if (c >= lo && c <= hi && (pc >> (uint32_t)(((c % 12) + 12) % 12) & 1u))
+                return c;
+        }
+    }
+    return cur;
+}
+static void cycle_pedal(int on)
+{                                        /* PROG holds the lowest latched note still while the chord moves over it.
+                                          * It is the only note held through every change, so it is what the ear
+                                          * hears the harmony against, and it turns each step into a chord over a
+                                          * bass rather than a transposition - which is also what takes the pull
+                                          * out of the degree the old cadences leaned on. */
+    uint32_t i, low = NV, held = 0;
+    if (cyc_pin) {                       /* the one PROG pinned is let go as soon as PROG is not what is running */
+        if (cyc_pin - 1u < NV)
+            vc[cyc_pin - 1u].pinned = 0;
+        cyc_pin = 0;
+    }
+    if (!on || dr_orbit_mode() != OM_CYCLE)
+        return;
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched && vc[i].pinned)
+            return;                      /* the player has chosen a pedal already: leave it where it is */
+    {
+        uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u;
+        cyc_top = prog_falls(prog) ? 1u : 0u;
+    }
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched) {
+            held++;
+            if (low == NV
+                || (cyc_top ? vc[i].home > vc[low].home : vc[i].home < vc[low].home))
+                low = i;                 /* the highest note for a falling progression, the lowest otherwise */
+        }
+    if (held < 3u)
+        return;                          /* a pedal costs a voice and never moves: under three notes there would
+                                          * be nothing left to lead, and a single held note would sit there in
+                                          * silence while PROG ran */
+    if (low < NV) {
+        vc[low].pinned = 1;
+        cyc_pin = low + 1u;
+    }
+}
+static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, int32_t reg)
+{                                        /* the chord is led to the step's target, not shifted onto it: a voice
+                                          * already on one of its notes stays, the rest take the nearest note they
+                                          * can reach, and only one or two move at a time. The held notes are what
+                                          * the ear hears the others move against - with every voice moving there
+                                          * is no reference and a change reads as the whole instrument sliding. */
+    uint32_t i, j, pc, moves = 0, budget, covered = 0;
+    int32_t cur[DR_NV], to[DR_NV], floor_n = 11, roof = 109, sgn = 0, pull = 0;
+    voice_t *v[DR_NV];
+    if (!cnt)
+        return;
+    for (i = 0; i < NV; i++)             /* a pinned voice is the ground the chord stays above, or, for a falling
+                                          * progression, the ceiling it stays under */
+        if (vc[i].on && !vc[i].fading && vc[i].pinned) {
+            int32_t pp = (int32_t)(vc[i].target + 0.5f);
+            if (cyc_top) {
+                if (pp < roof)
+                    roof = pp;
+            } else if (pp > floor_n)
+                floor_n = pp;
+        }
+    if (cyc_top)
+        floor_n = 11;
+    for (i = 0; i < cnt; i++)
+        v[i] = cand[i];
+    for (i = 1; i < cnt; i++) {          /* low to high, so no voice is ever led across another */
+        voice_t *t = v[i];
+        for (j = i; j && (int32_t)(v[j - 1u]->target + 0.5f) > (int32_t)(t->target + 0.5f); j--)
+            v[j] = v[j - 1u];
+        v[j] = t;
+    }
+    pc = cyc_target_pc(v, cnt, d);
+    if (!pc)
+        return;
+    for (i = 0; i < cnt; i++)
+        cur[i] = to[i] = (int32_t)(v[i]->target + 0.5f);
+    {                                    /* the chord's middle now against where this step wants it */
+        int32_t mid = 0, want = 0;
+        for (i = 0; i < cnt; i++) {
+            mid += cur[i];
+            want += (int32_t)v[i]->home;
+        }
+        mid /= (int32_t)cnt;
+        want = want / (int32_t)cnt + reg;
+        pull = mid < want - 1 ? 1 : mid > want + 1 ? -1 : 0;
+    }
+    budget = cnt <= 3u ? (units >= 3u ? 2u : 1u) : cnt <= 6u ? (units >= 3u ? 3u : 2u) : 3u;
+    for (i = 0; i < cnt; i++)            /* the notes of the chord the held voices already cover */
+        if (pc >> (uint32_t)(((cur[i] % 12) + 12) % 12) & 1u)
+            covered |= 1u << (uint32_t)(((cur[i] % 12) + 12) % 12);
+    for (i = 0; i < cnt; i++) {
+        int32_t lo = (i ? to[i - 1u] + 1 : floor_n + 1), hi = roof - 1, home = (int32_t)v[i]->home;
+        uint32_t want;
+        int32_t away;
+        if (lo < home - 12)
+            lo = home - 12;              /* a voice stays within an octave of its key, as WANDER's does */
+        if (hi > home + 12)
+            hi = home + 12;
+        if (i + 1u < cnt && cur[i + 1u] - 1 < hi)
+            hi = cur[i + 1u] - 1;
+        if (lo > hi)
+            continue;
+        if (pc >> (uint32_t)(((cur[i] % 12) + 12) % 12) & 1u)
+            continue;                    /* already one of the chord's notes: it holds, and that is the point */
+        if (!i && units < 3u)
+            continue;                    /* the bass moves only on a long step: stepwise under a drone it stops
+                                          * being the ground and turns into another part */
+        want = pc & ~covered;            /* a note of the chord nobody is on yet, by preference: letting every
+                                          * voice take whatever is nearest piles them onto the same two notes and
+                                          * the chord wears down to a shell over a dozen steps */
+        away = pull;                     /* where this step wants the chord to sit */
+        if (cnt > 1u && (i == 0u || i + 1u == cnt)) {   /* the outer voices are asked to close the chord up or open
+                                          * it out, so its spread does not wander off over a long run */
+            int32_t drift = (cur[cnt - 1u] - cur[0]) - ((int32_t)v[cnt - 1u]->home - (int32_t)v[0]->home);
+            if (drift > 5)
+                away = i ? -1 : 1;
+            else if (drift < -5)
+                away = i ? 1 : -1;
+        }
+        to[i] = cyc_near(cur[i], want ? want : pc, lo, hi, away);
+        if (away && to[i] == cur[i])
+            to[i] = cyc_near(cur[i], want ? want : pc, lo, hi, 0);
+        if (to[i] != cur[i]) {
+            int32_t reach = units >= 3u ? 7 : 4;   /* a long step lets a voice come back from further off: a note
+                                          * left hanging as a suspension would otherwise never rejoin the chord,
+                                          * and the struck triad never re-formed on the way home */
+            if (to[i] - cur[i] > reach || cur[i] - to[i] > reach)
+                to[i] = cur[i];          /* too far to lead: it hangs on instead. An unfilled chord under a drone
+                                          * is a suspension; a leap is a mistake. */
+            else {
+                covered |= 1u << (uint32_t)(((to[i] % 12) + 12) % 12);
+                moves++;
+            }
+        }
+    }
+    while (moves > budget) {              /* over the budget: the furthest moves are given up, so what is left is
+                                          * the smoothest leading available. Dropping the nearest ones instead
+                                          * left the one voice with the biggest leap to do all the moving, and the
+                                          * voices below it never changed at all. */
+        uint32_t worst = NV;
+        int32_t far = 0;
+        for (i = 0; i < cnt; i++) {
+            int32_t m = to[i] - cur[i];
+            if (m < 0)
+                m = -m;
+            if (m > far) {
+                far = m;
+                worst = i;
+            }
+        }
+        if (worst == NV)
+            break;
+        to[worst] = cur[worst];
+        moves--;
+    }
+    for (i = 0; i < cnt; i++)            /* two or more moving the same way is parallel motion, which is the sound
+                                          * this whole page is trying to get away from: turn the top one round */
+        if (to[i] != cur[i])
+            sgn += to[i] > cur[i] ? 1 : -1;
+    if (moves >= 2u && (sgn == (int32_t)moves || -sgn == (int32_t)moves))
+        for (i = cnt; i--;)
+            if (to[i] != cur[i]) {
+                int32_t lo = (i ? to[i - 1u] + 1 : floor_n + 1), hi = 108;
+                int32_t alt = cyc_near(cur[i], pc, lo, hi, to[i] > cur[i] ? -1 : 1);
+                if (alt != cur[i] && (alt - cur[i] < 5 && cur[i] - alt < 5)) {
+                    to[i] = alt;
+                    break;
+                }
+            }
+    if (!moves) {                        /* the chord already holds every note this step asks for, so there is
+                                          * nothing to lead: the top voice changes the voicing instead, within
+                                          * reach and downward by choice. It may also find nothing, and then the
+                                          * chord stands - which is what the step lengths are for. */
+        int32_t lo, alt;
+        i = cnt - 1u;
+        lo = i ? to[i - 1u] + 1 : floor_n + 1;
+        if (lo < (int32_t)v[i]->home - 12)
+            lo = (int32_t)v[i]->home - 12;
+        alt = cyc_near(cur[i], pc & ~covered, lo,
+                       (int32_t)v[i]->home + 12 < 108 ? (int32_t)v[i]->home + 12 : 108, 0);
+        if (alt != cur[i] && alt - cur[i] <= 4 && cur[i] - alt <= 4)
+            to[i] = alt;
+    }
+    if (pull && moves < budget) {        /* the chord is not where this step wants it to sit. A voice holding a
+                                          * note of the chord keeps its pitch class but takes the octave nearer
+                                          * the target: the harmony is untouched and the body of the sound moves,
+                                          * which is the only way a progression can really sink or climb. One
+                                          * voice a step, so the correction is heard as the music breathing
+                                          * rather than as the instrument being dragged. */
+        uint32_t pick = NV;
+        int32_t best = 0;
+        for (i = 0; i < cnt; i++) {
+            int32_t cand_to = to[i] + 12 * pull, home = (int32_t)v[i]->home, gain;
+            if (to[i] != cur[i])
+                continue;                /* it is already moving this step */
+            if (cand_to < 12 || cand_to > 108 || cand_to < home - 12 || cand_to > home + 12
+                || cand_to >= roof)
+                continue;
+            if (i && cand_to <= to[i - 1u])
+                continue;                /* never across the voice below */
+            if (i + 1u < cnt && cand_to >= to[i + 1u])
+                continue;
+            if (cand_to <= floor_n)
+                continue;                /* the pedal stays the ground */
+            gain = pull > 0 ? cand_to - cur[i] : cur[i] - cand_to;
+            if (gain > best) {
+                best = gain;
+                pick = i;
+            }
+        }
+        if (pick != NV)
+            to[pick] = to[pick] + 12 * pull;
+    }
+    for (i = 0; i < cnt; i++)
+        if (to[i] != cur[i] && to[i] >= 12 && to[i] <= 108)
+            pend_to[v[i] - vc] = (uint8_t)to[i];
+}
 static void orbit_plan(void)             /* the countdown starts: choose the moves */
 {
     uint32_t i, cnt = 0, mode = dr_orbit_mode(), chance = dr_scene.p[P_ORB_CHANCE] * 100u / 127u;
@@ -2071,15 +2514,39 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
     if (mode == OM_ECHO) {               /* the phrase, over the period. It is the leads' own, so it needs no latched
                                           * body, and the mode shows no CHANCE knob, so CHANCE does not silence it */
         uint32_t j, n = echo_n, jump = dr_scene.p[P_ECHO_JUMP] * 100u / 127u, decay = dr_scene.p[P_ECHO_DECAY] * 100u / 127u;
+        uint32_t roam = dr_scene.p[P_ORB_ROAM] * 100u / 127u, gaps[8], tot = 0, cum = 0, k;
         orbit_force = 0;
         echo_hush();
         for (j = 0; j < 8u; j++)
             echo_due[j] = 0;
-        if (!n || echo_vel < 0.08f)
-            return;
+        if (!n || echo_vel < 0.08f || loop_rec)
+            return;                      /* nothing plays back while the take is still open */
+        for (k = 0; k < n; k++) {        /* the phrase's own rhythm, scaled to fit RATE */
+            gaps[k] = echo_gap[(echo_w + 8u - n + k) % 8u];
+            tot += gaps[k];
+        }
+        if (tot)
+            tot += tot / n;              /* a trailing gap, so the phrase breathes at the loop point */
+        if (loop_have && roam) {         /* "imitates and moves": each pass of the phrase is carried to another
+                                          * degree of the scale, chosen by the same weights PROG uses, so it walks
+                                          * somewhere instead of wandering */
+            int32_t nd = cyc_pick(0, roam, cyc_recent[0], cyc_recent[1], cyc_debt);
+            cyc_step_seen(nd, 1u);
+            loop_deg = nd;
+        } else if (!roam)
+            loop_deg = 0;
         for (j = 0; j < n; j++) {
-            uint32_t at = 1u + (uint32_t)((float)orbit_per * (float)j / (float)(n + 1u)), w = (echo_w + 8u - n + j) % 8u;
-            uint32_t note = echo_ring[w];
+            uint32_t w = (echo_w + 8u - n + j) % 8u;
+            uint32_t at, note = echo_ring[w];
+            cum += gaps[j];              /* a gap belongs to the note that follows it, so it is counted before the
+                                          * note is placed - counted after, the first two notes of every phrase
+                                          * landed on the same instant */
+            at = tot ? 1u + (uint32_t)((float)orbit_per * (float)cum / (float)tot)
+                     : 1u + (uint32_t)((float)orbit_per * (float)j / (float)(n + 1u));
+            if (loop_deg) {
+                int32_t t = scale_step((int32_t)dr_snap(note), loop_deg);
+                note = (uint32_t)(t < 12 ? 12 : t > 108 ? 108 : t);
+            }
             orbit_rng = orbit_rng * 1664525u + 1013904223u;
             if ((orbit_rng >> 8) % 100u < decay / 2u)   /* dropped */
                 continue;
@@ -2092,8 +2559,9 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             echo_note[j] = (uint8_t)note;
             echo_nvel[j] = echo_ring_vel[w];
         }
-        echo_vel *= 1.0f - 0.45f * (float)decay * 0.01f - 0.05f;
-        return;
+        echo_vel *= 1.0f - 0.45f * (float)decay * 0.01f - (loop_have ? 0.0f : 0.05f);
+        return;                          /* a recorded phrase at DECAY 0 keeps going: it is a loop the player
+                                          * made, not an echo of something played in passing */
     }
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
     if (!orbit_force && (orbit_rng >> 8) % 100u >= chance)
@@ -2104,19 +2572,43 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
-    if (mode == OM_CYCLE) {              /* the chord to the progression's next degree, from where it was struck */
-        uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, nxt_pos = (cyc_pos + 1u) % 4u;
-        int32_t d = (int32_t)PROG[prog][nxt_pos];
-        for (i = 0; i < cnt; i++) {
-            int32_t nxt = scale_step((int32_t)dr_snap(cand[i]->home), d);
-            if (nxt > 108)
-                nxt -= 12;
-            if (nxt < 12)
-                nxt += 12;
-            if (nxt != (int32_t)(cand[i]->target + 0.5f))
-                pend_to[cand[i] - vc] = (uint8_t)nxt;
+    if (mode == OM_CYCLE) {              /* the progression: one step a period, a step standing for as many periods
+                                          * as the table gives it, the chord led to each step's target */
+        uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, units;
+        int32_t d;
+        if (cyc_left > 1u) {             /* this step is longer than one period: the chord stands */
+            cyc_left--;
+            return;
         }
-        cyc_pos = nxt_pos;
+        if (cyc_pos + 1u >= PROG_N[prog]) {   /* a turn of the table is done */
+            uint32_t roam0 = dr_scene.p[P_ORB_ROAM] * 100u / 127u;
+            cyc_turn++;
+            if (!roam0 || !(cyc_turn & 3u))
+                cyc_homeoff = 0;         /* every fourth turn comes back, so the journey has a shape */
+            else {
+                orbit_rng = orbit_rng * 1664525u + 1013904223u;
+                if ((orbit_rng >> 8) % 100u < roam0)   /* a fifth either way: the same rules re-centred, which
+                                          * reads as a change of light rather than a change of key, and stays
+                                          * inside the scale the player chose */
+                    cyc_homeoff = ((orbit_rng >> 16) & 1u) ? 4 : -4;
+            }
+            gen_phr = (gen_phr + 1u) & 3u;
+            cyc_build(prog, roam0);
+        }
+        if (!gen_len)
+            cyc_build(prog, dr_scene.p[P_ORB_ROAM] * 100u / 127u);
+        cyc_pos = (cyc_pos + 1u) % PROG_N[prog];
+        d = deg_map((int32_t)gen_d[cyc_pos]);
+        units = gen_u[cyc_pos];
+        d += cyc_homeoff;
+        {                                /* the two degrees not to rest on, found from the scale itself: pass
+                                          * through them in one period however long the table asks for */
+            int32_t m = ((d % (int32_t)sc_n) + (int32_t)sc_n) % (int32_t)sc_n;
+            if ((sc_dim != 255u && m == (int32_t)sc_dim) || (sc_dom != 255u && m == (int32_t)sc_dom))
+                units = 1u;
+        }
+        cyc_left = units ? units : 1u;
+        cycle_plan(cand, cnt, d, units, (int32_t)gen_r[cyc_pos]);
         return;
     }
     if (mode == OM_CHORD) {              /* the chord along the scale, or home */
@@ -2379,6 +2871,16 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
     arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = arp_hits = 0;
     arp_pos = ~0u;                       /* before the first step: it lands on the first note (DOWN: the top) */
     cyc_pos = 0;
+    cyc_left = 1u;
+    cyc_homeoff = 0;
+    cyc_turn = cyc_debt = 0;
+    gen_len = gen_phr = 0;
+    cyc_recent[0] = cyc_recent[1] = 255u;
+    {
+        uint32_t k;
+        for (k = 0; k < 12u; k++)
+            cyc_visit[k] = 0;
+    }
     echo_hush();                         /* a replay still held: let go, not forgotten */
     for (i = 0; i < 8u; i++)
         echo_due[i] = echo_off[i] = 0;
@@ -2487,10 +2989,30 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
     }
 }
 int dr_echo_running(void) { return orbit_on && dr_orbit_mode() == OM_ECHO && echo_n > 0u && echo_vel >= 0.08f; }
+void dr_loop_rec(int on)
+{                                        /* REC: the take starts empty and the notes played go in with their own
+                                          * timing. Closing it leaves the phrase to loop; LOOP's own capture keeps
+                                          * working as before, so playing more notes still starts a new phrase. */
+    if (on) {
+        echo_n = echo_w = 0;
+        loop_have = 0;
+        loop_rec = 1;
+        loop_deg = 0;
+        loop_t_last = loop_clk;
+        echo_vel = 1.0f;
+    } else {
+        loop_rec = 0;
+        loop_have = echo_n ? 1u : 0u;
+        echo_vel = 1.0f;
+    }
+}
+int dr_loop_recording(void) { return (int)loop_rec; }
+int dr_loop_have(void) { return (int)loop_have; }
 uint32_t dr_loop_notes(void) { return echo_n; }   /* LOOP's phrase: notes captured, 0 when nothing was played
                                                    * as a lead (the keys latch, so LATCH must be off to fill it) */
 static void orbit_tick(uint32_t n)
 {
+    loop_clk += n;
     uint32_t mode;
     clk_now += n;
     if (clk_ext && clk_now - clk_last > (uint32_t)(2.0f * FS)) {   /* the clock stopped coming: our own time */
