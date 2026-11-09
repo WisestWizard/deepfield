@@ -1,6 +1,46 @@
-# Handoff — DEEP FIELD, 2026-11-08
+# Handoff — DEEP FIELD, 2026-11-09
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
+
+## Start here: 1.2 is published, and ROAM had no CC of its own (published 2026-11-09; the unit is one fix behind)
+
+**The site is 1.2.** `deepfield/tools/publish_site.sh 1.2` built the release package and pushed gh-pages:
+https://deepfield.fog.baby serves Version 1.2 with the CNAME intact, the landing page, the cheat sheet, the manual,
+the installer and the emulator, and `firmware/deepfield-1.2.fwsc` (614,938 B, identity `FM-1_14010200`) at 200.
+The site had been at 0.13 since 2026-11-08 while 1.0, 1.1 and 1.2 were each built and flashed without going out, so
+the public pages jump 0.13 -> 1.2 and the 1.0 and 1.1 packages were never published.
+
+**ROAM was on CC 14, which is already the "next move now" trigger.** Found while checking the docs before
+publishing: the manual's CC table had two rows numbered 14, on adjacent lines. In `midi_cc` the trigger's `case
+CC_GEN_NOW:` returns before `cc_param` is consulted, so a CC 14 coming in could never set ROAM, and the ROAM knob
+*sent* CC 14 as it turned - a second DEEP FIELD listening would have jumped a chord. **ROAM is CC 51 now** (the
+only free number next to LOOP's 52 and 53). Verified by turning the knob in the simulator and reading what went
+out: `B0 33 03` five times as it moved, and nothing on `B0 0E`.
+
+**And ROAM's knob was not reachable in LOOP.** The manual and both cheat sheets said ROAM sits on GEN 2 for LOOP as
+well as PROG, and `orbit_tick` does read it in the LOOP path - but the knob slot was gated on `OM_CYCLE` alone, so
+in LOOP that slot still showed ARP's OCTAVES, which does nothing there. The gate takes `OM_ECHO` too now. Verified
+the same way: in LOOP the knob sends CC 51 and no longer sends OCTAVES' CC 119.
+
+**The site cheat sheet was three passes stale** - it is hand-written HTML (`deepfield/site/cheatsheet/index.html`),
+separate from `docs/CHEATSHEET.md`, and had not been touched since 0.13. It still listed STRUM as a GEN mode,
+described PROG as "I IV V and seven more" in Roman numerals, had GLO opening GLOBAL rather than the two mixer
+pages, and knew nothing of LOOP's recorder or the delay's quiet retime. All seven blocks rewritten. The README,
+the landing page and `fm1.toml`'s hub description now name the chord generator as well (the description has a
+600-character ceiling the build enforces; it sits at 600).
+
+**Where it stands:** 751 checks pass, all 16 golden renders match, the device image is 419,856 B. The manual's
+screenshots are not deterministic - re-running `tests/screens.txt` rewrites six or seven PNGs with the same
+content at a different drift phase, so leave them as committed unless a screen really changed.
+
+**The unit is one fix behind the site.** Kyle's FM-1 has the build flashed on 2026-11-08 (`FM-1_1400`, build
+4EA946D2), which has ROAM on CC 14 and no ROAM knob in LOOP. Nothing about the sound differs - the goldens are
+untouched - so his listening pass stands. Flash `deepfield/build/deepfield.fwsc` on his word to catch the unit up.
+
+Still open: Kyle's listening pass on the harmony (the eight progressions, UNDERTOW's sink, SLOW RISE's climb, ROAM,
+the pedal, a take recorded with REC on the GEN page). Still not built: a per-step chord template and a per-step
+accent. Not done: the GitHub release with the `.fwsc` attached, the hub's three install tests, and the mail to
+zven@thefirmwarehub.com.
 
 ## Start here: the two limits closed, and LOOP records a phrase (flashed 2026-11-08; 1.2 is on the unit)
 

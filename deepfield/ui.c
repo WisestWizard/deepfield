@@ -103,7 +103,7 @@ static const uint8_t CC_OF[PID_COUNT] = {
     [P_REV_SIZE] = 106, [P_REV_DAMP] = 107, [P_SHIMMER] = 108,
     [P_ORB_MODE] = 109, [P_ORB_PERIOD] = 110, [P_ORB_CHANCE] = 111, [P_ORB_RANGE] = 112, [P_GRAVITY] = 113,
     [P_ORB_DIST] = 114, [P_ORB_BODIES] = 115, [P_ARP_RATE] = 116, [P_ARP_GATE] = 117, [P_ARP_ORDER] = 118,
-    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ORB_ROAM] = 14, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53,
+    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ORB_ROAM] = 51, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53,
     [P_BED_LEVEL] = 54,
     [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
     [PID_SCALE] = 2, [PID_ROOT] = 3,
@@ -337,9 +337,9 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
-    if (pg == PG_ORBIT2 && k == 1u && dr_orbit_mode() == OM_CYCLE)
-        return P_ORB_ROAM;               /* PROG: how far the generator may take the written progression. The ARP
-                                          * knobs stay where they are for every other mode. */
+    if (pg == PG_ORBIT2 && k == 1u && (dr_orbit_mode() == OM_CYCLE || dr_orbit_mode() == OM_ECHO))
+        return P_ORB_ROAM;               /* PROG: how far the generator may take the written progression; LOOP: how
+                                          * far each pass travels. The ARP knobs stay where they are for the rest. */
     return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
 static uint32_t value_of(uint32_t id)

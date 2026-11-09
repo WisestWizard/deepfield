@@ -2,8 +2,9 @@
 
 Every key strikes a voice that swells in and stays, as hard as you struck it: how hard sets its level over 18 dB,
 how bright it is and how fast it arrives. Eight of them rise as beams over the keys on the screen, breathe, drift,
-and move to neighbouring notes by themselves when GEN runs, or under an arpeggio with Euclidean rhythms. Four
-macros shape every voice at once; a held key and a knob give one voice its own level, tone and tune. Thirteen
+and move to neighbouring notes by themselves when GEN runs, through a chord progression that leads them one voice
+at a time across the scale you set, or under an arpeggio with Euclidean rhythms that can learn a phrase you played
+and carry it on. Four macros shape every voice at once; a held key and a knob give one voice its own level, tone and tune. Thirteen
 models, a noise layer, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds and an ensemble. 32 presets,
 each a sound: changing preset morphs the sound under the chord you are playing. MIDI over USB, Bluetooth (both
 ways) and TRS.

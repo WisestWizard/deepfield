@@ -148,7 +148,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
     <dd>GEN. Turn SELECT for GEN 2.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span></dt>
-    <dd>GLOBAL: scale, root, morph. Turn SELECT for MIDI and USB.</dd>
+    <dd>MIX: BED (everything latched), LEAD (what you play over it), OUT (a trim under the MASTER pot). Turn SELECT for FX MIX (ensemble, delay, reverb, shimmer on one screen), then GLOBAL (scale, root, morph), MIDI and USB.</dd>
     <dt><span class="v">turn</span><span class="c k">MASTER</span></dt>
     <dd>Volume: the speaker, the headphones and the USB recording.</dd>
   </dl>
@@ -210,11 +210,9 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="mode"><span class="dot r"></span> ARP</span></dt>
     <dd>An arpeggio through the voices' notes, the first step of each bar accented. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar).</dd>
     <dt><span class="mode"><span class="dot o"></span> PROG</span></dt>
-    <dd>The chord walks a progression (I IV V and seven more).</dd>
+    <dd>The chord is led through a progression over the scale you set, one or two voices at a time while the rest hold: ROUND, UNDERTOW (sinks), SLOW RISE (climbs), TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES on KNOB 4. On GEN 2, ROAM develops it: 0 plays it as written, up redraws about one chord in seven and moves the key centre.</dd>
     <dt><span class="mode"><span class="dot o"></span> LOOP</span></dt>
-    <dd>Your last eight leads (LATCH off) come back at the velocities you played them, the phrase quieter each time. It needs nothing latched under it.</dd>
-    <dt><span class="mode"><span class="dot o"></span> STRUM</span></dt>
-    <dd>Each voice dips (over about 25 ms) and swells back in turn: a slow strum.</dd>
+    <dd>A phrase comes back every RATE seconds, at the velocities and in the rhythm you played it. Press REC on this page to record one (LATCH lifts for the take, REC again closes it and it loops at once); or just play with LATCH off and your last eight notes are caught on their own. DECAY fades it (0 never fades a recorded phrase), OCT JUMP throws notes an octave, ROAM on GEN 2 carries each pass to another degree.</dd>
     <dt><span class="v">turn</span><span class="c k">KNOB 2</span><span class="v">left</span></dt>
     <dd>RATE down to 0.1 s: below a second GEN plays the chord instead of changing it.</dd>
   </dl>
@@ -230,7 +228,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">SEQ</span></dt>
     <dd>FREEZE: the reverb holds what it has. Tap again to let it go.</dd>
     <dt><span class="v">tap</span><span class="c">FX</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
-    <dd>DELAY: type, time, feedback, mix. DELAY 2: tone, diffusion, wow, gate. REVERB: decay, damping, shimmer (the octave up read twice, one a side, so it is as wide as the hall), reverb.</dd>
+    <dd>DELAY: type, time, feedback, mix — a DLY TIME move takes the repeats out for 12 ms and lands them on the new time, so it no longer swoops (TAPE still slides, inside a tone and a half). DELAY 2: tone, diffusion, wow, gate. REVERB: decay, damping, shimmer (the octave up read twice, one a side, so it is as wide as the hall), reverb.</dd>
   </dl>
 </section>
 
@@ -262,7 +260,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>MIDI: in and out channels, local, velocity (on by default). Turn again for USB: recording and clock out.</dd>
     <dt><span class="v">send</span><span class="c">a CC</span></dt>
-    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
+    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 15 CHORDS, 51 ROAM, 54 BED, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
     <dt><span class="v">send</span><span class="c">CC 57–63</span></dt>
     <dd>Switches: 57 LATCH, 58 GEN, 59 FREEZE, 60–63 ensemble, delay, reverb, shimmer (64 up is on); 12 the noise layer. Triggers: 13 the preset as saved, 14 GEN's next move now.</dd>
     <dt><span class="v">send</span><span class="c">SysEx</span></dt>
@@ -297,7 +295,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
 <section>
   <h2>Good to know</h2>
   <ul class="notes">
-    <li>A button always opens the same page, and SELECT steps between pages. The four boxes at the bottom of the screen are the four knobs.</li>
+    <li>A button always opens the same page, and SELECT steps between pages. GLO opens the two mixer pages first, then the scale and the rest. The four boxes at the bottom of the screen are the four knobs.</li>
     <li>SEL, PLAY and SEQ are lit while their mode is on: LATCH, GEN, FREEZE.</li>
     <li>F1–F16 are the factory presets, every model once and every GEN mode on two (press PLAY to hear it); F16 INIT is every value at its start. U1–U16 are yours.</li>
     <li>Switching on, the name falls into a vortex for three seconds (press anything to skip). Then it is silent: the last preset's sound is ready, and nothing plays until you press a key.</li>

@@ -127,8 +127,8 @@ it does), then the last preset's sound in silence, no chord.
 In: notes hold while on (CC 64 keeps them), any channel by default; clock times GEN. Out: key down = note on at the
 struck velocity (VELOCITY only decides whether the engine listens), let go = note off (later if latched), GEN moves too.
 Every knob sends its CC as it turns and takes it (a CC in never lights SAVE); few-valued knobs spread over 0..127:
-2 SCALE · 3 ROOT · 5 GLIDE · 9 MODEL · 14 ROAM · 15 CHORDS · 16–19 TIMBRE DRIFT REVERB TREMOLO (74, 91 in) · 20 NOISE LEVEL ·
-21 SUB · 22 NOISE (OSC) · 23–25 COLOR RATE BANDPASS · 26–29 TYPE GUST DUCK WIDTH · 30 AFTERTOUCH · 52–54 LOOP DECAY, OCT
+2 SCALE · 3 ROOT · 5 GLIDE · 9 MODEL · 15 CHORDS · 51 ROAM · 16–19 TIMBRE DRIFT REVERB TREMOLO (74, 91 in) · 20 NOISE LEVEL ·
+21 SUB · 22 NOISE (OSC) · 23–25 COLOR RATE BANDPASS · 26–29 TYPE GUST DUCK WIDTH · 30 AFTERTOUCH · 52–53 LOOP DECAY, OCT
 JUMP · 54 BED · 55 EUCLID · 56 DIV · 71 SHAPE · 72 RELEASE · 73 ATTACK · 75–78 LEAD ATTACK RELEASE TRANSPOSE LEVEL ·
 79–82 TREM RATE VIBRATO RANDOM WIDTH · 83–86 SPREAD CROSS MOD TIMBRE DRIFT PAN DRIFT · 87 ENSEMBLE · 93 ENS MIX · 88 DLY
 TIME · 89 DLY FDBK · 94 DLY MIX · 102 DLY TYPE · 90 TONE · 105 DIFFUSION · 103 WOW · 104 GATE · 106 DECAY · 107 DAMPING ·

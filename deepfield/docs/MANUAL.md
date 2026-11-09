@@ -687,7 +687,7 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 12 | The noise layer on or off (switch) |
 | 13 | The preset back as saved, like HOME held (trigger) |
 | 14 | GEN's next move now, like SEL + PLAY (trigger) |
-| 14 | ROAM (PROG, and how far LOOP travels) |
+| 51 | ROAM (PROG, and how far LOOP travels) |
 | 15 | CHORDS (PROG) |
 | 16, 17, 18, 19 | TIMBRE, DRIFT, REVERB, TREMOLO (74 and 91 also set TIMBRE and REVERB on the way in) |
 | 20 | The noise layer's LEVEL |
