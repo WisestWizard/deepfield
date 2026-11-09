@@ -2668,22 +2668,33 @@ tap REC
 wait 200
 expect latchmode 0
 expect looprec 1
-tapkey 7
+expect velon 0
+key 7 down
+wait 1500
+key 7 up
 wait 300
 tapkey 11
-wait 700
-tapkey 14
 wait 250
-expect loopnotes 3
+out
+expect loopnotes 2
 tap REC
 wait 150
 expect latchmode 1
 expect looprec 0
 expect orbit 1
+# RATE follows the take, so the phrase loops at the speed it was played rather than being squeezed into
+# whatever RATE was set to. The phrase above runs about 1.8 s; RATE's steps are 5 % apart, so this is a band
+expect p24 >50
+expect p24 <66
+wait 100
+# and each note keeps the length it was held for: the first note was held a second and a half, so a quarter of
+# a second into its replay it is still sounding. A fixed gate let go after a sixth of a second
+expect leadnote 60
+expect_no_out USB 80 3C 00
+# DECAY really is 0 here, so the phrase must not be fading
+expect p52 0
 wait 2500
 expect echorun 1
-# the phrase comes back at the pitches it was played at while ROAM is 0
-expect_out USB 90 3C 7F
 out
 wait 1200
 # ROAM carries each pass to another degree of the scale, so the phrase moves

@@ -143,6 +143,7 @@ PLAY STRUM	generate strum
 SHIFT	shift
 PROG	progression
 LOOP	loop
+REC THEN PLAY	press record, then play a phrase
 STRUM	strum
 REVERB	reverb
 TREMOLO	tremolo

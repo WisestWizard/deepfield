@@ -788,7 +788,10 @@ static void knob(uint32_t id, int32_t e, int fast)
     value_set(id, (uint32_t)v);
     cc_send(id);
     value_text(id, t);
-    ui_say(param_label(id), t);
+    if (id == P_ORB_MODE && (uint32_t)v == OM_ECHO && !dr_loop_notes())
+        ui_say("LOOP", "REC THEN PLAY");   /* an empty loop does nothing until a phrase goes in: say how */
+    else
+        ui_say(param_label(id), t);
     ui.hud_id = (uint16_t)id;
     ui.redraw_foot = 1;
 }

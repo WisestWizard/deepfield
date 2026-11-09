@@ -150,13 +150,17 @@ static uint32_t cyc_turn, cyc_debt;      /* turns of the table, and steps since 
 /* ECHO: the last eight lead notes the keys (or MIDI) played, replayed each period over the period, quieter each
  * time, notes dropped and jumped an octave with DECAY and JUMPS, until the phrase is gone or new notes come */
 static uint8_t echo_ring[8], echo_ring_vel[8], echo_n, echo_w, lead_machine;
+static uint16_t echo_len[8];             /* LOOP: how long each note was held, same units as echo_gap; 0 until
+                                          * its key comes up */
+static uint8_t loop_live[8];             /* that slot's key is still down, so its length is not known yet */
+static uint32_t loop_open[8];            /* when it went down */
 static uint16_t echo_gap[8];             /* LOOP: how long after the note before it each note was played, in
                                           * sixty-fourths of a sample count, so a recorded phrase keeps its own
                                           * rhythm instead of being spread evenly over the period */
 static uint32_t loop_clk, loop_t_last, loop_rec, loop_have;
 static int32_t loop_deg;
 static float echo_vel = 1.0f;
-static uint32_t echo_due[8], echo_off[8];
+static uint32_t echo_due[8], echo_off[8], echo_gate[8];
 static uint8_t echo_note[8], echo_nvel[8];   /* each replay's note and the velocity it was played at */
 static uint32_t arp_notes[NV * 3u], arp_n, arp_pos, arp_dir, arp_left, arp_step, arp_count, arp_due;
 static uint32_t arp_age[NV * 3u];        /* each step's body, by its age: the chord changing, the arp goes on from it */
@@ -481,6 +485,22 @@ static voice_t *find_lead(uint32_t note)
                 best = &vc[i];
     return best;
 }
+/* a held note's length into the phrase: the newest slot still down on that note, or every one of them (all) when
+ * the take closes under a hand that is still holding keys */
+static void loop_close(uint32_t note, uint32_t all)
+{
+    uint32_t k, s, len;
+    for (k = 0; k < 8u; k++) {
+        s = (echo_w + 7u - k) % 8u;      /* newest first */
+        if (!loop_live[s] || (!all && echo_ring[s] != (uint8_t)note))
+            continue;
+        len = (loop_clk - loop_open[s]) >> 6;
+        echo_len[s] = (uint16_t)(len > 60000u ? 60000u : len);
+        loop_live[s] = 0;
+        if (!all)
+            return;
+    }
+}
 static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
 {
     voice_t *v;
@@ -511,6 +531,9 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
             loop_t_last = loop_clk;
             echo_ring[echo_w] = (uint8_t)note;
             echo_ring_vel[echo_w] = (uint8_t)(vel ? vel & 127u : 1u);   /* the phrase comes back as it was played */
+            echo_len[echo_w] = 0;        /* how long it is held is known when the key comes up */
+            loop_open[echo_w] = loop_clk;
+            loop_live[echo_w] = 1;
             echo_w = (echo_w + 1u) % 8u;
             if (echo_n < 8u)
                 echo_n++;
@@ -528,6 +551,8 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
             return;
         }
         v->held = 0;
+        if (!lead_machine)               /* a player's note: the phrase keeps the length it was held for */
+            loop_close(note, 0);
         if (note_out && v->midi == 0u)
             note_out(v->home, 0, 0);   /* the note its note on went out at: TRANSPOSE (LIFT) moves target, and an
                                         * off at the moved note left the key's own note held on the computer */
@@ -2518,15 +2543,19 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
         orbit_force = 0;
         echo_hush();
         for (j = 0; j < 8u; j++)
-            echo_due[j] = 0;
+            echo_due[j] = echo_gate[j] = 0;
         if (!n || echo_vel < 0.08f || loop_rec)
             return;                      /* nothing plays back while the take is still open */
         for (k = 0; k < n; k++) {        /* the phrase's own rhythm, scaled to fit RATE */
             gaps[k] = echo_gap[(echo_w + 8u - n + k) % 8u];
             tot += gaps[k];
         }
-        if (tot)
-            tot += tot / n;              /* a trailing gap, so the phrase breathes at the loop point */
+        if (tot) {                       /* the phrase's own span: the gaps, and then the last note's length, so
+                                          * the loop point falls where the playing stopped and a phrase that ends
+                                          * on a long note keeps the room for it */
+            uint32_t last = echo_len[(echo_w + 7u) % 8u];
+            tot += last ? last : tot / n;
+        }
         if (loop_have && roam) {         /* "imitates and moves": each pass of the phrase is carried to another
                                           * degree of the scale, chosen by the same weights PROG uses, so it walks
                                           * somewhere instead of wandering */
@@ -2558,6 +2587,12 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             echo_due[j] = at;
             echo_note[j] = (uint8_t)note;
             echo_nvel[j] = echo_ring_vel[w];
+            if (tot && echo_len[w]) {    /* held as long as it was played, stretched by the same factor that fits
+                                          * the phrase's gaps into RATE, so a long note stays long */
+                uint32_t g = (uint32_t)((float)orbit_per * (float)echo_len[w] / (float)tot);
+                uint32_t lo = (uint32_t)(FS * 0.03f);
+                echo_gate[j] = g < lo ? lo : g > orbit_per ? orbit_per : g;
+            }
         }
         echo_vel *= 1.0f - 0.45f * (float)decay * 0.01f - (loop_have ? 0.0f : 0.05f);
         return;                          /* a recorded phrase at DECAY 0 keeps going: it is a loop the player
@@ -2882,8 +2917,10 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
             cyc_visit[k] = 0;
     }
     echo_hush();                         /* a replay still held: let go, not forgotten */
-    for (i = 0; i < 8u; i++)
-        echo_due[i] = echo_off[i] = 0;
+    for (i = 0; i < 8u; i++) {
+        echo_due[i] = echo_off[i] = echo_gate[i] = 0;
+        loop_live[i] = 0;
+    }
     echo_vel = 1.0f;
     orbit_clk_left = orbit_clk_per = 0;
     if (arp_held >= 0)
@@ -2960,7 +2997,8 @@ int dr_clock_ext(void) { return (int)clk_ext; }
 float dr_clock_bpm(void) { return clk_ext && clk_period ? 60.0f * FS / ((float)clk_period * 24.0f) : 0.0f; }
 void dr_clock_out(int on) { clk_out = on != 0; }
 void dr_realtime_out(void (*fn)(uint32_t)) { rt_out = fn; }
-static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then let go half a step later */
+static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then let go after the gate the phrase
+                                          * recorded (half a step, for a note whose length was never caught) */
 {
     uint32_t j;
     for (j = 0; j < 8u; j++) {
@@ -2976,14 +3014,18 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
                 lead_machine = 1;
                 lead_event(echo_note[j], vel, 1, 0);
                 lead_machine = 0;
-                echo_off[j] = 1u + orbit_per / (2u * (echo_n ? echo_n + 1u : 2u));
+                echo_off[j] = echo_gate[j] ? echo_gate[j]
+                                           : 1u + orbit_per / (2u * (echo_n ? echo_n + 1u : 2u));
             }
         } else if (echo_off[j]) {
             if (echo_off[j] > n)
                 echo_off[j] -= n;
             else {
                 echo_off[j] = 0;
+                lead_machine = 1;        /* the machine's own note off: not a key coming up, so it must not be
+                                          * taken for the end of a note the player is holding */
                 lead_event(echo_note[j], 0, 0, 0);
+                lead_machine = 0;
             }
         }
     }
@@ -2993,17 +3035,37 @@ void dr_loop_rec(int on)
 {                                        /* REC: the take starts empty and the notes played go in with their own
                                           * timing. Closing it leaves the phrase to loop; LOOP's own capture keeps
                                           * working as before, so playing more notes still starts a new phrase. */
+    uint32_t i;
     if (on) {
         echo_n = echo_w = 0;
+        for (i = 0; i < 8u; i++)
+            loop_live[i] = 0;
         loop_have = 0;
         loop_rec = 1;
         loop_deg = 0;
         loop_t_last = loop_clk;
         echo_vel = 1.0f;
     } else {
+        loop_close(0, 1);                /* keys still down when the take closes end here */
         loop_rec = 0;
         loop_have = echo_n ? 1u : 0u;
         echo_vel = 1.0f;
+        if (echo_n) {                    /* RATE follows the take: the phrase loops at the speed it was played, so
+                                          * what comes back is what was played rather than the same notes squeezed
+                                          * into whatever RATE happened to be set to. Turning RATE afterwards
+                                          * stretches the gaps and the note lengths together. */
+            uint32_t k, span = 0, q = 0;
+            float want;
+            for (k = 1u; k < echo_n; k++)
+                span += echo_gap[(echo_w + 8u - echo_n + k) % 8u];
+            span += echo_len[(echo_w + 7u) % 8u];
+            want = (float)span * 64.0f / FS;
+            while (q < 127u && dr_orbit_s(q + 1u) <= want)
+                q++;
+            if (q < 127u && dr_orbit_s(q + 1u) - want < want - dr_orbit_s(q))
+                q++;                     /* RATE's steps are about 5 % apart: take the nearer one */
+            dr_scene.p[P_ORB_PERIOD] = (uint8_t)q;
+        }
     }
 }
 int dr_loop_recording(void) { return (int)loop_rec; }
