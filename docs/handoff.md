@@ -91,6 +91,14 @@ repositories are now public MPL-2.0 with master as the default branch, both new 
 `--recurse-submodules` from a clean directory (base b0976f2, `base/bsp` present, `app/fm1.toml` there), and this
 repository's master is pushed through **2c8058b**. The root README's links to them resolve.
 
+**The 1.0 package is built** (2026-11-08, Kyle's "Yes, build 1.0"): `./build.sh --release 1.0` ->
+`deepfield/build/deepfield-1.0.fwsc`, 614,938 B, identity **FM-1_14010000** (the first release identity; dev
+builds were FM-1_1400), build **F816D1E2**. Image 414,132 B (16 B over the dev build, the version string), RAM
+.data+.bss 77,692 of 98,304, .ram_text 9,520 of 32,768, pool 334,032 of 344,064 -- the same figures as the build
+the suite was run against, and every guardrail check passes (radio calls in RAM, no 64-bit multiply, no
+soft-double, register access through felucca-bsp only). The build's `firmware.json` is byte-identical to the one
+committed at the root, so the two have not drifted. It has not been flashed.
+
 Still to do, in order:
 
 1. **Flash 1.0 and hear it** (the test steps below).
