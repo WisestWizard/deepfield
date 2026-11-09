@@ -97,11 +97,18 @@ builds were FM-1_1400), build **F816D1E2**. Image 414,132 B (16 B over the dev b
 .data+.bss 77,692 of 98,304, .ram_text 9,520 of 32,768, pool 334,032 of 344,064 -- the same figures as the build
 the suite was run against, and every guardrail check passes (radio calls in RAM, no 64-bit multiply, no
 soft-double, register access through felucca-bsp only). The build's `firmware.json` is byte-identical to the one
-committed at the root, so the two have not drifted. It has not been flashed.
+committed at the root, so the two have not drifted.
+
+**Flashed 2026-11-08** on Kyle's "Flash it", from the running FM-1_1400 over USB-MIDI: the loader took the fast
+install (only the changed sectors), the unit restarted into **FM-1_14010000** and the screen reader shows
+DEEP FIELD / FIRST LIGHT / HOME, CPU 5%, no voices; the log is clean (BT stacks 512 768, heap 11488/24576, no
+crash record). Kyle has not played it yet. One oddity, harmless: macOS still lists the unit's USB-MIDI port as
+**AMB-1 FM-1**, a CoreMIDI name cached from an earlier AMB-1 install -- the firmware's own `usb_product` is
+DEEP FIELD FM-1, and `--info` reads the right identity through that port. Live will show the old name.
 
 Still to do, in order:
 
-1. **Flash 1.0 and hear it** (the test steps below).
+1. **Hear 1.0 on the unit** (the five test steps below); it is flashed and waiting.
 2. **The hub's install tests, on the unit:** from the stock V15 firmware, from another firmware, and another
    firmware installed from this one.
 3. **Publish the site at 1.0** (`deepfield/tools/publish_site.sh 1.0`), **tag v1.0** and make the **GitHub release**
