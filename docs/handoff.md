@@ -61,20 +61,41 @@ Met: the open licence with the source public, the FM-1_14 identity nobody else u
 package (and the loader has no JEDEC gate of its own, while the data area takes both the Puya and the UC25HQ80, so
 a new unit saves and can install another firmware afterwards).
 
-Prepared here, not yet committed: **`fmhub.json`** at the repository root -- the hub reads only that file, eight
+Committed 2026-11-08: **`fmhub.json`** at the repository root -- the hub reads only that file, eight
 fields and no others, "no file, no listing" -- with `what` (268 characters), `author`, `kinds` ["synth"], `play`
 the emulator, `cheat` the cheat sheet, `image` `docs/img/screen-home.png` (240 x 240, 173 KB, inside the 300 KB
 cap) and `color` #E5482E, the site's own accent. The root **`firmware.json`** is DEEP FIELD's now (it was Pocket
 Poly's, which the hubs and RemoteFM1 would have read in a repository called deepfield), and `publish_site.sh`
 refreshes it from each release build so the two cannot drift. The root README leads with DEEP FIELD.
 
+### The split, done 2026-11-08 ("Yes, create them")
+
+`WisestWizard/pocketpoly` and `WisestWizard/gnomnom` exist and are pushed. Each carries the history filtered out
+of this repository (`git filter-branch` over all 40 commits, empty ones pruned) plus one commit that stands its
+root up: pocketpoly 5 commits with `app/`, the root `tools/` and `tests/`, `docs/roadmap.md` and the research
+docs; gnomnom 5 commits with the firmware renamed to `app/` in every commit, so a release writes `firmware.json`
+at the repository root (base only does that when APP_DIR is named `app`). Both have the `base` submodule at the
+same upstream pin b0976f2 with `base/bsp` initialised, a `build.sh` defaulting to `app`, their own `.gitignore`
+and a README; `app/fm1.toml`'s `repo` is pocketpoly's own now, and GNOMNOM's docs, tests and tools had their
+`gnomnom/` paths and `./build.sh gnomnom` lines rewritten. Verified in their new homes: Pocket Poly builds
+`--host` and passes 310/310 of `app/tests/basic.txt`, GNOMNOM builds `--host` and passes 50/50. The working
+copies are `/Users/kylemccann/Claude/Projects/pocketpoly` and `/Users/kylemccann/Claude/Projects/gnomnom`.
+
+This repository has dropped `app/`, `gnomnom/`, the root `tools/` and `tests/` (all three of those tools and the
+golden hashes are Pocket Poly's, which is why they went with it) and `docs/roadmap.md` (Pocket Poly's plan). The
+root is now what the README's table says and nothing else.
+
+**Both new repositories are PRIVATE.** `gh repo create --public` was refused by this session's permission check as
+a public surface, so they were created private and pushed. Until they are public the hub's open-source rule is
+unmet for them and the root README's two links are dead, so this repository's master is **committed and not
+pushed**. Kyle's two commands:
+
+    gh repo edit WisestWizard/pocketpoly --visibility public --accept-visibility-change-consequences
+    gh repo edit WisestWizard/gnomnom --visibility public --accept-visibility-change-consequences
+
 Still to do, in order:
 
-1. **The two repositories.** The split is ready and verified: `WisestWizard/pocketpoly` (9 commits of its own
-   history, `app/` with `tools/`, `tests/`, the research docs) and `WisestWizard/gnomnom` (9 commits, its firmware
-   moved to `app/` so a release writes the metadata where a catalogue looks). Both build `--host` and pass their
-   own `basic.txt`. Creating them was refused by this session's permission check as a public push, so it needs
-   Kyle's word; then this repository drops `app/` and `gnomnom/` and commits the root it has been given.
+1. **Flip the two repositories public** (the two commands above), then **push this repository's master**.
 2. **Flash 1.0 and hear it** (the test steps below).
 3. **The hub's install tests, on the unit:** from the stock V15 firmware, from another firmware, and another
    firmware installed from this one.
@@ -1117,7 +1138,7 @@ controller (as the manual says); RANDOM can repeat a note at once.
   Juno ensemble / tape delay / plate / limiter that rest when silent, a 12-mode arpeggiator with Euclid, Turing,
   chance, ratchets, latch and MIDI clock both ways, seeded discovery (DICE / MUTATE / MORPH / history), full MIDI
   (USB, TRS in, Bluetooth both roles, channel filter, CC map, sustain, LOCAL, clock out), settings/bank/FM-bank
-  storage with migration, 22 pages, screen reader, manual with screenshots. `docs/roadmap.md` §1 has the table.
+  storage with migration, 22 pages, screen reader, manual with screenshots. §1 of `docs/roadmap.md` in WisestWizard/pocketpoly has the table.
 - **Verified:** 310 simulator checks (`app/tests/basic.txt`), sanitizer build clean, clang analyzer clean, 16
   golden renders (`tests/golden.txt`), device CPU: 8 VA voices 50–55 %, FM 81 %, idle 4 %. Three code reviews
   (37 findings) — 33 fixed, 4 deferred into the roadmap. Details: `docs/platform-decision.md` "Review pass".
