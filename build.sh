@@ -1,15 +1,14 @@
 #!/bin/sh
-# fm1-base's build on an app directory (settings in APP/fm1.toml). The app is `app` (Pocket Poly) unless the first
-# argument names another directory with an fm1.toml (deepfield).
-#   ./build.sh                 app/build/pocketpoly.fwsc        (JieLi toolchain in a container, AC79 SDK)
-#   ./build.sh --host          app/build/host/pocketpoly_host   (the simulator; the system cc only)
-#   ./build.sh --web           app/build/emu/                   (the browser emulator; Emscripten)
-#   ./build.sh --release X.Y   app/build/pocketpoly-X.Y.fwsc
-#   ./build.sh deepfield ...   the same for deepfield/
+# fm1-base's build on this repository's firmware (settings in deepfield/fm1.toml).
+#   ./build.sh                 deepfield/build/deepfield.fwsc        (JieLi toolchain in a container, AC79 SDK)
+#   ./build.sh --host          deepfield/build/host/deepfield_host   (the simulator; the system cc only)
+#   ./build.sh --web           deepfield/build/emu/                  (the browser emulator; Emscripten)
+#   ./build.sh --release X.Y   deepfield/build/deepfield-X.Y.fwsc    (deepfield/tools/publish_site.sh does this)
+# A first argument naming another directory with an fm1.toml builds that one instead.
 set -e
 cd "$(dirname "$0")"
 PYTHON="${PYTHON:-/opt/homebrew/bin/python3.14}"
-APP=app
+APP=deepfield
 if [ -n "$1" ] && [ -f "$1/fm1.toml" ]; then
     APP="$1"
     shift

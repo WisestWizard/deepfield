@@ -1,0 +1,9 @@
+{
+  "what": "An ambient drone machine. Every key starts a voice that swells in, keeps sounding, breathes and drifts, then fades when you let it go. Eight play at once across thirteen models; four knobs shape them all, a held key sets one apart, and the hall can freeze and shimmer.",
+  "author": "Kyle McCann",
+  "kinds": ["synth"],
+  "play": "https://deepfield.fog.baby/emu/",
+  "cheat": "https://deepfield.fog.baby/cheatsheet/",
+  "image": "docs/img/screen-home.png",
+  "color": "#E5482E"
+}

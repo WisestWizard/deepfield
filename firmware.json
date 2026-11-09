@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "deepfield",
+  "name": "DEEP FIELD",
+  "author": "Kyle McCann",
+  "license": "MPL-2.0",
+  "tagline": "an ambient drone machine for the FM-1",
+  "description": "DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Every key starts a voice that swells in, keeps sounding, breathes and drifts, and fades out when you let it go, as hard as you struck it; eight play at once across thirteen models, from breathing harmonics to wavetables and FM. Four knobs shape them all at once, a held key sets one apart, GEN moves them to nearby notes or runs an arpeggio over them, presets morph into each other, and the reverb can freeze and shimmer. MIDI comes in over USB, Bluetooth and TRS, and goes out over USB and Bluetooth.",
+  "tags": ["synth", "ambient", "generative", "fm"],
+  "install": "https://deepfield.fog.baby/install/",
+  "site": "https://deepfield.fog.baby/",
+  "source": "https://github.com/WisestWizard/deepfield",
+  "screenshot": "docs/img/screen-home.png",
+  "hardware": {
+    "models": ["FM-1"],
+    "flash": ["856014", "B36014"],
+    "features": ["bluetooth-midi", "bluetooth-midi-devices", "usb-audio-in", "second-core", "velocity", "pressure", "screen-reader"]
+  },
+  "credits": "Built on fm1-base and felucca-bsp, from Felucca by Leo Kuroshita (Hügelton Instruments)."
+}

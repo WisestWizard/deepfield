@@ -13,8 +13,9 @@ move now, HOME lets every voice go). Every knob has a MIDI CC, in and out, and t
 PHOSPHOR TUBE, lets only sound give off light: beams in their key's colour with white-hot heads, dark-glass keys
 lit by their voices, one meaning per colour; at power-on the name spirals into a vortex. MIDI over USB, Bluetooth (both ways: the MIDI page lists the keyboards around and connects one) and TRS.
 
-Built as an app on [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0), beside Pocket Poly in this
-repository. The research and the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
+Built as an app on [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0). It grew up beside
+[Pocket Poly](https://github.com/WisestWizard/pocketpoly), which three of its models come from. The research and
+the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
 
 ## Layout
 

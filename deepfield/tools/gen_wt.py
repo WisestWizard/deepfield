@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (C) 2026 Kyle McCann
-# SCAN's wavetables, from Pocket Poly's spectra (app/engine/wt.c): three tables (ANALOG, VOX, GLASS) of 16 frames,
+# SCAN's wavetables, from Pocket Poly's spectra (app/engine/wt.c in WisestWizard/pocketpoly): three tables
+# (ANALOG, VOX, GLASS) of 16 frames,
 # each 128 samples, in five band-limited copies (64, 32, 16, 8 and 4 harmonics), as int16 in flash. Every frame is
 # normalised to the same peak (its full copy's), so a sweep through SHAPE keeps its level, and so does a note crossing
 # from one copy to the next; and a gain for each frame at five settings of MASS (DF_WT_GAIN[frame][5]) that brings it

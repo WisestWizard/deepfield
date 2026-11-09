@@ -12,12 +12,6 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8767", "--directory", "deepfield/build/site"],
       "port": 8767
-    },
-    {
-      "name": "gnomnom-emu",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "gnomnom/build/emu"],
-      "port": 8766
     }
   ]
 }

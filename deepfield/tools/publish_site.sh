@@ -17,6 +17,10 @@ export JIELI_TOOLCHAIN="${JIELI_TOOLCHAIN:-$HOME/.jieli/toolchain}" AC79_SDK="${
 mkdir -p "$ROOT/docs/img"
 cp "$APP/docs/img/screen-home.png" "$ROOT/docs/img/screen-home.png"
 "$PY" "$ROOT/base/tools/build.py" "$APP" --release "$V"
+# the repository's firmware.json, which RemoteFM1 and M-Flasher read at the root: the build writes it beside the
+# package instead, since repo_root takes an APP_DIR not named app as the root. DEEP FIELD is this repository's one
+# firmware, so the root copy is its own, refreshed from the release build it describes.
+cp "$APP/build/firmware.json" "$ROOT/firmware.json"
 "$PY" "$ROOT/base/tools/build.py" "$APP" --web --release "$V"
 "$PY" "$ROOT/base/tools/make_site.py" "$APP" "$APP/build/deepfield-$V.fwsc" "$V" "$APP/build/site"
 mkdir -p "$APP/build/site/cheatsheet"
