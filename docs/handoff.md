@@ -2,7 +2,7 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: 1.2 is published, and ROAM had no CC of its own (published 2026-11-09; the unit is one fix behind)
+## Start here: 1.2 is published and on the unit (published and flashed 2026-11-09)
 
 **The site is 1.2.** `deepfield/tools/publish_site.sh 1.2` built the release package and pushed gh-pages:
 https://deepfield.fog.baby serves Version 1.2 with the CNAME intact, the landing page, the cheat sheet, the manual,
@@ -33,9 +33,16 @@ the landing page and `fm1.toml`'s hub description now name the chord generator a
 screenshots are not deterministic - re-running `tests/screens.txt` rewrites six or seven PNGs with the same
 content at a different drift phase, so leave them as committed unless a screen really changed.
 
-**The unit is one fix behind the site.** Kyle's FM-1 has the build flashed on 2026-11-08 (`FM-1_1400`, build
-4EA946D2), which has ROAM on CC 14 and no ROAM knob in LOOP. Nothing about the sound differs - the goldens are
-untouched - so his listening pass stands. Flash `deepfield/build/deepfield.fwsc` on his word to catch the unit up.
+**The unit runs the published release.** On Kyle's "Flash it", `fm1_install.py deepfield/build/deepfield-1.2.fwsc
+--yes` wrote the same package the site serves, so the FM-1 reports `FM-1_14010200` rather than the dev identity
+`FM-1_1400` it had carried through every build until now. The installer checks that identity itself after the
+restart. `log` is clean (boot, `sound back: ready`, `cpu 5% b0 ADDITIVE s0 x0`, no crash record) and `screen` reads
+`DEEP FIELD. FIRST LIGHT. HOME. HARMONICS 37%. DRIFT 29%. REVERB 45%. TREMOLO 27%. VOICES 0. CPU 5%`. Note that
+`fm1_remote.py crashes` and `stats` both answer "no answer" on this build - the debug stats are off, which is their
+normal state; `log` and `screen` are the working read-backs.
+
+The two fixes were proved in the simulator, not on the hardware: confirming them on the device would mean injecting
+button presses to walk to GEN 2, which is the one thing not to do over USB while Kyle has the instrument.
 
 Still open: Kyle's listening pass on the harmony (the eight progressions, UNDERTOW's sink, SLOW RISE's climb, ROAM,
 the pedal, a take recorded with REC on the GEN page). Still not built: a per-step chord template and a per-step
