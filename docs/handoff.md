@@ -2,7 +2,49 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: 1.2 is published and on the unit (published and flashed 2026-11-09)
+## Start here: LOOP keeps how long you held each note (flashed 2026-11-09; on the unit, not pushed)
+
+Kyle on 1.2's LOOP: "none of the dynamics/length of notes or anything seem to be recorded - a user plays something
+like BAAAAAAAAAAAAA AAAAAAAAAAAAH AAAAAAAAAAAAAAAH and the loop is BA AA AA" - phonetic, as he said: long held
+notes coming back as blips. He also asked for a prompt on the screen when LOOP is first selected.
+
+**Measured first, on the wire.** The host writes a timestamped `midi_out.txt` beside its WAV, which is the tool for
+this: a note held 251 ms and a note held 1802 ms both came back at 168 ms. The take kept each note's pitch,
+velocity and the gap *before* it, and nothing else; every replay used one fixed gate,
+`echo_off[j] = 1 + orbit_per / (2 * (echo_n + 1))`, which has no per-note term in it at all.
+
+**Three things were wrong.** The lengths were never captured: a key down now stamps its slot (`loop_open`,
+`loop_live`) and the key up closes it into `echo_len`, with `loop_close(0, 1)` ending anything still held when the
+take closes. Then, even with the lengths kept, **RATE was squeezing the phrase**: the loop fitted a 2.55 s take
+into whatever RATE was set to (1.0 s in the probe), so a long note could not fit however well it was recorded.
+Closing a take now sets RATE to the phrase's own span - the gaps plus the last note's length - so it loops at the
+speed it was played; turning RATE afterwards stretches the gaps and the lengths together. `tot` is that same span
+now, so the stretch factor is 1 when RATE follows the take. Measured after: 1501 ms played came back 1707 ms and
+the short note stayed 64 ms.
+
+**And a bug of mine, found on the way.** The first cut put `loop_live[i] = 0;` after a braceless `for` in
+`orbit_reset`, so it ran once with `i == 8` and wrote one past the array, clobbering the static beside it -
+`loop_have`. A recorded phrase then faded at DECAY 0, which the manual says never happens, and ROAM's development
+of the phrase (gated on `loop_have && roam`) was silently dead. It showed up as replay velocities reading 120,
+114, 108 where they should have been a flat 127, and as one test failing on some runs and not others. Braced, and
+the velocities are flat across passes now.
+
+**The prompt.** Landing on LOOP with nothing recorded says `LOOP` / `REC THEN PLAY` instead of `MODE LOOP`, and
+the phrase is in `words.tsv` for the screen reader as "press record, then play a phrase".
+
+**A test lesson.** The old take block asserted `expect_out USB 90 3C 7F`, pinning a velocity byte; in a long
+stateful run that byte is not stable, and the check passed or failed by the run. It asserts `expect leadnote 60`
+and `expect_no_out USB 80 3C 00` now - the note is sounding and has not been let go a quarter second in, which is
+the regression for this bug and has no velocity in it. Also: `out` must come before `tap REC`, because the tap
+itself advances time and the first replay strikes inside it.
+
+**On the unit:** flashed 2026-11-09 with `fm1_install.py deepfield/build/deepfield.fwsc --yes`, image 421,744 B,
+build 5772138A. It is **back to the dev identity `FM-1_1400`**, not the release `FM-1_14010200` the site serves -
+this is a dev build, so the unit is now ahead of the published 1.2 by these LOOP fixes. `log` is clean and
+`screen` reads FIRST LIGHT on HOME. 756 checks pass, goldens unchanged. Committed **1c8dd69**, not pushed, and the
+site is still serving 1.2 without these fixes.
+
+## 1.2 is published and on the unit (published and flashed 2026-11-09)
 
 **The site is 1.2.** `deepfield/tools/publish_site.sh 1.2` built the release package and pushed gh-pages:
 https://deepfield.fog.baby serves Version 1.2 with the CNAME intact, the landing page, the cheat sheet, the manual,
