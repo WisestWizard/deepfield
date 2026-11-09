@@ -85,24 +85,21 @@ This repository has dropped `app/`, `gnomnom/`, the root `tools/` and `tests/` (
 golden hashes are Pocket Poly's, which is why they went with it) and `docs/roadmap.md` (Pocket Poly's plan). The
 root is now what the README's table says and nothing else.
 
-**Both new repositories are PRIVATE.** `gh repo create --public` was refused by this session's permission check as
-a public surface, so they were created private and pushed. Until they are public the hub's open-source rule is
-unmet for them and the root README's two links are dead, so this repository's master is **committed and not
-pushed**. Kyle's two commands:
-
-    gh repo edit WisestWizard/pocketpoly --visibility public --accept-visibility-change-consequences
-    gh repo edit WisestWizard/gnomnom --visibility public --accept-visibility-change-consequences
+Both were created private, because `gh repo create --public` is refused by this session's permission check as a
+public surface; Kyle ran the two `gh repo edit --visibility public` commands himself the same evening. All three
+repositories are now public MPL-2.0 with master as the default branch, both new ones clone with
+`--recurse-submodules` from a clean directory (base b0976f2, `base/bsp` present, `app/fm1.toml` there), and this
+repository's master is pushed through **2c8058b**. The root README's links to them resolve.
 
 Still to do, in order:
 
-1. **Flip the two repositories public** (the two commands above), then **push this repository's master**.
-2. **Flash 1.0 and hear it** (the test steps below).
-3. **The hub's install tests, on the unit:** from the stock V15 firmware, from another firmware, and another
+1. **Flash 1.0 and hear it** (the test steps below).
+2. **The hub's install tests, on the unit:** from the stock V15 firmware, from another firmware, and another
    firmware installed from this one.
-4. **Publish the site at 1.0** (`deepfield/tools/publish_site.sh 1.0`), **tag v1.0** and make the **GitHub release**
+3. **Publish the site at 1.0** (`deepfield/tools/publish_site.sh 1.0`), **tag v1.0** and make the **GitHub release**
    with `deepfield-1.0.fwsc` attached. The hub takes the newest release carrying a `.fwsc`, so no release in this
    repository may ever carry Pocket Poly's or GNOMNOM's package.
-5. **The mail to zven@thefirmwarehub.com**, which Kyle sends: the name, his name, the repository, the FM-1_
+4. **The mail to zven@thefirmwarehub.com**, which Kyle sends: the name, his name, the repository, the FM-1_
    identity, the licence, and that it was tested on a real FM-1 and leaving it again works. Nothing else goes in
    the mail -- the text, the picture and the links come from `fmhub.json`.
 
