@@ -2,7 +2,65 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: everything on one version, and the MIDI pass before the hub (built 2026-11-08; not flashed; 1.0 is next)
+## Start here: what Kyle heard on 1.0, and the pass that answers it (built 2026-11-08; NOT flashed; 1.1)
+
+He played the 1.0 flash and came back with five things. Four are built and verified here; the fifth needs twenty
+seconds of his hands on the unit before anything is written.
+
+1. **"FM amount control does nothing."** True, on the **FM 4-OP** model only (on FM it always worked). Proved in
+   the simulator before the fix: RAIN CLOCK rendered at FM AMOUNT 0, 64 and 127 came back with the same level and
+   the same brightness to three figures (0.035, 0.035, 0.035; the hashes differed in the noise). The cause was the
+   operator law in `render_dx`: a modulator's level and its envelope were both applied as attenuations and summed
+   in the DX's log domain, so E.PIANO's modulators sat about 60 dB down - the knob was moving something nobody
+   could hear, and every FM 4-OP patch was in truth a stack of plain sines. A modulator's level is now an index in
+   turns of phase (MASS squared, DRIFT breathing it, each operator taking its share by its own level and
+   envelope); carriers keep the DX gain law, so the voices' loudness and balance are untouched. Measured after:
+   brightness 0.035 / 0.100 / 0.383 across the knob, level flat within 0.2 dB. ORGAN, the one patch with no
+   modulator, gets a tilt of its upper three sines instead, so the knob is never dead.
+2. **"Crunchy or clipping noises when I use encoders to change the delay."** **Not reproduced, not fixed.** Two
+   hypotheses were tested in the simulator and both failed: a held chord with DLY MIX, TONE, DIFFUSION, FDBK and
+   DLY TIME each jumped the whole way produced no discontinuity at all (the worst sample step after a jump was
+   1.0x to 1.3x the slope before it - no click), and eight keys held with DLY MIX full peaked at -3.1 dBFS with
+   nothing over 32000. So it is not parameter stepping and not digital clipping in the engine. What is left is
+   the device: audio xruns while the screen redraws under a turning encoder. `fm1_remote.py log` prints
+   `cpu N% bM MODEL sS xK` - **K is the xrun count**. The test: latch a thick chord, turn DLY TIME back and forth
+   for twenty seconds, then read the log and see whether `x` has moved. Nothing should be written until it has.
+3. **"I still have trouble hearing the delay."** His own diagnosis, and it is right: a thick latched chord buries
+   it. Hence the mixer, which he asked for and specified: **MIX** (HOME, SELECT once) with **BED**, **LEAD** and
+   **OUT**, and **FX MIX** (FX, SELECT four times) with **ENS MIX**, **DLY MIX**, **REVERB** and **SHIMMER** on
+   one screen. BED scales the latched voices (CC 54, in the preset, squared law, unity at the top); LEAD is the
+   LEAD page's LEVEL under its mixer name; OUT is a trim in the settings, under the MASTER pot, on the speaker and
+   on a USB recording alike. The settings record grows no byte: OUT took the spare one, DEF5 reads straight as
+   DEF6 with OUT at unity.
+4. **"We need to replace MULTI TAP, it does not sound good."** Replaced by **DUB**: one head whose feedback runs
+   through a resonant low-pass that darkens and rings a little more each pass, the two sides 11 ms apart. TONE
+   sets where the filter sits (180 Hz to 3.5 kHz) and how hard it rings; near full FDBK it stops decaying and
+   drones. Its first cut had a Q of 2.3 and the filter's own peak took the loop's gain over 1: RAIN CLOCK's render
+   came up 8 dB over twenty seconds. The Q is 1.0 to 1.3 now and the preset renders flat (-8.9 dB peak at the
+   start, -8.3 in the middle, decaying to -37 in the tail, in line with the other fifteen). MULTI TAP's onset gate
+   went with it.
+5. **"I don't like many of the chord progressions"** and **"I don't know what strum does at all."** The eight
+   progressions were cadences (I IV V, I VI IV V...), which is why they sounded unfinished under a drone: they are
+   built to resolve, and a drone never does. They are loops now - VAMP, PLAGAL, MEDIANT, SUSPENDED, DESCENT,
+   RISE, ROUND, DRIFT - each moving one or two notes with nothing leaning on a dominant, and each built only from
+   the scale degrees that stand as a full chord in a major and a minor scale alike (0, 2, 3, 4 and 5; 1 and 6 are
+   diminished in one of the two). **No Roman numerals anywhere.** Two of his names could not be kept honest: a
+   DORIAN or a LYDIAN LIFT would need degree 1 or 6 and would read as a different chord in half the scales, so
+   RISE and ROUND took their places. **STRUM is gone** (it was a roll of volume dips, not a strum at all);
+   STARLIGHT and BRONZE BOWL, which used it, run WALK now, and GEN has six modes. **LOOP now shows itself**: the
+   pill counts the phrase (LOOP 5) and lights while it replays, and reads **LOOP EMPTY** when nothing is caught -
+   which is what it always was with LATCH on, since the keys make voices then and no lead is ever played. That is
+   why it looked broken.
+
+**Where it stands:** host and device builds warning-free, image 414,804 B (672 B over 1.0), build **F99E3E13**;
+`basic.txt` 736 checks (728 plus eight for the mixer and DUB), `screens.txt` writes the manual's shots including
+the two new pages, and the 16 golden renders differ in exactly two places, both expected: RAIN CLOCK (the FM 4-OP
+fix and DUB) and GAMELAN's first instant (RAIN CLOCK's tail leaks into it: the renders run in one pass). The
+manual and the cheat sheet carry the mixer, DUB, the progressions and the FM 4-OP knob. **The site is not
+published and no release is tagged**: 1.1 goes out once Kyle has heard this build, so the public pages never
+describe something nobody has played.
+
+## The 1.0 flash, and the MIDI pass before the hub (flashed 2026-11-08; 1.0 is on the unit)
 
 Kyle: "every part of this project from the device, to github, to docs, website etc needs to get alligned so
 everythign is up to date on the same version - after that I want to do a last deep dive for bugs and then publishe

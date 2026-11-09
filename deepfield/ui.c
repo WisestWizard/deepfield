@@ -18,10 +18,10 @@
  * the one it stops on morphs in, the sound only; ALGO picks the model; SAVE saves a scene (PRESET picks the slot,
  * SAVE again saves, HOME cancels); REC is Bluetooth. Every knob sends its CC and takes it (CC_OF). */
 #include "art.h"                         /* the model glyphs and the page icons */
-enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY, PG_FX_DLY2,
-       PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
+enum { PG_HOME, PG_MIX, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY,
+       PG_FX_DLY2, PG_FX_REV, PG_FX_MIX, PG_ORBIT, PG_ORBIT2, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
-       PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE, PID_COUNT };
+       PID_USB_LEVEL, PID_CLOCK_OUT, PID_OUT_LEVEL, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_MORPH, K_CHIN, K_CHOUT,
        K_ONOFF, K_HZ, K_STEPS, K_ATTACK, K_RELEASE, K_SEMI, K_OMODE, K_DIST, K_BODIES, K_BPM, K_ORDER, K_OCTS,
        K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_DTYPE, K_RHYTHM, K_DIV, K_NONE };
@@ -31,6 +31,8 @@ typedef struct {
 } page_t;
 static const page_t PAGES[PG_COUNT] = {
     {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
+    {"MIX", "HOME", {P_BED_LEVEL, P_LD_LEVEL, PID_OUT_LEVEL, PID_NONE}},   /* the latched bed, the notes played over
+                                          * it, and the output under the MASTER pot: the balance in one place */
     {"OSC", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
     {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
     {"NOISE 2", "EDIT", {P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH}},   /* its kind, weather, ducking, width */
@@ -42,6 +44,7 @@ static const page_t PAGES[PG_COUNT] = {
     {"DELAY", "FX", {P_DLY_TYPE, P_DLY_TIME, P_DLY_FDBK, P_DLY_MIX}},
     {"DELAY 2", "FX", {P_DLY_COLOUR, P_DLY_DIFF, P_DLY_WOW, P_DLY_CHOP}},
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
+    {"FX MIX", "FX", {P_ENS_MIX, P_DLY_MIX, P_SPACE, P_SHIMMER}},   /* every effect's level on one screen */
     {"GEN", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"GEN 2", "ARP", {P_GRAVITY, P_ARP_OCT, P_ARP_RHYTHM, P_ARP_DIV}},   /* RHYTHM and DIV: the runner's */
     {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_MORPH, PID_NONE}},
@@ -67,18 +70,19 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_GRAVITY] = {"RETURN", K_PCT},  [P_NZ_LEVEL] = {"LEVEL", K_PCT},    [P_NZ_COLOUR] = {"COLOR", K_PCT},
     [P_NZ_WIND] = {"RATE", K_PCT},      [P_NZ_BAND] = {"BANDPASS", K_PCT},
     [P_LD_ATTACK] = {"ATTACK", K_ATTACK}, [P_LD_RELEASE] = {"RELEASE", K_RELEASE}, [P_LD_LIFT] = {"TRANSPOSE", K_SEMI},
-    [P_LD_LEVEL] = {"LEVEL", K_PCT},    [P_ORB_MODE] = {"MODE", K_OMODE},   [P_ORB_DIST] = {"RANGE", K_DIST},
+    [P_LD_LEVEL] = {"LEVEL", K_PCT},    [P_BED_LEVEL] = {"BED", K_PCT},    [P_ORB_MODE] = {"MODE", K_OMODE},   [P_ORB_DIST] = {"RANGE", K_DIST},
     [P_ORB_BODIES] = {"VOICES", K_BODIES}, [P_ARP_RATE] = {"TEMPO", K_BPM},  [P_ARP_GATE] = {"GATE", K_PCT},
     [P_ARP_ORDER] = {"PATTERN", K_ORDER}, [P_ARP_OCT] = {"OCTAVES", K_OCTS},
     [P_NZ_TEXTURE] = {"TYPE", K_TEXTURE}, [P_NZ_GUST] = {"GUST", K_PCT}, [P_NZ_DUCK] = {"DUCK", K_PCT},
     [P_NZ_WIDTH] = {"WIDTH", K_PCT}, [P_ORB_PROG] = {"CHORDS", K_PROG},
     [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS MOD", K_PCT}, [P_TWALK] = {"TIMBRE DRIFT", K_PCT}, [P_SWAY] = {"PAN DRIFT", K_PCT},
-    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT}, [P_ORB_ROLL] = {"SPEED", K_PCT},
+    [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT},
     [P_ARP_RHYTHM] = {"EUCLID", K_RHYTHM}, [P_ARP_DIV] = {"DIV", K_DIV},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
     [PID_SPEAKER] = {"SPEAKER", K_SPEAKER}, [PID_USB_LEVEL] = {"USB LEVEL", K_USBLVL}, [PID_CLOCK_OUT] = {"CLOCK OUT", K_ONOFF},
+    [PID_OUT_LEVEL] = {"OUT", K_PCT},
     [PID_NONE] = {"", K_NONE},
 };
 /* MIDI CC for every value (0: none), in and out: a knob turned sends its CC, a CC in sets the value (app.c midi_cc;
@@ -99,7 +103,7 @@ static const uint8_t CC_OF[PID_COUNT] = {
     [P_REV_SIZE] = 106, [P_REV_DAMP] = 107, [P_SHIMMER] = 108,
     [P_ORB_MODE] = 109, [P_ORB_PERIOD] = 110, [P_ORB_CHANCE] = 111, [P_ORB_RANGE] = 112, [P_GRAVITY] = 113,
     [P_ORB_DIST] = 114, [P_ORB_BODIES] = 115, [P_ARP_RATE] = 116, [P_ARP_GATE] = 117, [P_ARP_ORDER] = 118,
-    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53, [P_ORB_ROLL] = 54,
+    [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53, [P_BED_LEVEL] = 54,
     [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
     [PID_SCALE] = 2, [PID_ROOT] = 3,
 };
@@ -310,11 +314,11 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP", "STRUM"};
-static const char *const PROG_NAME[DR_PROGS] = {"I IV V", "I VI IV V", "I V VI IV", "I VI III VII", "I IV I V",
-                                                "I II V", "I III VI IV", "I VII IV"};
+static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP"};
+static const char *const PROG_NAME[DR_PROGS] = {"VAMP", "PLAGAL", "MEDIANT", "SUSPENDED", "DESCENT", "RISE",
+                                                "ROUND", "DRIFT"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
-static const char *const DTYPE_NAME[DT_COUNT] = {"PING PONG", "TAPE", "MULTI TAP", "REVERSE", "OCT UP", "OCT DOWN", "GRANULAR"};
+static const char *const DTYPE_NAME[DT_COUNT] = {"PING PONG", "TAPE", "DUB", "REVERSE", "OCT UP", "OCT DOWN", "GRANULAR"};
 static const char *param_label(uint32_t id);
 static void cc_send(uint32_t id);
 static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the mode's; a knob the model
@@ -328,7 +332,6 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
             {P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER},       /* ARP */
             {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_PROG},    /* CYCLE */
             {P_ORB_PERIOD, P_ECHO_DECAY, P_ECHO_JUMP},   /* ECHO */
-            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_ROLL},    /* PULSE */
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
@@ -347,6 +350,7 @@ static uint32_t value_of(uint32_t id)
     case PID_SPEAKER: return set.speaker;
     case PID_USB_LEVEL: return set.usb_level;
     case PID_CLOCK_OUT: return set.clock_out;
+    case PID_OUT_LEVEL: return set.out_level;
     case PID_NONE: return 0;
     default: return dr_scene.p[id];
     }
@@ -647,6 +651,10 @@ static void value_set(uint32_t id, uint32_t v)
         set.usb_level = (uint8_t)v;
         set_dirty = 1;
         break;
+    case PID_OUT_LEVEL:                  /* MIX's OUT: under the MASTER pot, on the speaker and the recording alike */
+        set.out_level = (uint8_t)v;
+        set_dirty = 1;
+        break;
     case PID_CLOCK_OUT:
         set.clock_out = (uint8_t)v;
         set_dirty = 1;
@@ -726,6 +734,9 @@ static const char *param_label(uint32_t id)   /* TIMBRE, SHAPE and NOISE name wh
         {"BRIGHTNESS", "MATERIAL", "NOISE"},     /* RESONATOR */
     };
     uint32_t m = dr_scene.p[P_MODEL] % M_COUNT;
+    if (id == P_LD_LEVEL && ui.page == PG_MIX)   /* on the mixer the row reads BED, LEAD, OUT; on the LEAD page the
+                                                  * same value is that page's LEVEL */
+        return "LEAD";
     if (id == P_MASS)
         return BY_MODEL[m][0];
     if (id == P_SHAPE)
@@ -795,7 +806,7 @@ static void boot_end(void);
  * today's ROOT, LATCH on, its ORBIT values; a scene without a chord leaves the bodies alone */
 static const uint8_t ORB_P[] = {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE, P_GRAVITY, P_ORB_DIST, P_ORB_BODIES,
                                 P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER, P_ARP_OCT, P_ORB_PROG, P_ECHO_DECAY, P_ECHO_JUMP,
-                                P_ORB_ROLL, P_ARP_RHYTHM, P_ARP_DIV};
+                                P_ARP_RHYTHM, P_ARP_DIV};
 static void scene_go(uint32_t slot, int say, int chord)
 {
     char t[24];
@@ -2319,11 +2330,29 @@ static void draw_header(void)
     cv_rect(x - 5, 0, 240 - x + 5, 18, C_BLACK);   /* a long name ends under it */
     cv_text(x, 4, &FONT_T, t, overload_seen || usb_underruns() ? C_WARN : C_LABEL);
     pill(3, 54, transposing() ? "SEL TRANS" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
-    {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name */
+    {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name. LOOP
+                                          * says how many notes its phrase holds and lights while it replays them:
+                                          * an empty phrase reads EMPTY instead of looking broken, which is what it
+                                          * looked like with LATCH on, where the keys make bodies and no lead is
+                                          * ever captured */
         static const char *const PILL[OM_COUNT] = {"PLAY GEN", "PLAY SHIFT", "PLAY RANDOM", "PLAY ARP", "PLAY PROG",
-                                                   "PLAY LOOP", "PLAY STRUM"};
-        pill(61, 69, PILL[dr_orbit_on() ? dr_orbit_mode() : 0u], dr_orbit_on(), (float)ui.orbit_eighth * 0.125f,
-             plat_ms() - ui.orbit_flash_t < 300u);
+                                                   "PLAY LOOP"};
+        uint32_t m = dr_orbit_on() ? dr_orbit_mode() : 0u, n;
+        const char *s = PILL[m];
+        char t[16], v[8];
+        int flash = plat_ms() - ui.orbit_flash_t < 300u;
+        if (m == OM_ECHO) {
+            t[0] = 0;
+            text_cat(t, "LOOP ");
+            if ((n = dr_loop_notes()) != 0u) {
+                int_text((int32_t)n, v);
+                text_cat(t, v);
+            } else
+                text_cat(t, "EMPTY");
+            s = t;
+            flash = flash || dr_echo_running();
+        }
+        pill(61, 69, s, dr_orbit_on(), (float)ui.orbit_eighth * 0.125f, flash);
     }
     pill(134, 42, "SEQ FRZ", dr_frozen(), 0.0f, 0);
     for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */

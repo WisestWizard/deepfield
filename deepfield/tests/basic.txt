@@ -156,10 +156,10 @@ wait 7000
 expect bodies 0
 tap GLO
 wait 30
-expect page 14
+expect page 16
 spin SELECT 1
 wait 30
-expect page 15
+expect page 17
 spin K4 -1
 wait 30
 expect velon 0
@@ -276,11 +276,8 @@ expect bodies 0
 # LFO), a page stays put
 tap EDIT
 wait 30
-expect page 1
+expect page 2
 tap EDIT
-wait 30
-expect page 1
-spin SELECT 1
 wait 30
 expect page 2
 spin SELECT 1
@@ -289,37 +286,37 @@ expect page 3
 spin SELECT 1
 wait 30
 expect page 4
-tap EDIT
-wait 30
-expect page 1
-tap ENV
-wait 30
-expect page 4
 spin SELECT 1
 wait 30
 expect page 5
+tap EDIT
+wait 30
+expect page 2
 tap ENV
 wait 30
-expect page 4
-tap LFO
+expect page 5
+spin SELECT 1
 wait 30
 expect page 6
-spin SELECT 1
+tap ENV
+wait 30
+expect page 5
+tap LFO
 wait 30
 expect page 7
 spin SELECT 1
 wait 30
 expect page 8
+spin SELECT 1
+wait 30
+expect page 9
 tap LFO
 wait 30
-expect page 6
+expect page 7
 tap FX
 wait 30
-expect page 8
+expect page 9
 tap FX
-wait 30
-expect page 8
-spin SELECT 1
 wait 30
 expect page 9
 spin SELECT 1
@@ -328,36 +325,39 @@ expect page 10
 spin SELECT 1
 wait 30
 expect page 11
+spin SELECT 1
+wait 30
+expect page 12
 spin K4 -3
 wait 30
 expect p3 55
 tap ARP
 wait 30
-expect page 12
-spin SELECT 1
-wait 30
-expect page 13
-tap ARP
-wait 30
-expect page 12
-tap GLO
-wait 30
 expect page 14
 spin SELECT 1
 wait 30
 expect page 15
-spin SELECT 1
+tap ARP
+wait 30
+expect page 14
+tap GLO
 wait 30
 expect page 16
 spin SELECT 1
 wait 30
-expect page 16
+expect page 17
+spin SELECT 1
+wait 30
+expect page 18
+spin SELECT 1
+wait 30
+expect page 18
 spin SELECT -3
 wait 30
-expect page 13
+expect page 15
 tap EDIT
 wait 8500
-expect page 1
+expect page 2
 tap HOME
 wait 30
 expect page 0
@@ -548,16 +548,16 @@ expect freeze 0
 press PLAY
 wait 30
 expect orbit 1
-expect page 12
+expect page 14
 wait 700
 release PLAY
 wait 30
-expect page 12
+expect page 14
 expect orbit 1
 tap PLAY
 wait 30
 expect orbit 0
-expect page 12
+expect page 14
 tap HOME
 wait 30
 expect page 0
@@ -736,7 +736,7 @@ expect bodies 4
 expect latch 4
 tap ARP
 wait 30
-expect page 12
+expect page 14
 expect orbitmode 0
 spin K3 40
 wait 30
@@ -799,7 +799,7 @@ tap EDIT
 wait 30
 spin SELECT 1
 wait 30
-expect page 2
+expect page 3
 spin K3 87
 wait 30
 expect p30 127
@@ -833,7 +833,7 @@ tap GLO
 wait 30
 spin SELECT 2
 wait 30
-expect page 16
+expect page 18
 expect speaker 1
 expect gain 4096
 expect usbrec1 1
@@ -954,9 +954,9 @@ expect cyclepos 1
 out
 wait 1600
 expect_out USB 80 30 00
-expect_out USB 90 35 7F
+expect_out USB 90 39 7F
 expect_out USB 80 43 00
-expect_out USB 90 48 7F
+expect_out USB 90 4C 7F
 out
 wait 3000
 expect_out USB 90 30 7F
@@ -987,7 +987,7 @@ expect h3 58
 expect bodies 3
 press GLO
 wait 400
-expect page 14
+expect page 16
 key 5 down 100 64
 wait 600
 expect morphing 0
@@ -1045,7 +1045,7 @@ wait 17000
 expect echorun 0
 spin K1 1
 wait 30
-expect orbitmode 6
+expect orbitmode 5
 spin K3 40
 wait 30
 wait 2500
@@ -1074,7 +1074,7 @@ tap FX
 wait 300
 turn SELECT 1
 wait 300
-expect page 9
+expect page 10
 expect p57 4
 spin K1 -3
 wait 300
@@ -1104,7 +1104,7 @@ said MS
 # DELAY 2: COLOUR, DIFFUSE, WOW, CHOP
 spin SELECT 1
 wait 300
-expect page 10
+expect page 11
 spin K1 5
 wait 300
 said TONE
@@ -1258,7 +1258,7 @@ tap SEL
 wait 50
 expect latchmode 1
 # a body ORBIT moved is addressed where it sounds: its key lit there, a tap there lets it go; the key it was struck
-# on strikes a new body (C4 struck, CYCLE's I IV V takes it up three degrees to F4, whatever the dice)
+# on strikes a new body (C4 struck, CYCLE's VAMP takes it up five degrees to A4, whatever the dice)
 press SEL
 wait 30
 press HOME
@@ -1282,16 +1282,16 @@ wait 1400
 tap PLAY
 wait 1500
 expect orbit 0
-expect pitch60 65
+expect pitch60 69
 tapkey 7
 wait 300
 expect latch 2
 expect sounding60 1
-expect pitch65 65
-tapkey 12
+expect pitch69 69
+tapkey 16
 wait 300
 expect latch 1
-expect sounding65 0
+expect sounding69 0
 expect sounding60 1
 param 36 0
 tap HOME
@@ -1395,7 +1395,7 @@ tap ENV
 wait 30
 spin SELECT 1
 wait 30
-expect page 5
+expect page 6
 expect p34 0
 turn K3 2 20
 wait 50
@@ -1421,7 +1421,7 @@ tap FX
 wait 30
 spin SELECT 1
 wait 30
-expect page 9
+expect page 10
 spin K2 40
 wait 30
 expect p20 100
@@ -1484,7 +1484,7 @@ wait 30
 expect orbitmode 3
 spin SELECT 1
 wait 30
-expect page 13
+expect page 15
 spin K3 2
 wait 300
 said 3/8
@@ -1856,7 +1856,7 @@ tap FX
 wait 30
 spin SELECT 3
 wait 30
-expect page 11
+expect page 12
 turn K3 1
 wait 50
 unsaid OFF
@@ -2146,7 +2146,7 @@ expect latch 3
 expect latchmode 1
 tap ARP
 wait 30
-expect page 12
+expect page 14
 listen
 press SEL
 wait 30
@@ -2154,7 +2154,7 @@ press HOME
 wait 30
 release HOME
 said ALL NOTES OFF
-expect page 12
+expect page 14
 tapkey 7
 wait 100
 expect latch 1
@@ -2310,7 +2310,7 @@ tap GLO
 wait 30
 spin SELECT 1
 wait 30
-expect page 15
+expect page 17
 expect ble_dev 1
 listen
 wait 700
@@ -2436,8 +2436,7 @@ wait 600
 expect latch 1
 expect level60 545
 expect bodies 1
-# STRUM dips each voice and the swell brings it back (the dip slides over 25 ms now, so it is heard as a dip and
-# not as a click): with SWELL long, a dipped voice stays down until PLAY stops
+# GEN has six modes since STRUM went: MODE spun past the last one stays on LOOP, and nothing dips a held voice
 reboot
 wait 700
 tap HOME
@@ -2447,19 +2446,17 @@ wait 60
 key 7 up
 wait 1000
 expect level60 1000
-param 8 100
-param 36 6
-param 25 127
-param 54 0
-param 24 20
+tap ARP
 wait 30
-expect orbitmode 6
-tap PLAY
-wait 600
-expect level60 <600
-tap PLAY
+spin K1 20
 wait 30
-wait 12000
+expect orbitmode 5
+spin K1 -20
+wait 30
+expect orbitmode 0
+tap HOME
+wait 30
+wait 2000
 expect level60 1000
 # ---- MIDI out owes a note off for every note on (the manual, section 10: a key sends a note on, and a note off
 # when its voice starts to fade). Four ways it did not, each fixed 2026-11-08
@@ -2562,3 +2559,54 @@ out
 tap SEL
 wait 50
 expect latchmode 1
+
+# ---- MIX: the bed's level, the leads' over it, and OUT under the MASTER pot (the HOME button's second page)
+reboot
+wait 700
+jack in
+master 4096
+tap HOME
+wait 600
+expect page 0
+spin SELECT 1
+wait 100
+expect page 1
+key 7 down
+wait 60
+key 7 up
+wait 2000
+peakreset
+wait 600
+expect peak_db_max >-40
+param 62 0
+wait 1200
+peakreset
+wait 800
+expect peak_db_max <-55
+param 62 127
+wait 1200
+# OUT is the third knob of the MIX page, and it is a setting, so the knob is the only way in
+spin K3 -40
+wait 30
+peakreset
+wait 800
+expect peak_db_max <-55
+spin K3 40
+wait 30
+peakreset
+wait 1000
+expect peak_db_max >-40
+spin SELECT -1
+wait 100
+expect page 0
+# ---- DUB: the delay's third type runs and rings on a held chord
+param 57 2
+param 19 100
+param 20 116
+param 21 90
+wait 100
+key 7 down
+wait 60
+key 7 up
+wait 2500
+expect fxon1 1

@@ -38,8 +38,9 @@ static float ens_ph1, ens_ph2;
  * 1.11 s): the input into the left, each leg's repeat crossing into the other with the feedback, the right read
  * 1.382 times the left so the sides never coincide (as long as the left when TIME is in time) - PING, and RISE and
  * FALL, which read each leg through two crossfading heads an octave up or down. Or one line of the whole 1.91 s:
- * TAPE (one head, darker and harder each pass, wandering more), HEADS (three heads at a third, two thirds and the
- * whole time, left centre right), REVERSE (two heads reading back across windows of the delay time), GRAINS (short
+ * TAPE (one head, darker and harder each pass, wandering more), DUB (one head whose feedback runs through a
+ * resonant low-pass set by TONE, the two sides 11 ms apart), REVERSE (two heads reading back across windows of the
+ * delay time), GRAINS (short
  * windowed pieces from up to 1.9 s back, one every delay time, scattered left and right). Every write passes two
  * allpasses (DIFFUSE), a low-pass and high-pass set by COLOUR and a soft clip. WOW moves every head's distance
  * (wow and flutter); CHOP gates the input in slices of the delay time. A change of TYPE fades the repeats out over
@@ -58,6 +59,7 @@ static const uint32_t DLY_AP[4] = {DLY_AP0, DLY_AP1, DLY_AP2, DLY_AP3};
 typedef char fx_ap_check[DLY_AP0 + DLY_AP1 + DLY_AP2 + DLY_AP3 == FX_DLY_AP
                          && DLY_AP0 + DLY_AP1 == DLY_AP_SUM && DLY_AP2 + DLY_AP3 == DLY_AP_SUM
                          && DLY_LEN_R > DLY_LEN_L ? 1 : -1];
+#define DLY_DUB_W 240u                   /* DUB: the second side read 11 ms behind the first, for width */
 #define DLY_SHIFT_G 1536u               /* RISE and FALL: a head's grain, 70 ms at the half rate */
 #define DLY_WOB_MAX 420.0f               /* the most WOW moves a head back, in half-rate samples (TAPE's at full) */
 #define DLY_NGR 6u                       /* GRAINS: pieces sounding at once */
@@ -67,8 +69,8 @@ static uint32_t dly_pos_l, dly_pos_r, dly_pos_w, dly_type_cur;
 static float dly_read, dly_ratio = DLY_RATIO, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
 static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
 static float dly_fade = 1.0f, chop_ph, chop_g = 1.0f, sh_ph, rev_ph, gr_left;
-static float on_fast, on_slow, on_hold;
-static uint32_t rev_lr;                  /* REVERSE: the side this swell leans to */  /* HEADS: a note's onset opens its slicing gate, so a played note echoes whole */
+static float dub_lp, dub_bp;             /* DUB: the resonant low-pass in the feedback loop */
+static uint32_t rev_lr;                  /* REVERSE: the side this swell leans to */
 typedef struct { float d, pos, len, gl, gr, rate; uint32_t on; } grain_t;   /* rate: how far its head moves a sample
                                                                             * against the line (0 unison, 1 an octave
                                                                             * up, -0.5 down, 0.5 a fifth up) */
@@ -235,7 +237,8 @@ void fx_init(void *arena)
     dly_type_cur = DT_PING;
     dly_pos_w = 0;
     dly_fade = chop_g = 1.0f;
-    chop_ph = sh_ph = rev_ph = gr_left = on_fast = on_slow = on_hold = 0.0f;
+    dub_lp = dub_bp = 0.0f;
+    chop_ph = sh_ph = rev_ph = gr_left = 0.0f;
     rev_lr = 0;
     for (i = 0; i < DLY_NGR; i++)
         grn[i].on = 0;
@@ -296,6 +299,7 @@ static void dly_clear(void)              /* a new TYPE: the buffer, the smearing
         grn[i].on = 0;
     dly_pos_l = dly_pos_r = dly_pos_w = 0;
     sh_ph = rev_ph = gr_left = 0.0f;
+    dub_lp = dub_bp = 0.0f;
 }
 static inline float gr_rand(void)        /* 0..1 */
 {
@@ -425,11 +429,22 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                   sh_inc = (ty == DT_RISE ? 1.0f : 0.5f) / (float)DLY_SHIFT_G, up = ty == DT_RISE ? 1.0f : -1.0f;
                                          /* the feedback as a square root: repeats from the first turn, 0.95 at full */
             float wa0, wa1, wf0, wf1, dwa, dwf;
+            float dub_fc = 180.0f * fm_exp2f(col * 4.3f),   /* DUB: TONE puts the loop's filter at 180 Hz to 3.5 kHz,
+                                                             * ringing hardest when it sits low */
+                  dub_f = fm_clampf(2.0f * fm_sin_turns(dub_fc * (0.5f / FSH)), 0.02f, 0.8f),
+                  dub_q = 0.75f + 0.25f * col;   /* Q 1.3 down to 1: enough to ring, and little enough that the
+                                                  * filter's peak cannot push the loop's gain over 1 on its own.
+                                                  * At 0.43 (a Q of 2.3) FDBK 40 grew instead of decaying: RAIN
+                                                  * CLOCK's render came up 8 dB over its 20 s */
             uint32_t h = n / 2u, want = p->dly_type < DT_COUNT ? p->dly_type : DT_PING;
             int32_t live = 0;
             if (ty == DT_TAPE) {         /* darker and harder each time round */
                 lpc *= 0.4f;
                 drive = 2.0f;
+            }
+            if (ty == DT_DUB) {          /* the loop saturates, and the resonance does the darkening */
+                drive = 1.8f;
+                lpc *= 0.8f;
             }
             if (per < 32.0f)
                 per = 32.0f;
@@ -461,19 +476,6 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     chop_ph -= 1.0f;
                 chop_g += ((chop_ph < duty ? 1.0f : 0.0f) - chop_g) * 0.02f;
                 in = dly_dn2 * chop_g * chop_mk;
-                if (ty == DT_HEADS) {                       /* a slice in at the start of each DLY TIME, the rest at a
-                                                             * quarter: the three heads make a held chord a triplet,
-                                                             * left, centre, right; a note's onset opens it whole */
-                    float a = fm_fabsf(dly_dn2), gate;
-                    on_fast += (a - on_fast) * 0.02f;
-                    on_slow += (a - on_slow) * 0.0008f;
-                    if (on_fast > 1.8f * on_slow + 0.002f)
-                        on_hold = 0.12f * FSH;
-                    gate = on_hold > 0.0f ? 1.0f : chop_ph < 0.3f ? 1.0f : 0.25f;
-                    if (on_hold > 0.0f)
-                        on_hold -= 1.0f;
-                    in *= gate;
-                }
                 dly_read += (tgt - dly_read) * slew;       /* a time change bends the pitch, like tape */
                 dly_ratio += (ratio_t - dly_ratio) * slew;
                 wa0 += dwa;
@@ -512,17 +514,18 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     outl = outr = o;
                     break;
                 }
-                case DT_HEADS: {                            /* a third, two thirds and the whole time back */
-                    float t3 = (dly_read + (float)DLY_AP_SUM) * (1.0f / 3.0f), d1 = t3 - (float)DLY_AP_SUM,
-                          d2 = 2.0f * t3 - (float)DLY_AP_SUM, h1, h2, h3;
-                    d1 = d1 < 16.0f ? 16.0f : d1;
-                    d2 = d2 < 16.0f ? 16.0f : d2;
-                    h1 = dly_tap(dly, DLY_LEN, dly_pos_w, d1 + wob, &live);
-                    h2 = dly_tap(dly, DLY_LEN, dly_pos_w, d2 + wob, &live);
-                    h3 = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob, &live);
-                    c = dly_leg(0, in + h3 * fb, g, lpc, hpa, drive);   /* the last head is the feedback */
-                    outl = 0.6f * h1 + 0.4f * h2 + 0.15f * h3;
-                    outr = 0.15f * h1 + 0.4f * h2 + 0.6f * h3;
+                case DT_DUB: {                              /* one head whose feedback runs through a resonant
+                                                             * low-pass: every pass darker and ringing a little more,
+                                                             * the two sides a few milliseconds apart. TONE sets where
+                                                             * the filter sits and how hard it rings */
+                    float h = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob, &live), hp;
+                    float w = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob + (float)DLY_DUB_W, &live);
+                    dub_lp += dub_f * dub_bp;               /* a state-variable low-pass inside the loop */
+                    hp = h - dub_lp - dub_q * dub_bp;
+                    dub_bp += dub_f * hp;
+                    c = dly_leg(0, in + dub_lp * fb, g, lpc, hpa, drive);
+                    outl = 0.9f * dub_lp + 0.2f * w;
+                    outr = 0.2f * dub_lp + 0.9f * w;
                     break;
                 }
                 case DT_REVERSE: {                          /* one head reading back across the last window, twice as

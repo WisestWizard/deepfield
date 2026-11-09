@@ -34,7 +34,7 @@ typedef struct {
     uint8_t model;                       /* the model it sounds in (a change restarts it) */
     uint8_t lead, held;                  /* a lead (LATCH off): held while its key is down, then it releases */
     int8_t ed_lvl, ed_tone, ed_tune;     /* its own LEVEL (dB), TONE (% of MASS), TUNE (cents): dr_body_edit */
-    uint8_t pinned;                      /* ORBIT, PULSE and the arp leave it where it is */
+    uint8_t pinned;                      /* ORBIT and the arp leave it where it is */
     uint8_t xf_out;                      /* handing over to its twin in the scene's new model: no note off, no restart */
     uint8_t dxs[4];                      /* DX: each operator's envelope stage, 1..3 toward L1..L3, 4 holding L3 */
     float ed_gain;                       /* LEVEL as a gain (0: muted) */
@@ -43,8 +43,6 @@ typedef struct {
     float mboost;                        /* a lead cuts: a little MASS of its own */
     float sp_det, sp_mass, sp_tide, sp_pan;   /* its own small differences (SPREAD): detune, MASS, tide rate, pan */
     float twalk, sway_ph, pan_live;      /* the timbre's walk, the sway's phase, the pan heard */
-    uint32_t pulse_left;                 /* PULSE: samples to its dip and swell, 0 none */
-    uint8_t pulse_dn;                    /* the dip under way: ticks left of its 25 ms slide down */
     uint8_t vel_raw;                     /* the velocity it was struck at, 1..127 (a save stores it) */
     float vtouch;                        /* that velocity as -1 .. 0: a full strike colours nothing, a soft one
                                           * darkens it (vmass) and eases it in (the swell). 0 whatever VELOCITY
@@ -60,7 +58,7 @@ typedef struct {
     float fs[6];                         /* CHOIR: the three formant filters' states */
     float gp;                            /* SHEPARD: the glide's place in its octave, 0..1 */
     uint32_t rng, age, lpos;
-    uint32_t pad[5];                     /* to a whole number of 32-byte lines: the two cores write different voices */
+    uint32_t pad[6];                     /* to a whole number of 32-byte lines: the two cores write different voices */
 } voice_t;
 typedef char voice_on_lines[(sizeof(voice_t) % 32u) == 0u ? 1 : -1];
 
@@ -68,6 +66,8 @@ typedef struct {                         /* what a block shares between its voic
     float mass, drift, shape, sub, air, swell_k, fade_m, press_amt, glide_k, tide_inc, tide_depth, wob_depth, wob_inc,
           walk_depth, width, bend, wheel, chan_press, breath_inc, hinc;
     float attack_k, rel_m, lead_level, lift;   /* the leads' envelope and place */
+    float bed_level, bed_rcp;            /* MIX's BED: the latched bodies' level, and 1 / (BED_GAIN * it), so
+                                          * CROSS reads the levels as it did whatever the mixer is set to */
     float spread, cross, twalk_depth, sway_inc, sway;   /* MOTION 2 */
     uint32_t model, n;
 } blk_t;
@@ -88,9 +88,18 @@ static uint32_t orbit_on, frozen, fx_bypass;
 static uint32_t orbit_left, orbit_per, orbit_rng = 0x2545F491u;
 static uint8_t pend_to[NV];              /* ORBIT: a body's destination note, 0 none */
 /* CYCLE: progressions as scale degrees from where the chord was struck (0 = home); the chord shifts along the
- * scale to each in turn, so in a major key the first is I IV V I, in a minor key i iv v i */
-static const uint8_t PROG[DR_PROGS][4] = {{0, 3, 4, 0}, {0, 5, 3, 4}, {0, 4, 5, 3}, {0, 5, 2, 6},
-                                          {0, 3, 0, 4}, {0, 1, 4, 0}, {0, 2, 5, 3}, {0, 6, 3, 0}};
+ * scale to each in turn, so the chords' own colour comes from SCALE. Only degrees 0, 2, 3, 4 and 5 are used: those
+ * are the five that stand as a consonant triad in both a major and a minor scale (1 and 6 are the diminished one in
+ * one of the two). They are loops for a held chord, not cadences - one or two notes move at a time and nothing
+ * leans on a dominant waiting to resolve, which is what made a I IV V sound unfinished under a drone. */
+static const uint8_t PROG[DR_PROGS][4] = {{0, 5, 0, 5},   /* VAMP: home and a third below, the two-chord rock */
+                                          {0, 3, 0, 3},   /* PLAGAL: home and a fourth above, the amen fall */
+                                          {0, 2, 0, 2},   /* MEDIANT: home and a third above, one note moving */
+                                          {0, 4, 0, 4},   /* SUSPENDED: home and its fifth, open and unresolved */
+                                          {0, 5, 4, 3},   /* DESCENT: the bass walking down, home sixth fifth fourth */
+                                          {0, 2, 3, 5},   /* RISE: up through the thirds and settling a third below */
+                                          {0, 5, 2, 3},   /* ROUND: the canon's turn without its dominant */
+                                          {0, 3, 5, 2}};  /* DRIFT: four chords that never point home */
 static uint32_t cyc_pos;                 /* the step the chord stands on */
 /* ECHO: the last eight lead notes the keys (or MIDI) played, replayed each period over the period, quieter each
  * time, notes dropped and jumped an octave with DECAY and JUMPS, until the phrase is gone or new notes come */
@@ -288,8 +297,6 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->sp_pan = frand(&v->rng);
     v->twalk = 0.0f;
     v->sway_ph = 0.5f + 0.5f * frand(&v->rng);
-    v->pulse_left = 0;
-    v->pulse_dn = 0;
     v->tide_ph = 0.75f + 0.13f * (float)(v - vc);        /* each body breathes from its own point of the wave */
     v->wob_ph = 0.0f;
     v->breath_ph = 0.0f;
@@ -949,8 +956,6 @@ static float shepard_window(uint32_t k, float gp, float mass)
     return w * fm_exp2f((mass - 0.5f) * 3.0f * (x - 0.5f));
 }
 
-#define PULSE_DN 34u                     /* STRUM's dip: 34 ticks, 25 ms, so it is heard as a dip and not a click */
-#define PULSE_DN_K 0.9598f               /* 0.25 over those ticks */
 static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
 {
     float cents, vib, note, f, prs, mass, tide, lvl, vk = 1.0f + v->vtouch * 0.5f;   /* a soft strike swells in half
@@ -1006,19 +1011,6 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
             v->quick = 0;
         }
     }
-    if (v->pulse_left) {                 /* STRUM: a dip, and the swell brings it back */
-        if (v->pulse_left > CTL)
-            v->pulse_left -= CTL;
-        else {
-            v->pulse_left = 0;
-            if (!v->fading && !v->lead)
-                v->pulse_dn = PULSE_DN;
-        }
-    }
-    if (v->pulse_dn) {                   /* down to a quarter over 25 ms, then the swell brings it back */
-        v->env *= PULSE_DN_K;
-        v->pulse_dn--;
-    }
     /* pressure: brighter and more wobble while the key is leaned on */
     prs = (float)press[v->home] * (1.0f / 127.0f);
     prs = prs > b->chan_press ? prs : b->chan_press;
@@ -1038,7 +1030,7 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
     if (b->cross > 0.0f && !v->lead) {  /* CROSS: the partner's swell bends this body (bodies in pairs) */
         const voice_t *q = &vc[(v - vc) ^ 1u];
         if (q->on && !q->lead)
-            cents += (q->lvl_s - v->lvl_s) * (1.0f / BED_GAIN) * b->cross * 180.0f;   /* the trim not in the bend */
+            cents += (q->lvl_s - v->lvl_s) * b->bed_rcp * b->cross * 180.0f;   /* the trim not in the bend */
     }
     v->wob_ph += b->wob_inc * (1.0f + 0.09f * (float)(v - vc));
     if (v->wob_ph >= 1.0f)
@@ -1056,7 +1048,7 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
     v->spark = 0.5f + 0.5f * tsin(v->tide_ph);
     tide = v->lead ? 1.0f : 1.0f - b->tide_depth * v->spark;   /* a lead does not breathe */
     lvl = v->env * (v->xf != 0.0f ? 2.0f - v->env : 1.0f)    /* a hand-over: equal power, the pair 0.5 dB up midway */
-        * v->vel * tide * (v->lead ? b->lead_level : v->ed_gain * BED_GAIN);
+        * v->vel * tide * (v->lead ? b->lead_level : v->ed_gain * BED_GAIN * b->bed_level);
     *lvl_out = lvl;
     v->breath_ph += b->breath_inc;
     if (v->breath_ph >= 1.0f)
@@ -1612,6 +1604,10 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
     float inc[4], amp[4], ph[4], fb1 = v->z[0], fb2 = v->z[1], mass = vmass(v, b);
     float rate_x = fm_clampf(1.5f / dr_time_s((uint32_t)(p01(P_SWELL) * 127.0f)), 0.05f, 8.0f) * ((float)CTL / FS);
     float bright = (mass - 0.5f) * 40.0f + b->drift * 10.0f * tsin(v->breath_ph), fbv, fbg, cg;
+    float idx = mass * mass * 1.2f * (1.0f + b->drift * 0.25f * tsin(v->breath_ph));   /* the modulators' index, in
+                                         * turns of phase: MASS squared keeps the lower half clean, DRIFT breathes it.
+                                         * Each modulator takes its share by its own level and envelope, so a voice
+                                         * keeps its balance while FM AMOUNT sweeps the whole set */
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, l = v->lvl_s, dl = (lvl - l) / (float)m;
     float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     fbv = fm_clampf((float)dv->fb + b->air * 4.0f, 0.0f, 7.0f) * (1.0f / 7.0f);
@@ -1643,12 +1639,17 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
             v->dxs[k] = (uint8_t)st;
         }
         L = (float)o->level;
-        if (!(car >> k & 1u))            /* a modulator: brighter with MASS, breathing with DRIFT */
-            L = fm_clampf(L + bright, 0.0f, 99.0f);
-        else
+        if (!(car >> k & 1u)) {          /* a modulator: its level is an index in turns, not a gain, so FM AMOUNT
+                                          * reaches a bright voice from a clean one; the DX gain law would put it
+                                          * 40 dB down, where the knob moved nothing anyone could hear */
+            amp[k] = idx * (L * (1.0f / 99.0f)) * (v->dxl[k] * (1.0f / 99.0f));
+        } else {
             nc++;
-        L -= 99.0f - v->dxl[k];
-        amp[k] = L > 0.0f ? fm_exp2f((L - 99.0f) * (0.75f / 6.0206f)) : 0.0f;
+            if (dv->alg == DXA_ADD && k)  /* four sines: no modulator to brighten, so FM AMOUNT tilts the upper three */
+                L = fm_clampf(L + bright, 0.0f, 99.0f);
+            L -= 99.0f - v->dxl[k];
+            amp[k] = L > 0.0f ? fm_exp2f((L - 99.0f) * (0.75f / 6.0206f)) : 0.0f;
+        }
         inc[k] = f / FS * (o->coarse ? (float)o->coarse : 0.5f) * (1.0f + (float)o->fine * 0.01f)
                * (1.0f + (float)o->det * (1.0f + b->drift) * (3.0f / 1200.0f * 0.6931472f));   /* a few cents: 1 + x ln 2 */
         if (inc[k] > 0.45f)
@@ -2103,20 +2104,6 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
-    if (mode == OM_PULSE) {              /* a roll of dips across the chord, low to high, ROLL apart */
-        uint32_t j, k;
-        float roll = p01(P_ORB_ROLL) * (float)orbit_per * 0.6f / (float)(cnt > 1u ? cnt - 1u : 1u);
-        for (j = 0; j < cnt; j++)        /* sorted low to high */
-            for (k = j + 1u; k < cnt; k++)
-                if (cand[k]->pitch < cand[j]->pitch) {
-                    voice_t *t = cand[j];
-                    cand[j] = cand[k];
-                    cand[k] = t;
-                }
-        for (j = 0; j < cnt; j++)
-            cand[j]->pulse_left = 1u + (uint32_t)(roll * (float)j);
-        return;
-    }
     if (mode == OM_CYCLE) {              /* the chord to the progression's next degree, from where it was struck */
         uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, nxt_pos = (cyc_pos + 1u) % 4u;
         int32_t d = (int32_t)PROG[prog][nxt_pos];
@@ -2353,7 +2340,7 @@ static float orbit_period_s(void);
 static uint32_t orbit_clocks(void);
 static void orbit_now(void)              /* SEL + PLAY: the move coming comes now; ARP: the next step now. Nothing
                                           * planned (CHANCE said no, or the countdown just began): a move is chosen
-                                          * now, whatever CHANCE says. STRUM and LOOP plan and play over the period, so
+                                          * now, whatever CHANCE says. LOOP plans and plays over the period, so
                                           * for them the period starts over now. Then the countdown runs again */
 {
     uint32_t i, mode = dr_orbit_mode(), planned = 0;
@@ -2370,7 +2357,7 @@ static void orbit_now(void)              /* SEL + PLAY: the move coming comes no
         orbit_clk_left = orbit_clk_per = orbit_clocks();
     else
         orbit_left = orbit_per = (uint32_t)(orbit_period_s() * FS);
-    if (mode == OM_PULSE || mode == OM_ECHO) {
+    if (mode == OM_ECHO) {
         orbit_force = 1;
         orbit_plan();
         return;
@@ -2500,6 +2487,8 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
     }
 }
 int dr_echo_running(void) { return orbit_on && dr_orbit_mode() == OM_ECHO && echo_n > 0u && echo_vel >= 0.08f; }
+uint32_t dr_loop_notes(void) { return echo_n; }   /* LOOP's phrase: notes captured, 0 when nothing was played
+                                                   * as a lead (the keys latch, so LATCH must be off to fill it) */
 static void orbit_tick(uint32_t n)
 {
     uint32_t mode;
@@ -2898,6 +2887,8 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     b->hinc = (0.03f + 0.25f * p01(P_TIDE_RATE)) * ((float)CTL / FS);
     b->attack_k = (float)CTL / (dr_attack_s((uint32_t)(p01(P_LD_ATTACK) * 127.0f)) * FS);
     b->rel_m = fm_expf(-(float)CTL / (dr_release_s((uint32_t)(p01(P_LD_RELEASE) * 127.0f)) * FS) * 5.0f);
+    b->bed_level = p01(P_BED_LEVEL) * p01(P_BED_LEVEL);   /* MIX's BED: squared, unity at the top */
+    b->bed_rcp = 1.0f / (BED_GAIN * (b->bed_level > 0.02f ? b->bed_level : 0.02f));
     b->lead_level = p01(P_LD_LEVEL) * fm_sqrtf(p01(P_LD_LEVEL)) * 2.0f;   /* 75: 2 dB over a body (the bed's trim); full: 9 dB over */
     b->lift = (float)(uint32_t)(p01(P_LD_LIFT) * 24.99f);                 /* whole semitones, up to two octaves */
     b->spread = p01(P_SPREAD);

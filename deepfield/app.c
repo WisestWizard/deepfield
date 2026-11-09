@@ -329,13 +329,20 @@ static uint32_t rec_gain(void)           /* what a computer records: MASTER squa
     uint32_t m = plat_master();
     return (uint32_t)USB_TRIM_Q12[set.usb_level < 7u ? set.usb_level : 2u] * (m * m >> 12) >> 12;
 }
+static uint32_t out_trim(uint32_t m)     /* MIX's OUT: a digital trim under the MASTER pot, squared like the pot's
+                                          * own law, unity at the top, on the speaker and on what a computer
+                                          * records alike */
+{
+    uint32_t o = set.out_level < 128u ? set.out_level : 127u;
+    return m * (o * o) / (127u * 127u);
+}
 void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 {
     crumb.render = 1;
     midi_in();
     if (set.speaker != SPK_ON && usb_recording())
         master_q12 = rec_gain();
-    dr_render(lr, n, master_q12);
+    dr_render(lr, n, out_trim(master_q12));
     crumb.render = 0;
 }
 void app_panic(void) { dr_panic(); }

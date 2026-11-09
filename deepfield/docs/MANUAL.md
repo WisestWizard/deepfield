@@ -17,6 +17,14 @@ once.
 
 ![The screen at rest: F6 NEBULA in the header with the SEL LATCH pill lit, four voices as beams over the keys strip, the HOME page's four macros in a row below](img/screen-home.png "DEEP FIELD at rest")
 
+**The mixer.** HOME and SELECT once is the MIX page: **BED** is the level of everything latched, **LEAD** the
+notes you play over it, and **OUT** a trim that sits under the MASTER pot and applies to the speaker, the
+headphones and a USB recording alike. A thick latched chord buries an echo; take BED down a little and the delay
+and the hall come back into the room without touching a single effect. BED and LEAD belong to the preset; OUT is
+yours and stays where you put it.
+
+![The MIX page: BED, LEAD, OUT](img/screen-mix.png "The mixer")
+
 ---
 
 ## Contents
@@ -167,7 +175,7 @@ preset's chord (section 9) latches its voices and turns LATCH on.
    - **TONE**: the voice's own TIMBRE, -50% to +50%: a dark root under a bright top.
    - **TUNE**: -50 to +50 cents, a cent a click. A few cents on a fifth makes it beat slowly; -14 cents on a major
      third makes it pure.
-   - **LOCK**: turn right for ON, left for OFF. GEN never moves a locked voice, STRUM never dips it, and ARP
+   - **LOCK**: turn right for ON, left for OFF. GEN never moves a locked voice, and ARP
      leaves it out, so SHIFT and PROG move the rest of the chord over it like a pedal note. Moving the chord with
      SEL still moves it. A sun bar across the foot of its beam marks it.
 4. Let go of the key. The footer goes back to the page you were on, and the voice keeps its values and keeps
@@ -256,6 +264,7 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | Button | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- | --- | --- |
 | HOME | HOME | TIMBRE | DRIFT | REVERB | TREMOLO |
+| HOME, SELECT once | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
 | EDIT | OSC | MODEL (also on ALGORITHM) | SHAPE (named for the model) | SUB | NOISE (named for the model) |
 | EDIT, SELECT once | NOISE | LEVEL (0 is off) | COLOR (brown to white) | RATE (how fast it moves, how often it gusts) | BANDPASS (wide, narrow, or on the voices: see below) |
 | EDIT, SELECT twice | NOISE 2 | TYPE (hiss, rain, crackle) | GUST (how much it swells now and then) | DUCK (how far it drops under a chord) | WIDTH (its own stereo width) |
@@ -264,9 +273,10 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | LFO | LFO | TREM RATE | VIBRATO (up to 40 cents either way, at DRIFT's rate; each voice a little faster than the one below) | RANDOM (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
 | LFO, SELECT once | VOICES | SPREAD (how unlike each other the voices are) | CROSS MOD (pairs bending each other's pitch) | TIMBRE DRIFT (each voice's TIMBRE wandering) | PAN DRIFT (each voice drifting across the stereo field) |
 | FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest) | ENS MIX | – | – |
-| FX, SELECT once | DELAY | TYPE (PING PONG, TAPE, MULTI TAP, REVERSE, OCT UP, OCT DOWN, GRANULAR) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
+| FX, SELECT once | DELAY | TYPE (PING PONG, TAPE, DUB, REVERSE, OCT UP, OCT DOWN, GRANULAR) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
 | FX, SELECT twice | DELAY 2 | TONE (dark or bright repeats) | DIFFUSION (echoes blurred into a cloud) | WOW (how far the tape wanders) | GATE (only slices of the sound go in) |
 | FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (the same as on HOME) |
+| FX, SELECT four times | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
 | ARP | GEN | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
 | ARP, SELECT once | GEN 2 | RETURN | OCTAVES (ARP, 1 to 3) | EUCLID (ARP: its hits and rests) | DIV (ARP: a step's length) |
 | GLO | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | – |
@@ -291,7 +301,7 @@ empty. In this manual, and over MIDI, they are TIMBRE, SHAPE and NOISE.
 | SHEPARD | Six octaves of sine under a moving window: a rise or fall that never ends | CENTER: leans the window high or low | RISE/FALL: still at the middle; below it falls, above it rises, faster further from the middle |
 | WAVEFOLD | A sine through a wavefolder (DRIFT makes the fold breathe) | CUTOFF: the filter after the fold | FOLD: how hard it folds |
 | WAVETABLE | Pocket Poly's three wavetables in one sweep: ANALOG (sine to saw, square and a narrow pulse), VOX (vowels), GLASS (a bright cluster that climbs). DRIFT lets each voice's place wander. | CUTOFF: a filter that follows the note; the level stays the same | POSITION: where in the sweep; the screen names the table and its frame (ANALOG 1 to GLASS 16) |
-| FM 4-OP | Four-operator FM after Pocket Poly's FM engine. Its envelopes run at ATTACK's pace, so a slow ATTACK evolves the timbre slowly. DRIFT breathes the brightness. | FM AMOUNT: the FM depth | PATCH, one a click: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER |
+| FM 4-OP | Four-operator FM after Pocket Poly's FM engine. Its envelopes run at ATTACK's pace, so a slow ATTACK evolves the timbre slowly. DRIFT breathes the brightness. | FM AMOUNT: how hard the modulators drive the carriers, from clean sine stacks at the bottom to a bright, metallic voice at the top. On ORGAN, the one patch with no modulator, it tilts the upper three sines instead | PATCH, one a click: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER |
 | SYNC | A saw hard-synced to the note (Pocket Poly's sync, with every edge smoothed so it stays clean up high): the snarl of a sync sweep. DRIFT breathes the ratio, so the sound's formant slides. | CUTOFF: a filter that follows the note, and a little drive | RATIO: the synced saw's speed against the note, X1.0 to X8.0 |
 | TAPE | A loop on worn tape: wow (a slow sway in pitch, its own for each voice), flutter, and now and then a dropout, the sound sinking and darkening for a third of a second. DRIFT is how worn it is: more wow, more dropouts. Everything saturates a little. | BANDWIDTH: the tape's bandwidth | SOURCE: the sound on the tape, a soft organ (0%) to a saw (100%) |
 | RESONATOR | Noise played into five resonances over the note, like a singing bowl or a glass kept ringing: it sustains, shimmering as the noise moves through it. DRIFT adds a slow shimmer in their tuning. | BRIGHTNESS: how bright the upper resonances ring | MATERIAL: PURE (in tune with the note's harmonics), GLASS, BOWL, then BRONZE (a gong's crowded tones) |
@@ -340,7 +350,7 @@ of delay it is:
 |---|---|
 | PING PONG | Left, then right, then left again, each repeat a little further away. The right-hand echo comes a little later than the left one, so the repeats never fall into a pattern. |
 | TAPE | One echo in the middle, darker and grittier each time round, its pitch swaying (about 22 cents either way at WOW's default, more as WOW rises), so even over a held chord you hear it waver and beat. |
-| MULTI TAP | Three echoes for every one: at a third, two thirds and the whole of DLY TIME, left, centre and right. One note becomes a rhythm; a held chord comes back as a pulsing triplet, left, centre, right, because only a slice of it goes in each DLY TIME (a note you play goes in whole). |
+| DUB | One echo whose feedback runs through a resonant filter: every repeat is darker than the last and rings a little more around the note TONE sits on, and the two sides are 11 ms apart, so it spreads as it goes. The ring is what makes it carry over a held chord. With DLY FDBK near full it stops decaying and sits there, a ringing drone you can play against. |
 | REVERSE | Each echo plays backwards: a note's echo swells up to where it started. Each backward swell rises and is cut, from alternate sides, so a held chord breathes in once every DLY TIME. |
 | OCT UP | Each echo an octave higher than the last, climbing out of the drone and thinning as it goes. |
 | OCT DOWN | Each echo an octave lower, sinking under the drone. |
@@ -349,7 +359,7 @@ of delay it is:
 Turning TYPE fades the echoes out and starts the new kind fresh.
 
 A held drone hides a plain echo: an echo of a steady sound is the same steady sound. So each kind changes what comes
-back: PING PONG moves left and right, TAPE wavers, MULTI TAP pulses, REVERSE breathes, OCT UP and OCT DOWN change octave, GRANULAR
+back: PING PONG moves left and right, TAPE wavers, DUB rings and darkens, REVERSE breathes, OCT UP and OCT DOWN change octave, GRANULAR
 glitters. GATE and WOW help on all of them. To hear a kind on its own, play short notes with LATCH off and no chord
 held, REVERB down.
 
@@ -390,9 +400,8 @@ and PLAY's colour shows it:
 | SHIFT | orange | RATE, CHANCE, RANGE | All the voices move together by the same number of scale steps, up to RANGE, so the whole chord shifts to a related one. |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
-| PROG | orange | RATE, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord. |
-| LOOP | orange | RATE, DECAY, OCT JUMP | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every RATE seconds, each note at the velocity you played it at and the whole phrase quieter each time, losing notes (DECAY) and jumping octaves (OCT JUMP) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. |
-| STRUM | orange | RATE, CHANCE, SPEED | Every RATE seconds, with a CHANCE, each voice dips (over about 25 ms, so it is heard as a dip and not a click) and swells back at ATTACK speed, from low to high, SPEED apart: a slow strum across the chord. |
+| PROG | orange | RATE, CHANCE, CHORDS | The chord walks through a progression, picked with CHORDS (below). Each step is counted in scale degrees from where you played the chord, so the chords' colour comes from SCALE. |
+| LOOP | orange | RATE, DECAY, OCT JUMP | Your last eight leads (keys played with LATCH off, or MIDI notes then) come back as a phrase every RATE seconds, each note at the velocity you played it at and the whole phrase quieter each time, losing notes (DECAY) and jumping octaves (OCT JUMP) until it is gone. A new note starts it again with the new phrase. ARP's own notes don't count. The pill counts the phrase (LOOP 5) and lights while it plays; with nothing caught it reads LOOP EMPTY, which is what you see with LATCH on, since the keys make voices then and no lead is ever played. |
 
 ARP and LOOP play from the keys, so they need nothing latched. Every other mode moves latched voices: with none,
 nothing moves. RANDOM has no CHANCE knob but still uses the CHANCE last set in another mode; LOOP ignores CHANCE
@@ -412,8 +421,21 @@ RELEASE (LEAD page) toll like bells.
 
 ![The GEN 2 page: RETURN, OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
 
-PROG's progressions: I IV V, I VI IV V, I V VI IV, I VI III VII, I IV I V, I II V, I III VI IV and I VII IV. They
-are scale degrees, so in a minor key I IV V means i iv v.
+PROG's progressions are loops for a held chord, not cadences: one or two notes move at a time and none of them
+leans on a chord that wants to resolve, which is what made the old I IV V sets sound unfinished under a drone.
+Each is a walk in scale degrees from where you played the chord, so the colour comes from SCALE; all of them use
+only the degrees that stand as a full chord in a major and a minor scale alike.
+
+| CHORDS | Where the chord goes |
+|---|---|
+| VAMP | Home, a third below, home, a third below: the two-chord rock vamp. |
+| PLAGAL | Home and a fourth above, back and forth: the amen fall. |
+| MEDIANT | Home and a third above: one note moves, the other two stay. |
+| SUSPENDED | Home and its fifth: open, and never resolved. |
+| DESCENT | Home, a sixth, a fifth, a fourth: the bass walks down. |
+| RISE | Up through the thirds and settling a third below home. |
+| ROUND | The turn a canon makes, without the chord that would end it. |
+| DRIFT | Four chords that never point home. |
 
 **RETURN** (GEN 2) is the chance that a voice, or in SHIFT the whole chord, is pulled back to the key where it
 started. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
@@ -421,7 +443,7 @@ a note on.
 
 **The next move now.** Hold SEL and press PLAY: the move that is coming comes at once, and the countdown starts
 over. If nothing was coming (CHANCE said no, or the countdown had just begun), a move is chosen now, whatever
-CHANCE says. In ARP it is the next step; in LOOP and STRUM the period starts over, the phrase or the strum with it.
+CHANCE says. In ARP it is the next step; in LOOP the period starts over, the phrase with it.
 So a change lands on the beat you want rather than about then; MIDI CC 14 does the same (section 10).
 
 **Seeing where it goes.** GEN picks each move when the countdown starts, so you can see it coming. A line grows
@@ -481,6 +503,8 @@ REVERB, in the same order as the keys.
 ![FX held: the effect switches large, ON or OFF, in a row](img/screen-fxlayer.png "The effects layer")
 
 ![The REVERB page: DECAY, DAMPING, SHIMMER, REVERB](img/screen-fx-reverb.png "The REVERB page")
+
+![The FX MIX page: ENS MIX, DLY MIX, REVERB, SHIMMER](img/screen-fx-mix.png "Every effect's level on one screen")
 
 ---
 
@@ -555,13 +579,13 @@ the preset as meant.
 | F5 PULSAR | SYNC | C3 G3 Bb3 F4 | ARP 120, 5/8 | PING PONG, gated | Dry and pulsing; a hard-sync arpeggio over a gated echo |
 | F6 NEBULA | ADDITIVE | C4 D4 E4 F4 G4 | RANDOM | GRANULAR | A hollow cluster, very slow swells, drowned in reverb, a wind bed |
 | F7 DEEP VOID | TAPE | C2 | LOOP | TAPE | One low note on worn tape, sub and crackle; your leads loop back an octave up |
-| F8 STARLIGHT | WAVETABLE | C4 G4 D5 G5 | STRUM | PING PONG | High glass, slowly strummed |
-| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | PROG I VI IV V | – | An open vowel in a big hall, walking a progression |
-| F10 RAIN CLOCK | FM 4-OP | C3 Bb3 Eb4 G4 D5 | ARP 92, 5/8, random | MULTI TAP, gated | A triplet-tapped electric piano under rain; nearly dry |
+| F8 STARLIGHT | WAVETABLE | C4 G4 D5 G5 | WALK | PING PONG | High glass, drifting |
+| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | PROG VAMP | – | An open vowel in a big hall, walking a progression |
+| F10 RAIN CLOCK | FM 4-OP | C3 Bb3 Eb4 G4 D5 | ARP 92, 5/8, random | DUB, gated | An electric piano under rain, its echo ringing; nearly dry |
 | F11 GAMELAN | BELL | C4 D4 G4 A4 C5 | RANDOM, fast | PING PONG, gated | Bell ratios, gated echo pulses; nearly dry |
-| F12 BRONZE BOWL | RESONATOR | C3 G3 D4 A4 | STRUM | GRANULAR | Singing bowls dipped in turn, under glitter and shimmer |
+| F12 BRONZE BOWL | RESONATOR | C3 G3 D4 A4 | WALK | GRANULAR | Singing bowls under glitter and shimmer |
 | F13 ASCENT | SHEPARD | C3 G3 C4 | SHIFT | OCT UP | Rising, the echoes climbing with it |
-| F14 DESCENT | SHEPARD | C2 G2 G3 | PROG I VII IV | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
+| F14 DESCENT | SHEPARD | C2 G2 G3 | PROG DESCENT | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
 | F15 FOLDED SUN | WAVEFOLD | C3 G3 E4 A4 D5 | LOOP | TAPE | Bright 6/9, ensemble; your leads loop back over it |
 | F16 INIT | ADDITIVE | none | WALK | – | Every value at its starting point: build your own from here |
 
@@ -605,7 +629,8 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 23, 24, 25 | COLOR, RATE, BANDPASS (NOISE) |
 | 26, 27, 28, 29 | TYPE, GUST, DUCK, WIDTH (NOISE 2) |
 | 30 | AFTERTOUCH |
-| 52, 53, 54 | DECAY and OCT JUMP (LOOP), SPEED (STRUM) |
+| 52, 53 | DECAY and OCT JUMP (LOOP) |
+| 54 | BED (MIX) |
 | 55, 56 | EUCLID, DIV |
 | 57 | LATCH (switch) |
 | 58 | GEN on or off, like PLAY (switch) |

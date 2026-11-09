@@ -4,7 +4,9 @@
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
  * Slots 0..15 are F1..F16, 16..31 are U1..U16. A scene is the whole instrument: every parameter and the bodies
  * that were latched when it was saved. */
-#define SET_MAGIC 0x35464544u            /* "DEF5": the settings record (VELOCITY on by default); DEF4 and DEF3 are
+#define SET_MAGIC 0x36464544u            /* "DEF6": the settings record (the MIX page's OUT trim in the byte DEF5
+                                          * kept spare, so a DEF5 record reads straight with OUT at unity) */
+#define SET_MAGIC_V5 0x35464544u         /* "DEF5": the same record, VELOCITY on by default; DEF4 and DEF3 are
                                           * read and brought up to date, another magic loads defaults */
 #define SET_MAGIC_V4 0x34464544u
 #define SET_MAGIC_V3 0x33464544u
@@ -26,7 +28,7 @@ typedef struct {
     uint8_t speaker;                     /* SPK_*: the speaker and headphones while recording over USB */
     uint8_t usb_level;                   /* the recording's level while a computer records: 0 .. 6 = 0 .. -18 dB by 3 */
     uint8_t clock_out;                   /* MIDI clock out while the runner runs from RATE */
-    uint8_t rsv;
+    uint8_t out_level;                   /* MIX's OUT: a digital trim under the MASTER pot, 0..127 (127 unity) */
 } settings_t;
 #define SET_SIZE_V3 16u
 static settings_t set;
@@ -114,7 +116,7 @@ static void scene_init(scene_t *s, const char *name)
         [P_NZ_TEXTURE] = 0, [P_NZ_GUST] = 0, [P_NZ_DUCK] = 30, [P_NZ_WIDTH] = 70,
         [P_ORB_PROG] = 0,
         [P_SPREAD] = 30, [P_CROSS] = 0, [P_TWALK] = 25, [P_SWAY] = 15,
-        [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50,
+        [P_ECHO_DECAY] = 50, [P_ECHO_JUMP] = 25, [P_ORB_ROLL] = 50, [P_BED_LEVEL] = 127,
         [P_DLY_DIFF] = 25, [P_DLY_COLOUR] = 50,
         [P_DLY_TYPE] = DT_PING, [P_DLY_WOW] = 40, [P_DLY_CHOP] = 0,   /* WOW 40: the wander the delay always had */
         [P_ARP_RHYTHM] = 0, [P_ARP_DIV] = 2,                          /* every step a note, an eighth: as before */
@@ -230,27 +232,27 @@ static void factory_build(void)
                                          {P_NZ_WIND, 30}, {P_NZ_BAND, 10}, {P_NZ_TEXTURE, 90}, {P_NZ_GUST, 25},
                                          {P_NZ_DUCK, 30}, {P_NZ_WIDTH, 80}, END};
     static const uint8_t DEEP_VOID_N[] = {36, 0};
-    /* F8 STARLIGHT: WAVETABLE in the GLASS table with unison, a high sus2, wide; STRUM every 5 s; PING PONG in 1/4. */
+    /* F8 STARLIGHT: WAVETABLE in the GLASS table with unison, a high sus2, wide; WALK every 5 s; PING PONG in 1/4. */
     static const change_t STARLIGHT[] = {{P_MODEL, M_SCAN}, {P_MASS, 60}, {P_DRIFT, 45}, {P_SPACE, 60}, {P_TIDE, 40},
                                          {P_SHAPE, 96}, {P_SUB, 10}, {P_AIR, 45}, {P_SWELL, 25}, {P_FADE, 78},
                                          {P_TIDE_RATE, 50}, {P_WIDTH, 100}, {P_REV_SIZE, 72}, {P_REV_DAMP, 25},
                                          {P_ENS, ENS_CHORUS1}, {P_ENS_MIX, 30}, {P_DLY_TYPE, DT_PING}, {P_DLY_MIX, 35},
                                          {P_DLY_TIME, 116}, {P_DLY_FDBK, 45}, {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 75},
-                                         {P_ORB_MODE, OM_PULSE}, {P_ORB_PERIOD, 78}, {P_ORB_CHANCE, 80}, {P_ORB_ROLL, 60},
+                                         {P_ORB_MODE, OM_WANDER}, {P_ORB_PERIOD, 78}, {P_ORB_CHANCE, 80},
                                          {P_SPREAD, 70}, {P_TWALK, 40}, {P_SWAY, 50}, END};
     static const uint8_t STARLIGHT_N[] = {60, 67, 74, 79, 0};
-    /* F9 CATHEDRAL: FORMANT, a quartal stack on an open vowel in a big hall; PROG walks I VI IV V every 8 s. */
+    /* F9 CATHEDRAL: FORMANT, a quartal stack on an open vowel in a big hall; PROG walks VAMP every 8 s. */
     static const change_t CATHEDRAL[] = {{P_MODEL, M_CHOIR}, {P_MASS, 32}, {P_DRIFT, 35}, {P_SPACE, 60}, {P_TIDE, 30},
                                          {P_SHAPE, 20}, {P_SUB, 20}, {P_AIR, 25}, {P_SWELL, 45}, {P_FADE, 90},
                                          {P_TIDE_RATE, 30}, {P_WOBBLE, 15}, {P_WIDTH, 85}, {P_REV_SIZE, 88},
                                          {P_REV_DAMP, 35}, {P_ORB_MODE, OM_CYCLE}, {P_ORB_PERIOD, 87}, {P_ORB_CHANCE, 127},
-                                         {P_ORB_PROG, 1}, {P_SPREAD, 55}, {P_CROSS, 10}, {P_TWALK, 35}, {P_SWAY, 30}, END};
+                                         {P_ORB_PROG, 0}, {P_SPREAD, 55}, {P_CROSS, 10}, {P_TWALK, 35}, {P_SWAY, 30}, END};
     static const uint8_t CATHEDRAL_N[] = {48, 53, 58, 63, 0};
-    /* F10 RAIN CLOCK: FM 4-OP E.PIANO, a minor ninth, dry; ARP 5/8 at 92 BPM in a random order, a gated MULTI TAP
+    /* F10 RAIN CLOCK: FM 4-OP E.PIANO, a minor ninth, dry; ARP 5/8 at 92 BPM in a random order, a gated DUB echo
      * in 1/4, under rain. */
     static const change_t RAIN_CLOCK[] = {{P_MODEL, M_DX}, {P_MASS, 55}, {P_DRIFT, 35}, {P_SPACE, 22}, {P_TIDE, 25},
                                           {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 25}, {P_SWELL, 30}, {P_FADE, 80},
-                                          {P_WIDTH, 80}, {P_REV_SIZE, 60}, {P_REV_DAMP, 50}, {P_DLY_TYPE, DT_HEADS},
+                                          {P_WIDTH, 80}, {P_REV_SIZE, 60}, {P_REV_DAMP, 50}, {P_DLY_TYPE, DT_DUB},
                                           {P_DLY_MIX, 45}, {P_DLY_TIME, 116}, {P_DLY_FDBK, 40}, {P_DLY_DIFF, 10},
                                           {P_DLY_COLOUR, 65}, {P_DLY_CHOP, 50}, {P_ORB_MODE, OM_ARP}, {P_ARP_RATE, 33},
                                           {P_ARP_GATE, 50}, {P_ARP_ORDER, AO_RANDOM}, {P_ARP_OCT, 1}, {P_ARP_RHYTHM, 1},
@@ -268,14 +270,14 @@ static void factory_build(void)
                                        {P_ORB_PERIOD, 60}, {P_ORB_BODIES, 50}, {P_ORB_RANGE, 60}, {P_SPREAD, 65},
                                        {P_TWALK, 15}, {P_SWAY, 20}, END};
     static const uint8_t GAMELAN_N[] = {60, 62, 67, 69, 72, 0};
-    /* F12 BRONZE BOWL: RESONATOR between BOWL and BRONZE, stacked fifths, slow swells and shimmer; STRUM every 4 s
+    /* F12 BRONZE BOWL: RESONATOR between BOWL and BRONZE, stacked fifths, slow swells and shimmer; WALK every 4 s
      * dips each voice in turn; a GRANULAR glitter. */
     static const change_t BRONZE_BOWL[] = {{P_MODEL, M_RESON}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
                                            {P_SHAPE, 100}, {P_SUB, 15}, {P_AIR, 20}, {P_SWELL, 50}, {P_FADE, 90},
                                            {P_TIDE_RATE, 35}, {P_WOBBLE, 8}, {P_WIDTH, 90}, {P_REV_SIZE, 85},
                                            {P_REV_DAMP, 20}, {P_SHIMMER, 20}, {P_DLY_TYPE, DT_GRAINS}, {P_DLY_MIX, 40},
                                            {P_DLY_TIME, 60}, {P_DLY_FDBK, 45}, {P_DLY_DIFF, 40}, {P_DLY_COLOUR, 70},
-                                           {P_ORB_MODE, OM_PULSE}, {P_ORB_PERIOD, 73}, {P_ORB_CHANCE, 90}, {P_ORB_ROLL, 70},
+                                           {P_ORB_MODE, OM_WANDER}, {P_ORB_PERIOD, 73}, {P_ORB_CHANCE, 90},
                                            {P_SPREAD, 60}, {P_TWALK, 30}, {P_SWAY, 35}, END};
     static const uint8_t BRONZE_BOWL_N[] = {48, 55, 62, 69, 0};
     /* F13 ASCENT: SHEPARD rising over an octave-fifth; SHIFT every 10 s; OCT UP echoes climb with it. */
@@ -287,14 +289,14 @@ static void factory_build(void)
                                       {P_ORB_CHANCE, 70}, {P_ORB_DIST, 40}, {P_GRAVITY, 30}, {P_SPREAD, 40},
                                       {P_TWALK, 25}, {P_SWAY, 50}, END};
     static const uint8_t ASCENT_N[] = {48, 55, 60, 0};
-    /* F14 DESCENT: SHEPARD falling over a low open fifth, dark; PROG walks I VII IV every 13 s; OCT DOWN echoes sink
+    /* F14 DESCENT: SHEPARD falling over a low open fifth, dark; PROG walks DESCENT every 13 s; OCT DOWN echoes sink
      * under it, a low wind. */
     static const change_t DESCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 35}, {P_DRIFT, 45}, {P_SPACE, 70}, {P_TIDE, 35},
                                        {P_SHAPE, 30}, {P_SUB, 45}, {P_AIR, 25}, {P_SWELL, 50}, {P_FADE, 90},
                                        {P_TIDE_RATE, 25}, {P_WOBBLE, 15}, {P_WIDTH, 75}, {P_REV_SIZE, 90},
                                        {P_REV_DAMP, 55}, {P_DLY_TYPE, DT_FALL}, {P_DLY_MIX, 45}, {P_DLY_TIME, 99},
                                        {P_DLY_FDBK, 55}, {P_DLY_DIFF, 60}, {P_DLY_COLOUR, 35}, {P_ORB_MODE, OM_CYCLE},
-                                       {P_ORB_PERIOD, 95}, {P_ORB_CHANCE, 127}, {P_ORB_PROG, 7}, {P_SPREAD, 35},
+                                       {P_ORB_PERIOD, 95}, {P_ORB_CHANCE, 127}, {P_ORB_PROG, 4}, {P_SPREAD, 35},
                                        {P_TWALK, 30}, {P_SWAY, 20}, {P_NZ_LEVEL, 16}, {P_NZ_COLOUR, 10}, {P_NZ_WIND, 25},
                                        {P_NZ_BAND, 5}, {P_NZ_TEXTURE, 5}, {P_NZ_GUST, 65}, {P_NZ_DUCK, 30},
                                        {P_NZ_WIDTH, 90}, END};
@@ -347,7 +349,7 @@ static void settings_defaults(void)
     set.speaker = SPK_AUTO;
     set.usb_level = 2;
     set.clock_out = 0;
-    set.rsv = 0;
+    set.out_level = 127;
 }
 
 static void bank_defaults(void)
@@ -400,28 +402,37 @@ static void project_load(void)
             set.speaker = SPK_AUTO;
             set.usb_level = 2;
             set.clock_out = 0;
-            set.rsv = 0;
             got = (int)sizeof set;
         }
         if (got == (int)sizeof set && set.magic == SET_MAGIC_V4) {   /* DEF4: everything kept, VELOCITY switched on
                                           * (a unit saved before it meant anything would never have heard it) */
-            set.magic = SET_MAGIC;
+            set.magic = SET_MAGIC_V5;
             set.vel = 1;
+        }
+        if (got == (int)sizeof set && set.magic == SET_MAGIC_V5) {   /* DEF5: the spare byte becomes OUT, at unity, so
+                                          * nothing a unit was set to changes under it */
+            set.magic = SET_MAGIC;
+            set.out_level = 127;
         }
         if (got != (int)sizeof set || set.magic != SET_MAGIC
             || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
             || set.vel > 1u || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
-            || set.midi_out > 16u || set.latch > 1u || set.speaker > SPK_OFF || set.usb_level > 6u || set.clock_out > 1u)
+            || set.midi_out > 16u || set.latch > 1u || set.speaker > SPK_OFF || set.usb_level > 6u || set.clock_out > 1u
+            || set.out_level > 127u)
             settings_defaults();
         set.view = 0;                    /* a view saved by an older build: BEAMS, the one left */
     }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);
-        uint32_t oldp = (bank.magic == BANK_MAGIC_V4 || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2)
-                        && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0)
+        uint32_t ours = bank.magic == BANK_MAGIC || bank.magic == BANK_MAGIC_V5 || bank.magic == BANK_MAGIC_V4
+                        || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2;
+        uint32_t legacy = bank.magic == BANK_MAGIC_V4 || bank.magic == BANK_MAGIC_V3 || bank.magic == BANK_MAGIC_V2;
+        uint32_t oldp = ours && bank.ssize < sizeof(scene_t) && bank.ssize > OLD_SCENE_SIZE(0)
                         && bank.ssize - OLD_SCENE_SIZE(0) <= P_COUNT ? bank.ssize - OLD_SCENE_SIZE(0) : 0u;   /* an older
-                         * record of any of our magics: its size says how many parameters it held, and never more than
-                         * this build has (a flash holding a size that fits no build of ours loads the defaults) */
+                         * record of any of our magics, including the newest one from a build with fewer parameters:
+                         * its size says how many it held, and never more than this build has (a flash holding a size
+                         * that fits no build of ours loads the defaults). The parameters this build added keep the
+                         * INIT scene's values, since scene_init runs first */
         if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
             && bank.ssize == OLD_SCENE_SIZE(oldp)) {   /* an older bank: the same scenes, a few bytes short each;
                                                         * unpacked from the end, so nothing is overwritten before it
@@ -447,10 +458,13 @@ static void project_load(void)
                     d->vel[j] = o[SCENE_NAME + oldp + DR_NV + j];
                 }
                 d->fx_off = o[SCENE_NAME + oldp + 2u * DR_NV];
-                d->p[P_ORB_PERIOD] = (uint8_t)((d->p[P_ORB_PERIOD] * 6393u + 457100u + 5000u) / 10000u);   /* EVERY
-                                         * from 0.1 s: the same seconds on the new curve */
+                if (legacy)
+                    d->p[P_ORB_PERIOD] = (uint8_t)((d->p[P_ORB_PERIOD] * 6393u + 457100u + 5000u) / 10000u);   /* EVERY
+                                         * from 0.1 s: the same seconds on the new curve (only the magics that
+                                         * predate it: a short SCN5 or SCN6 record already has today's curve) */
             }
-            bank.magic = BANK_MAGIC;
+            bank.magic = bank.magic == BANK_MAGIC_V5 ? BANK_MAGIC_V5 : BANK_MAGIC;   /* a short SCN5 still owes the
+                                         * velocity conversion below, which wants today's size */
             bank.ssize = (uint8_t)sizeof(scene_t);
             got = (int)sizeof bank;
         }
