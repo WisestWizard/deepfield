@@ -2,6 +2,389 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: every voice checked for a moving zero point (flashed 2026-11-09; on the unit, not pushed)
+
+**On the unit:** flashed 2026-11-09 with `fm1_install.py deepfield/build/deepfield.fwsc --yes`, image 424,020 B,
+build 2A0C45ED, dev identity `FM-1_1400`. `screen` reads FIRST LIGHT on HOME with **HARMONICS 37, DRIFT 29, SUB
+27, TREMOLO 27** - the HOME swap is live. The log line reads `cpu 5% b0 ADDITIVE s0 x0` with **no `C` field, so
+the second core is running**; after clearing the flash's own 32 late halves, a quiet baseline reads `late 0`,
+`gap 162 us`, `lock 0`. Everything below is in this build.
+
+The first pass measured one note per model at default settings, which understates it - SYNC's own comment says
+the offset "moves with the ratio", and SYNC measured -51.9 at defaults while PULSAR, which is SYNC, was -31.4.
+So: **all thirteen models x three TIMBRE x three SHAPE x two NOISE, 234 renders**, one sustained note each, no
+effects, measuring DC and the energy below 5 Hz against the audible band.
+
+**Splitting the sweep by NOISE is what made it readable.** With NOISE low - the model's own behaviour - exactly
+one model is an outlier:
+
+    FM 4-OP   -25.4 dB     <-- at TIMBRE 110 SHAPE 110
+    BOWED     -51.7
+    WAVEFOLD  -53.8
+    RESONATOR -54.6
+    ... the rest from -62.5 down to ADDITIVE at -92.3
+
+With NOISE full, WAVEFOLD (-33.2), BOWED (-34.8) and RESONATOR (-47.6) join it - and that is **not a defect**.
+White noise spreads its energy evenly, so the 5 Hz under the audible band is about 5/22050 of it, which is
+-36 dB by arithmetic. Those models are simply the ones with the most audible noise in them. Flagged, not
+changed: high-passing it would thin BOW NOISE, HISS and STRIKE for no fault.
+
+**FM 4-OP needed a second blocker section.** One 20 Hz pole took it from -19.9 to -41.0 at default settings but
+left -25.4 at TIMBRE and PATCH full, where every other model sits under -51. Cascaded: **-25.4 -> -46.7 at the
+worst corner, -36.1 -> -58.5 in the middle.**
+
+**Every preset now.** The worst is BOWED SKY at -47.5 dB (its bow noise), then RAIN CLOCK at -48.9, and the other
+eleven are below -55. DC is under 0.6 everywhere except FOLDED SUN at 2.2. Against where this started: RAIN CLOCK
+DC 40.7 -> -0.01 and below-5 Hz -18.6 -> -48.9; PULSAR 12.8 -> under the top five.
+
+780 checks, goldens re-recorded, device image 424,020 B, build 2A0C45ED. RAIN CLOCK's rms moved 2637.4 -> 2587.0,
+0.17 dB, which is the infrasonic leaving. **Not committed, not flashed.**
+
+## Start here: the zero point was moving (built 2026-11-09, not flashed)
+
+Kyle's expert said the clicking sounded like a zero point problem. It was, and nothing in the click hunt would
+ever have found it, because it is not a discontinuity - it is the baseline the whole signal sits on wandering
+under everything else.
+
+**The evidence that was sitting there all along.** scratch.wav had a DC offset of 1855 on both channels. I
+measured it on the first pass and dismissed it as 0.022 % of full scale. Measuring the engine's own renders:
+
+| preset | DC before | energy below 5 Hz before |
+| --- | --- | --- |
+| RAIN CLOCK (FM 4-OP) | **40.7** | **-18.6 dB** |
+| PULSAR (SYNC) | **12.8** | **-31.4 dB** |
+| FIRST LIGHT | 0.4 | -70.7 dB |
+
+A fifth of a percent of RAIN CLOCK's energy was below 5 Hz, where nothing can reproduce it. **PULSAR is the
+preset Kyle reported both of his pops on.** An offset that *moves* is worse than a fixed one: the level, the
+tremolo, the limiter, the pan and every knob multiply the signal, so each of them steps by wherever the offset
+happens to be at that instant. Nothing lands at a zero crossing.
+
+**Three sources, found by measuring one sustained note per model with no effects at all** (energy below 5 Hz
+against the audible band): ADDITIVE -95.1, FM -100.5, and then **FM 4-OP -19.9** and **RESONATOR -34.5**.
+
+- **FM 4-OP had no DC blocker.** Four operators with feedback leave an offset that wanders at the breath's pace.
+  Added, 20 Hz corner, before the sub oscillator so the lowest notes keep their sine. **-19.9 -> -41.0 dB**, and
+  RAIN CLOCK's DC went **40.7 -> -0.38**.
+- **RESONATOR had none.** The coupled resonators settle off zero. **-34.5 -> -53.0 dB**.
+- **SYNC had one, in the wrong place.** `render_tear` blocks DC right after the sync reset - the comment there
+  says "the reset leaves an offset that moves with the ratio", so someone knew - but the signal then goes through
+  the ring modulator and a soft clip, which put an offset straight back, and nothing blocked it again. A second
+  blocker at the very end: **PULSAR's DC 10.84 -> -0.27 and its sub-5 Hz -31.6 -> -72.6 dB.**
+
+**What I ruled out on the way**, each by measurement rather than by reading: the oscillators themselves (every
+model under 0.0033 DC/rms on a single note), the reverb, the ensemble, the noise layer, and all seven delay types
+(every one under 0.0002 DC/rms). PULSAR's offset survived turning each effect off in turn, which is what pointed
+back at the voice.
+
+What is left below 5 Hz is musical: RAIN CLOCK now peaks at 2-5 Hz (-35.7 dB) because its arp steps at about
+2.7 Hz, and 0-1 Hz is down at -48.2 dB.
+
+780 checks, goldens re-recorded, device image 424,036 B, build 2537BFE1. **Not committed, not flashed.**
+
+## Start here: the last five off the review's list (built 2026-11-09, not flashed)
+
+**Three measured, two preventive. The difference matters, so it is written down.**
+
+Measured, by the largest single-sample step across the change against the same signal elsewhere:
+
+| | |
+| --- | --- |
+| REVERB DAMPING, one fast detent | **0.51x** - below the signal's own slew, so nothing to hear |
+| SHIMMER, one fast detent | **0.52x** |
+| delay TYPE away and back inside the fade | level a second later **795.7 vs 795.7**, identical to never touching it |
+
+- **The hall's damping and its eight line gains** are inside the feedback loop, so a step in either does not just
+  change what comes out, it changes the decay of everything already ringing. Both slide over 12 ms now, and
+  `out_g` follows the gains actually in use rather than the ones asked for.
+- **The shimmer's direct term** was `shim_lp * shimmer * 6.0f` behind a hard `shim_on`, which FREEZE and the
+  reverb bypass both flip, and `shim_lp` keeps its last value when the shimmer stops running - so the term
+  appeared and vanished at full size. The gain slides per sample now; x6 also made one detent of SHIMMER a long
+  way to move.
+- **`dly_fade`** only ever fell, and was restored to 1.0 at the bottom. Change TYPE and change it back inside the
+  12 ms fade and it was stranded part way down until the buffer emptied - the delay sitting quiet, and the next
+  TYPE change then fading from there in less than the 12 ms the fade exists for. It comes back up now.
+
+**Preventive - correct by inspection, but I could not build a case where either changes the output:**
+
+- **The noise layer's chord bands.** The four bands are picked afresh every block by level and the resonator
+  states are indexed by slot, so a slot handed to another body was retuned with the previous body's energy still
+  in it, at a Q of up to 17. A slot that changes hands now starts clean, and the pan follows the body rather than
+  the slot so a body cannot change sides. **Could not trigger it:** the replacement rule only fires when a later
+  body gets *louder* than the quietest of the first four, and in a six-body swell the later ones are always
+  behind. Six bodies at BANDPASS full rendered bit-identical before and after.
+- **WAVETABLE's mip switch.** It rises at 19 kHz of harmonic and now falls only six percent under, so a glide
+  still crosses and a wobble does not. **The review's reason for it looks wrong**: it said `f` carries the vibrato
+  into the mip choice, but D4 with VIBRATO at full renders bit-identical before and after, so the vibrato is
+  applied below this point and never moved the mip at all. The hysteresis is still right - glide and bend do
+  reach it - but nothing observed was caused by this.
+
+780 checks, goldens re-recorded, device image 423,332 B, build 8D6410AE. All fifteen presets moved against the
+previous build by at most -66.3 dB with identical rms, which is the hall's new ramps settling. **Not committed,
+not flashed.**
+
+## Start here: FM 4-OP's PATCH knob no longer slams (built 2026-11-09, not flashed)
+
+The loudest step any knob made in the engine. Every detent of PATCH is another patch (`ui.c` `knob_shown` gives
+that knob exactly one per detent), and it swapped four operators' ratios, levels, algorithm and feedback in a
+single tick with up to 4.9 dB of `DX_GAIN` riding on it. Sliding the output gain alone only took it from -4.4 dB
+to -5.2 dB, because the gain was the small part.
+
+**The voice dips instead.** `dx_patch()` in `drone.c`: out over 6 ms, take the new patch at the bottom, back over
+12 ms, the dip interpolated per sample alongside the level (a dip in steps of a tick would be the very thing it is
+there to stop). Measured on the output itself, not the residual: the largest single-sample step across the change
+was **2.48x the signal's own slew, and is 1.31x now**.
+
+The dip is also what lets the operator envelopes restart, which they had to. `v->dxs[k]` was never reset on a
+patch change, so an operator that had reached stage 4 (holding L3) stayed at the **old patch's** L3 for the rest
+of the note and the new patch sounded with the old one's balance. The stage machine runs again now, **from the
+level the operator is at** - setting the level to zero as well restarts it from silence, which is worse.
+
+**Two things this broke on the way, both instructive:**
+
+1. **A preset morph sweeps PATCH itself.** RAIN CLOCK lands on SHAPE 72 and the morph takes `pcur[P_SHAPE]`
+   across several patch boundaries getting there, so the dip and the envelope restart fired again and again
+   during the blend: rms 2637 -> 1797, peak 12793 -> 19263, the preset wrecked. `dx_patch` now leaves the patch
+   alone while `morph_pos < 1.0f` - a morph is already a crossfade. RAIN CLOCK is back at rms 2637.4.
+2. **Isolating it needed the two halves tested apart.** Dip on + reset on was -1.5 dB; dip off + reset on was
+   *+2.4* dB. Neither number alone would have pointed at the morph; the pair did.
+
+780 checks, goldens re-recorded, device image 423,124 B, build C3AEC3B8. Only RAIN CLOCK (-47.6 dB) and GAMELAN
+(-69.0 dB) moved against the previous build, both with identical rms. **Not committed, not flashed.**
+
+## Start here: the knob clicks, found properly this time (built 2026-11-09, not flashed)
+
+A DSP consultant reviewed the engine and the web turned up four sibling firmwares that fought the same battle.
+Both changed the picture.
+
+**The measurement was wrong, and that is the lesson.** The sweep's pass criterion was "the largest single-sample
+step, against a control". A click of -14 to -30 dB is only 0.10x to 0.52x of a held chord's *own* largest
+single-sample step, so that criterion is structurally blind to every one of them, however many parameters it
+sweeps. It will always come back clean. **The test that works is an A/B subtraction**: the engine is bit
+deterministic, so render the same script twice, change one parameter at a known millisecond in the second, and
+subtract. A smooth change leaves a residual that ramps over tens of samples; a click leaves one that lands in a
+few. `scratchpad/ab.py`, and the shape is unmistakable:
+
+    BED LEVEL (interpolated per sample)   -1 -2 -4 -6 -8 -10 -12 ...   ramps over 20+ samples
+    TAPE BANDWIDTH, one fast detent        0 -11 -20 -25 -28 -30 -32   lands in 6 samples, -26 dB
+    PULSAR REV DECAY, one fast detent      0  12  12  12  12           lands in 2 samples
+
+**Fixed, all measured by residual peak at the change:**
+
+| what | where | before | after |
+| --- | --- | --- | --- |
+| the per-voice filter corner, six models | `drone.c` `voice_fc` | 86 | 16 |
+| the hall's output gain `out_g` | `fx.c` | 20 | 12 |
+| WAVETABLE's AIR copy flipping at the middle of the table | `drone.c` `render_scan` | 487 | 396 (and 1.25 ms -> 2.27 ms) |
+
+`voice_fc` is the big one: TAPE, SUPERSAW, WAVEFOLD, WAVETABLE and SYNC all take TIMBRE through an exponential
+(5.4 to 7.6 octaves across the knob) and recompute the one-pole coefficient every control tick with the filter
+state loaded, so the output steps by the coefficient change times the filter's own high-frequency content. The
+corner slides over 20 ms now. **I had built this exact fix earlier in the session and reverted it**, because the
+old metric showed it doing nothing.
+
+The WAVETABLE one is worth knowing for a different reason: `pos2` flipped from `pos + 7` to `pos - 7` the instant
+`pos` crossed the table's middle, swapping frame 31 for frame 17 - opposite ends of the VOX table. **DRIFT's LFO
+and the timbre walk carry `pos` across that line on their own**, so a WAVETABLE body sitting near the middle
+ticked at the drift rate with nobody touching anything. It crosses over eight frames now.
+
+**Found, measured, and NOT fixed: FM 4-OP's PATCH knob, -4.4 dB.** The loudest discontinuity in the engine by a
+wide margin, and `ui.c`'s `knob_shown` gives that knob exactly one patch per detent, so **every** detent crosses a
+boundary: all four operators' ratios, levels, algorithm and feedback swap in one tick, and `DX_GAIN` jumps up to
+4.9 dB with them. Sliding the output gain (which is in, `v->dxcg_s`) only takes it to -5.2 dB, because the gain is
+the small part. The real fix is to route a patch change through the voice hand-over crossfade that a MODEL change
+already uses (`xf_seq`, `handover()`), which is a design change and Kyle's call.
+
+**A second DX bug, found and deliberately left alone.** `v->dxl[k]` and `v->dxs[k]` are not reset when the patch
+changes, so an operator parked at the old patch's L3 (stage 4) stays there for the rest of the note - the new
+patch sounds with the old one's balance. Resetting them measured *worse* (-0.3 dB), because restarting four
+envelopes mid-note is a bigger event than the gain jump. It needs the crossfade first.
+
+**Ruled out, with evidence.** Not an underrun (`late` 0 across two of Kyle's own events). Not the second core: a
+`plat_cpu2_wait` failure does zero the hall for a block and is not counted by `late`, but `fm1_cpu1_wait` retires
+the core permanently on timeout, so it is one click per boot, not a repeating one - the log now prints `C1`..`C4`
+if it ever happens. Not output truncation (the sibling firmwares' end-of-note buzz): ours truncates at a 1<<22
+full scale, about -138 dBFS.
+
+**Still open from the review, in rank order:** the hall's `dampc` and per-line `g[k]` (in the feedback loop);
+the shimmer's `shim_lp * shimmer * 6.0f` direct term behind a hard `shim_on` gate, which FREEZE and the reverb
+bypass both flip; the noise layer's chord bands, whose resonator state is indexed by slot rather than by body, so
+five or more sounding bodies retune a Q-17 resonator and flip its pan when they overtake each other in level;
+SCAN's mip switch at 296.9 / 593.8 / 1187.5 / 2375 Hz, which vibrato straddles; `dly_fade` stranded below 1.0 if
+TYPE is changed and changed back inside 12 ms; and `dr_param`'s three chained stores racing the morph
+interpolator.
+
+780 checks pass, goldens re-recorded, device image 423,220 B, build 0B0CFBE4. STARLIGHT moves -27 dB against the
+previous build (it is the WAVETABLE preset, so the `pos2` crossover is most of it) with peak 16353 -> 16365 and
+rms 2288.5 -> 2290.7, so the level and character are unchanged. **Not committed, not flashed.**
+
+## Start here: the crunch while turning knobs - found, measured, fixed (built 2026-11-09, not flashed)
+
+Kyle: "its when I am turning encoders always ... it happens pretty regularly when i am actively playing the synth
+and a lot is goin gon", on headphones, the speaker and the USB recording alike.
+
+**It is not the CPU.** The build already counts dropouts: `fm1b_dbg.late`, printed by `fm1_remote.py log`, which
+**reads and clears**, so each reading is a delta. `audio_commit.c` says a render that misses its deadline leaves
+the half the DMA plays as it was - "a click at every late half". Zeroed the counters, Kyle played until he heard
+it on WOW, read back: **late 0**, CPU 42 %, the longest the app held the interrupts 7 us. Again after the
+ensemble: **late 0**. So no underrun, and the screen-blit and USB theories die with it. No diagnostic build was
+needed; `debug_stats` went in and came back out.
+
+**The metric is the hard part, and I got it wrong twice.** `hf/rms` measures brightness, not clicks - it cannot
+see a step. **Max single-sample step** can. But it is confounded whenever the knob changes the spectrum: sweeping
+a filter open really does make the waveform steeper, which is why TAPE's BANDWIDTH read 2.86x and nothing I did
+moved it. The honest test is a **fast wiggle** - alternate between two values 8 apart every 30 ms, so the average
+sound is unchanged and anything left is the discontinuity. Under that protocol BANDWIDTH, REVERB, REV SIZE and
+NOISE LEVEL are all clean (0.91-1.09x).
+
+**Three real ones, all in fx.c, all fixed:**
+
+| what | before | after |
+| --- | --- | --- |
+| ENSEMBLE knob 1, OFF <-> CHOR I (and mode to mode) | 4.32x | 0.90x |
+| ENS MIX near the bottom of its travel | 1.74x | 1.04x |
+| DELAY 2's WOW | 1.62x | 0.89x |
+
+The ensemble was the loud one and it was two bugs. Switching it off dropped out of the wet branch with the gains
+still up, so the effect vanished between one sample and the next; the wet and dry gains now slide over 15 ms and a
+fade counts as still running. Changing chorus moved the read head to a different LFO in one sample; the wet now
+ducks, the mode swaps while it is down, and it comes back. WOW recomputed the head wander from the knob every
+block, so a detent moved every head at once - it lands over 20 ms now.
+
+**What did not work, and is not in the tree.** A general glide of every parameter's heard value (`dr_param` sets
+`pcur` outright) measured 0.0909 against 0.0909 on a wiggle - it fixes nothing, and the discrete choices never go
+through `pcur` anyway. Per-voice smoothing of the five models' filter corners: 2.86x to 2.64x, which was the
+confounded number. Both reverted.
+
+**The sweep.** 63 parameters x 2 ranges, wiggled against a control with the effects running: **120 of 126 clean**.
+Per-model: TIMBRE, SHAPE and NOISE wiggled on all thirteen models, nothing above 1.55x and all of those
+confounded. A page audit by byte-identical renders: every DELAY knob does something on every one of the seven
+types; on OSC the only knobs that do nothing are the ones the UI already blanks (NOISE on ADDITIVE, SUPERSAW and
+FM; SHAPE on BOWED). FM 4-OP's FEEDBACK looked dead but only because BRASS's own feedback is already at the
+ceiling - it works on the other six patches.
+
+**Still not reproduced:** Kyle's pops on BANDWIDTH with TAPE on PULSAR, and on REVERB in the same setup. Matched
+preset, model and knob in the host and they come back clean. Next time one of those happens, **read the log before
+touching anything else** - if `late` is non-zero there, those are a different fault from the three above.
+
+**Goldens re-recorded** (the ensemble really does sound different now - that is the point). Measured against the
+old renders, twelve of sixteen move less than -59 dB; STARLIGHT -37 dB and FOLDED SUN -49 dB are the largest, a
+small phase shift of the tape wander rather than a change of character. 780 checks pass, device image 421,812 B,
+build 4CE6A3DF. Only `deepfield/engine/fx.c`, `golden.txt` and one manual row changed. **Not committed, not
+flashed.**
+
+## Start here: one percent a click, bigger E D R S N, TEMPO on GLOBAL (built 2026-11-09, not flashed)
+
+**The knobs skipped values.** Kyle: "on a lot of the encoders when you are going really slow it take two clicks -
+it should be one unit per click when slow and the screen shouldnt skip values". Measured on the host with `turn`
+(the real path, not `spin`): a slow detent moved a 0..127 knob by 3 raw, so DRIFT read 32, 34, 37, 39, 41, 44 -
+two shown values stepped over on most clicks. `knob()` now steps the knobs that are *shown as a percent* (K_PCT
+and K_TEXTURE) by one percent a detent, through `pct_raw(p) = (p * 127 + 99) / 100`, the lowest raw that reads
+p%. Same probe after: 30, 31, 32, 33, 34, 35, 36, 37, 38, 39. Fast (a detent within 40 ms of the last) still
+moves 8 raw, so a sweep is 16 clicks as before; a slow sweep is now 100 clicks instead of 43, which is the price
+of not skipping and is what was asked for.
+
+**Not every knob, and why.** Times and frequencies (ATTACK, RELEASE, GLIDE, a free DLY TIME, SUPERSAW's and
+VOID's TIMBRE) span too wide a range for every value they can display to have a detent, so they keep `knob_slow`'s
+2 or 3; TEMPO stays 1 raw, about 1.5 BPM, which is as fine as 128 steps over 40..240 allows. If Kyle reports
+skipping on a *time* knob next, the honest fix there is a coarser display, not a finer step.
+
+**The device's own decoder is upstream.** `fm1_enc_take` in `base/bsp/boards/fm1/fm1_input.h` counts four
+transitions to a detent and drops a click it only saw one transition of (`n = |sub| >= 2 ? (|sub| + 2) / 4 : 0`).
+That is where a genuinely dropped click would come from, it is in the pinned upstream base, and the host does not
+run it - so it was not touched and has not been ruled out. If two clicks per unit is still felt on the unit after
+this build, that decoder is the next place to look, not `ui.c`.
+
+**E D R S N made large.** Kyle asked for it, because with REVERB off HOME those letters are the only thing that
+says the reverb is on. FONT_T at 9 px pitch -> FONT_B (the bold 16 px face) at 11 px pitch, x 184 and y 28, which
+clears the SEQ FRZ pill (ends at 176) and the morph bar (y 44) and stops inside 240.
+
+**TEMPO is on GLOBAL now.** It was already the one tempo in the firmware - a DLY TIME set to a division of the
+beat reads `dr_arp_bpm(P_ARP_RATE)` when no MIDI clock is coming in - but it only appeared on the GEN page with
+MODE on ARP. GLOBAL's knob 4 was empty, so it is SCALE, ROOT, MORPH, TEMPO now, the same parameter in both
+places. The generator's RATE in the non-ARP modes is still a time in seconds, not a division of TEMPO; following
+an external clock it already counts clocks. Making RATE a division of TEMPO would be a real change and was not
+made.
+
+780 checks pass, all 16 goldens match, device image 421,408 B, build 233E6605. The KNOB STEPS test now asserts
+the shown percent with `said 40% / 41% / 42%` rather than raw numbers alone. Manual, both cheat sheets and the
+site cheat sheet updated; **all 24 screenshots re-shot**, since the header letters changed in every one. **Not
+committed, not flashed, not published.**
+
+## Start here: GEN 2 shows only the mode's knobs, and SUB takes REVERB's place on HOME (built 2026-11-09, not flashed)
+
+Kyle asked how EUCLID and DIV work and whether they work. They do - measured on the wire at TEMPO 120: DIV 1/8
+gives 249 ms steps and 1/4 gives 499, EUCLID 3/8 strikes on steps 0, 3, 6 of 8 and 5/8 on 0, 2, 4, 5, 7, and all
+eight patterns give exactly their named hit count with the accent (127 / 110 / 94) landing on the cycle's first
+and middle steps. What was wrong was where they lived.
+
+**GEN 2 was showing knobs the mode never reads.** `arp_tick` only runs in ARP, so OCTAVES, EUCLID and DIV did
+nothing in the other five modes; RETURN is read only by the wander and chord branches of `orbit_plan`, and ARP
+returns before the countdown, so RETURN did nothing in ARP, PROG or LOOP. WALK was four knobs of which one
+worked. `page_param` now gives GEN 2 the mode's knobs the way the GEN page already did: RETURN in WALK, SHIFT and
+RANDOM; ROAM in PROG and LOOP; OCTAVES, EUCLID and DIV in ARP; the rest empty (`PID_NONE` draws a rule mark and
+`knob()` returns). Values are kept while hidden and MIDI can still set any of them.
+
+**Proving a knob inert needs a long run.** The first probe said RETURN did nothing in WALK either. It was a 7 s
+render at a slow RATE with the voices still at home, so gravity had nothing to pull on - the measurement, not the
+firmware. At 30 s and a fast RATE it clearly acts. The inert results (ARP, PROG) are from the long run; the
+method is two renders that differ only in the knob, compared by checksum.
+
+**HOME: REVERB out, SUB in.** Kyle: "do we need to have reverb on the home page now that we have all of the
+dedicated FX - what other voice control could go there - maybe the sub?" REVERB was on HOME while it was the only
+effect; it is also FX REVERB knob 4 and FX MIX knob 3, so nothing is lost. HOME now reads as the voice itself:
+TIMBRE, DRIFT, SUB, TREMOLO - what it is made of, how it wanders, how heavy it is, how it moves. One line in
+`PAGES`. The R in the header's E D R S N still shows the reverb is on, which is what a new user has to go on.
+
+**Every preset already ships with reverb on**, which Kyle asked about: all 16 read `fxon2 1`, REVERB 22 to 88,
+median about 60. The driest three are RAIN CLOCK 22, PULSAR 25 and GAMELAN 28, dry on purpose. Nothing was
+changed there; lifting those three is an open question and would re-record their goldens.
+
+**A test moved rather than died.** The block that checked "an effect switched off on the FX keys reads OFF on its
+knobs, and turning one brings it back on" did that on HOME's REVERB knob. It runs on the FX mixer (page 15) now,
+with the REVERB page half unchanged.
+
+775 checks pass, all 16 goldens match, device image 421,360 B, build B2C577A9. Manual, both cheat sheets, the
+site cheat sheet and the landing page updated; `screen-home`, `screen-frozen`, `screen-browse` and
+`screen-rhythm` re-shot (screens.txt now switches to ARP before the rhythm shot, since NEBULA is in RANDOM and
+the page would otherwise be three blanks). **Not committed, not flashed, not published** - the unit is still on
+the pedal build and the site on 1.2.
+
+## Start here: PROG no longer freezes the bass (flashed 2026-11-09; on the unit, not pushed)
+
+Kyle, on the pedal that every progression sat over: "I don't know if it was the best choice to never chagne the
+lowest root note on motion - lets discuss". He was right. `cycle_pedal()` pinned the lowest voice for as long as
+PROG ran, which meant every chord of every progression was an inversion over one bass note, no progression could
+arrive anywhere, and it cost a voice out of eight the whole time. It is **deleted**, with `cyc_pin` and its call
+from `dr_orbit()`. The bass now follows the same common-tone rule as every other voice: it holds when it is a note
+of the chord, which is most steps, and moves when the root really changes. Measured on a struck C3 G3 C4 E4,
+ROUND reads `F A C D` / `F A B D` / `E G B D` / `E G A C` - four pitch classes a step, one or two voices moving,
+the bass walking 53 -> 52 -> 50. For a pedal you now **LOCK a voice yourself** (hold its key, KNOB 4), which PROG
+leaves alone and leads the chord above - or below, on a sinking progression.
+
+**Removing the pin exposed a worse problem.** The pinned voice was doubling as the floor (or the ceiling) that
+bounded the register contour. With nothing pinned the contour's octave displacement had only the +-12 home leash
+to stop it, so it threw a voice to the end of its leash on the first step and parked it there: SLOW RISE came out
+spanning 45 to 76, two chords a fifth apart rather than one chord that moved. The register pass now refuses an
+octave move that would stretch the chord more than an octave wider than it was struck (`span + 12`). After that
+both contours survive the pin's removal: UNDERTOW's centre 58.5 -> 53.8 (sinks), SLOW RISE 62.0 -> 65.0 (climbs
+monotonically, no bass collapse). `cyc_top` moved into the CYCLE branch of `orbit_plan` so it is read per step and
+follows CHORDS as the knob turns.
+
+**Four CYCLE tests encoded the old pedal.** `pending 1` -> 2, `90 40 7F` -> `90 45 7F`, `pitch60 60` -> 57,
+`pitch67 64` -> 69. Rewritten to the measured values with a comment saying what the block is now for: nothing is
+pinned, the bass holds because C is a note of the chord, not because PROG froze it.
+
+**Still lumpy, and not the pin's fault.** The contour moves the chord by displacing one voice an octave at a
+time, so the chord passes through wide voicings on the way - ROUND still parks a voice at 72 for several steps.
+That is the pre-existing mechanism, not something the pin was hiding. Worth a listen before deciding it needs work.
+
+**On the unit:** flashed 2026-11-09 with `fm1_install.py deepfield/build/deepfield.fwsc --yes`, image 421,328 B,
+build A9D18294, dev identity `FM-1_1400`. `log` clean, `screen` reads FIRST LIGHT on HOME, CPU 5%. 756 checks
+pass, all 16 goldens match. Committed **f40772d**, **not pushed**; the site still serves 1.2, which has neither
+this nor the LOOP length fix, so **the unit is two changes ahead of the published build**. Next release step is
+1.3 once Kyle has heard the harmony.
+
 ## Start here: LOOP keeps how long you held each note (flashed 2026-11-09; on the unit, not pushed)
 
 Kyle on 1.2's LOOP: "none of the dynamics/length of notes or anything seem to be recorded - a user plays something
