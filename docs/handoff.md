@@ -2,7 +2,18 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: 1.3 committed, tagged and pushed - the site is built but NOT published (2026-11-09)
+## Start here: 1.3 is published and live (2026-11-09)
+
+**The site is out.** Kyle ran `deepfield/tools/publish_site.sh 1.3` himself - the permission classifier refuses
+it from here, since the script force-replaces gh-pages. Verified live afterwards: the landing page, the manual,
+the cheat sheet, the installer, the emulator and `firmware/deepfield-1.3.fwsc` all return 200; the custom domain
+answers with a valid certificate and does not redirect to github.io, so the CNAME survived; the landing page
+reads Version 1.3; the manual's HOME row reads TIMBRE / DRIFT / SUB / TREMOLO and GLOBAL carries TEMPO. The
+package served has the same SHA-256 as the one built here, `81693571bc29b0e0`.
+
+**Two build ids, one source.** The unit runs **2A0C45ED** at the dev identity `FM-1_1400`; the site serves
+**5708AE30** at the release identity `FM-1_14010300`. Same commit - the release build bakes in the version and
+identity, which changes the image. The unit, the tag and the site are all the same source now.
 
 **Committed and pushed**, five commits, `1cb1d8f..d1edea1` on master, tag **1.3** pushed:
 
