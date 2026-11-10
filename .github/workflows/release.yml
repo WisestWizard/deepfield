@@ -10,6 +10,7 @@ name: release
 on:
   push:
     tags: ['[0-9]*']          # the tags in this repository are bare versions: 1.3, not v1.3
+  workflow_dispatch:          # a dry run: it builds, tests and attests, but releases nothing (no tag)
 
 permissions: {}
 
@@ -32,4 +33,5 @@ jobs:
         mkdir -p "$RUNNER_TEMP/ci" &&
         deepfield/build/host/deepfield_host deepfield/tests/basic.txt "$RUNNER_TEMP/ci" &&
         python3 deepfield/tools/render_scenes.py
-      packages: deepfield/build/deepfield-${{ github.ref_name }}.fwsc
+      # on a tag this is deepfield-1.3.fwsc; on a manual run github.ref_name is the branch, so match any version
+      packages: deepfield/build/deepfield-*.fwsc
