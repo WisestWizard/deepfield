@@ -307,7 +307,7 @@ empty. In this manual, and over MIDI, they are TIMBRE, SHAPE and NOISE.
 | SHEPARD | Six octaves of sine under a moving window: a rise or fall that never ends | CENTER: leans the window high or low | RISE/FALL: still at the middle; below it falls, above it rises, faster further from the middle |
 | WAVEFOLD | A sine through a wavefolder (DRIFT makes the fold breathe) | CUTOFF: the filter after the fold | FOLD: how hard it folds |
 | WAVETABLE | Pocket Poly's three wavetables in one sweep: ANALOG (sine to saw, square and a narrow pulse), VOX (vowels), GLASS (a bright cluster that climbs). DRIFT lets each voice's place wander. | CUTOFF: a filter that follows the note; the level stays the same | POSITION: where in the sweep; the screen names the table and its frame (ANALOG 1 to GLASS 16) |
-| FM 4-OP | Four-operator FM after Pocket Poly's FM engine. Its envelopes run at ATTACK's pace, so a slow ATTACK evolves the timbre slowly. DRIFT breathes the brightness. | FM AMOUNT: how hard the modulators drive the carriers, from clean sine stacks at the bottom to a bright, metallic voice at the top. On ORGAN, the one patch with no modulator, it tilts the upper three sines instead | PATCH, one a click: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER |
+| FM 4-OP | Four-operator FM after Pocket Poly's FM engine. Its envelopes run at ATTACK's pace, so a slow ATTACK evolves the timbre slowly. DRIFT breathes the brightness. | FM AMOUNT: how hard the modulators drive the carriers, from clean sine stacks at the bottom to a bright, metallic voice at the top. On ORGAN, the one patch with no modulator, it tilts the upper three sines instead | PATCH, one a click: GLASS PAD, BRASS, ORGAN, BELL PAD, E.PIANO, WOOD, STRINGS, CLUSTER. A patch is a different instrument - four operators change at once - so the voice dips for a moment as it changes rather than jumping |
 | SYNC | A saw hard-synced to the note (Pocket Poly's sync, with every edge smoothed so it stays clean up high): the snarl of a sync sweep. DRIFT breathes the ratio, so the sound's formant slides. | CUTOFF: a filter that follows the note, and a little drive | RATIO: the synced saw's speed against the note, X1.0 to X8.0 |
 | TAPE | A loop on worn tape: wow (a slow sway in pitch, its own for each voice), flutter, and now and then a dropout, the sound sinking and darkening for a third of a second. DRIFT is how worn it is: more wow, more dropouts. Everything saturates a little. | BANDWIDTH: the tape's bandwidth | SOURCE: the sound on the tape, a soft organ (0%) to a saw (100%) |
 | RESONATOR | Noise played into five resonances over the note, like a singing bowl or a glass kept ringing: it sustains, shimmering as the noise moves through it. DRIFT adds a slow shimmer in their tuning. | BRIGHTNESS: how bright the upper resonances ring | MATERIAL: PURE (in tune with the note's harmonics), GLASS, BOWL, then BRONZE (a gong's crowded tones) |
@@ -706,9 +706,9 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 12 | The noise layer on or off (switch) |
 | 13 | The preset back as saved, like HOME held (trigger) |
 | 14 | GEN's next move now, like SEL + PLAY (trigger) |
-| 51 | ROAM (PROG, and how far LOOP travels) |
 | 15 | CHORDS (PROG) |
-| 16, 17, 18, 19 | TIMBRE, DRIFT, REVERB, TREMOLO (74 and 91 also set TIMBRE and REVERB on the way in) |
+| 51 | ROAM (PROG, and how far LOOP travels) |
+| 16, 17, 18, 19 | TIMBRE, DRIFT, REVERB, TREMOLO (74 and 91 also set TIMBRE and REVERB on the way in; REVERB is on the FX pages, the other three on HOME) |
 | 20 | The noise layer's LEVEL |
 | 21, 22 | SUB, NOISE (OSC) |
 | 23, 24, 25 | COLOR, RATE, BANDPASS (NOISE) |
