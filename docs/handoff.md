@@ -2,6 +2,43 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: a tag now builds and releases itself (2026-11-10)
+
+`.github/workflows/release.yml` calls the Firmware Hub's shared workflow,
+`zvenson/fm1-build/.github/workflows/build.yml@v1`, which is what thefirmwarehub.com requires for the "Built from
+source" badge: it builds from the repository, attests the package with `actions/attest-build-provenance`, and on a
+tag publishes it as that tag's release. **It closes both of the hub's open gaps at once** - there were no GitHub
+releases at all, and nothing attested.
+
+What the shared workflow gives us: Python 3.12 and Pillow, JieLi's Linux toolchain from pkgman.jieliapp.com, the
+AC79 SDK from gitee at the fixed tag, and `JIELI_TOOLCHAIN` / `AC79_SDK` set, which is exactly what
+`base/tools/build.py` reads. It runs on ubuntu-24.04 x86-64, where `use_docker()` is false, so the toolchain runs
+natively - the container is only for this Mac.
+
+**Three things the worked example in that workflow does not cover here**, each found by running it rather than by
+reading it:
+
+1. **`base` is a submodule and its checkout does not fetch submodules** - so the build command initialises it.
+2. **`base` carries felucca-bsp as a submodule of its own**, and the loader is built from `base/bsp/loader/`. The
+   first run failed on `no such file or directory: 'base/bsp/loader/crt0_ldr.S'`. It is `--init --recursive` now.
+3. **The tags here are bare versions** (`1.3`, not `v1.3`), so the trigger is `tags: ['[0-9]*']` and the version
+   is `$GITHUB_REF_NAME` with no `v` to strip.
+
+There is also a `workflow_dispatch` for a dry run. Off a tag `GITHUB_REF_NAME` is the branch, which is not a
+version, so the build falls back to `0.0`; it builds, tests and attests, and the release step skips itself.
+
+**Proved, not assumed.** Run 42768501953 is green: build, tests, SHA-256, attestation, artifact. The tests are the
+same two that run here - the simulator's whole suite and all sixteen goldens - and **both passed on Linux
+x86-64**, so the renders are bit-identical to the macOS build.
+
+**1.3 has no release, and cannot get one without you.** The tag was already pushed before the workflow existed, so
+it never fired, and deleting a remote tag is refused from here as destructive. Either re-push it:
+
+    git push origin :refs/tags/1.3 && git push origin 1.3
+
+or leave 1.3 as a site-only release and let 1.4 be the first attested one. Still open for the hub after that: its
+three install tests and the mail to zven@thefirmwarehub.com.
+
 ## Start here: 1.3 is published and live (2026-11-09)
 
 **The site is out.** Kyle ran `deepfield/tools/publish_site.sh 1.3` himself - the permission classifier refuses
