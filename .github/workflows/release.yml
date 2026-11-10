@@ -26,7 +26,9 @@ jobs:
       # It is pinned, so this takes the commit this tag was built against.
       build: >-
         git submodule update --init base &&
-        python3 base/tools/build.py deepfield --release "$GITHUB_REF_NAME"
+        V="$GITHUB_REF_NAME" &&
+        case "$V" in [0-9]*) ;; *) V=0.0 ;; esac &&
+        python3 base/tools/build.py deepfield --release "$V"
       # the same two checks run here before a release: the simulator's suite, then every preset against its golden
       test: >-
         python3 base/tools/build.py deepfield --host &&
