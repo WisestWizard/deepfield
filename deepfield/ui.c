@@ -30,7 +30,9 @@ typedef struct {
     uint8_t p[4];
 } page_t;
 static const page_t PAGES[PG_COUNT] = {
-    {"HOME", "HOME", {P_MASS, P_DRIFT, P_SPACE, P_TIDE}},
+    {"HOME", "HOME", {P_MASS, P_DRIFT, P_SUB, P_TIDE}},   /* the voice itself: what it is made of, how it
+                                          * drifts, how heavy it is, how it moves. REVERB was here while it
+                                          * was the only effect; it has its own page and the FX mixer now */
     {"OSC", "EDIT", {P_MODEL, P_SHAPE, P_SUB, P_AIR}},
     {"NOISE", "EDIT", {P_NZ_LEVEL, P_NZ_COLOUR, P_NZ_WIND, P_NZ_BAND}},
     {"NOISE 2", "EDIT", {P_NZ_TEXTURE, P_NZ_GUST, P_NZ_DUCK, P_NZ_WIDTH}},   /* its kind, weather, ducking, width */
@@ -47,7 +49,9 @@ static const page_t PAGES[PG_COUNT] = {
     {"MIX", "GLO", {P_BED_LEVEL, P_LD_LEVEL, PID_OUT_LEVEL, PID_NONE}},   /* GLO opens the mixer: the latched bed,
                                           * the notes played over it, and the output under the MASTER pot */
     {"FX MIX", "GLO", {P_ENS_MIX, P_DLY_MIX, P_SPACE, P_SHIMMER}},   /* every effect's level on the next screen */
-    {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_MORPH, PID_NONE}},
+    {"GLOBAL", "GLO", {PID_SCALE, PID_ROOT, PID_MORPH, P_ARP_RATE}},   /* TEMPO: the arp steps at DIV of it and a
+                                          * delay set to a division of the beat follows it, so it belongs where it
+                                          * can be reached in every mode, not only on the GEN page under ARP */
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
     {"USB", "GLO", {PID_SPEAKER, PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE}},   /* recording and clock over the cable */
 };
@@ -337,9 +341,17 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
-    if (pg == PG_ORBIT2 && k == 1u && (dr_orbit_mode() == OM_CYCLE || dr_orbit_mode() == OM_ECHO))
-        return P_ORB_ROAM;               /* PROG: how far the generator may take the written progression; LOOP: how
-                                          * far each pass travels. The ARP knobs stay where they are for the rest. */
+    if (pg == PG_ORBIT2) {               /* GEN 2's knobs are the mode's too, the way the GEN page's are: a knob
+                                          * whose setting this mode's generator never reads is empty, rather than
+                                          * sitting there taking a turn and doing nothing */
+        uint32_t m = dr_orbit_mode();
+        if (k == 0u)                     /* RETURN pulls a wandering voice home: ARP and PROG/LOOP never wander */
+            return m == OM_ARP || m == OM_CYCLE || m == OM_ECHO ? PID_NONE : P_GRAVITY;
+        if (k == 1u)                     /* PROG: how far the generator may take the written progression; LOOP: how
+                                          * far each pass travels; ARP: the octaves it runs over */
+            return m == OM_CYCLE || m == OM_ECHO ? P_ORB_ROAM : m == OM_ARP ? P_ARP_OCT : PID_NONE;
+        return m == OM_ARP ? PAGES[pg].p[k] : PID_NONE;   /* EUCLID and DIV are the runner's own */
+    }
     return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
 static uint32_t value_of(uint32_t id)
@@ -682,8 +694,12 @@ static void value_set(uint32_t id, uint32_t v)
         ui.cfg_dirty = 1;
 }
 
-/* a 0..127 knob turned slowly: 3 a detent (43 a sweep), 2 where a step is heard (VOID's cutoff, a free delay time,
- * ATTACK), 1 for RATE (a BPM a detent); turned fast (a detent within 40 ms of the last): 8, 16 a sweep */
+/* a knob shown as a percent: the lowest raw value that reads p% (value_text's v * 100 / 127), so a detent is one
+ * percent and the screen counts 38, 39, 40 instead of stepping over two of them */
+static int32_t pct_raw(int32_t p) { return (p * 127 + 99) / 100; }
+/* a 0..127 knob turned slowly that is not shown as a percent: 3 a detent (43 a sweep), 2 where a step is heard
+ * (VOID's cutoff, a free delay time, ATTACK), 1 for RATE (a BPM a detent); turned fast (a detent within 40 ms of
+ * the last): 8, 16 a sweep. A time or a frequency covers too wide a range to give every shown value a detent */
 static int32_t knob_slow(uint32_t id, int32_t v)
 {
     if (id == P_ARP_RATE)
@@ -767,6 +783,8 @@ static void knob(uint32_t id, int32_t e, int fast)
             v += e;
         else if (sh >= 0)
             v = sh;
+        else if (!fast && (PM[id].kind == K_PCT || PM[id].kind == K_TEXTURE))
+            v = pct_raw(clamp(v * 100 / 127 + e, 0, 100));   /* one percent a detent, none skipped */
         else {
             int32_t nv = v + e * (fast ? 8 : knob_slow(id, v));
             if (PM[id].kind == K_DLYTIME && v < 100 && nv >= 100)   /* from the free times into the first division */
@@ -2389,8 +2407,10 @@ static void draw_header(void)
     pill_done:;
     }
     pill(134, 42, "SEQ FRZ", dr_frozen(), 0.0f, 0);
-    for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N */
-        cv_text(196 + (int32_t)i * 9, 31, &FONT_T, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
+    for (i = 0; i < NFXK; i++)           /* the effects heard, and the noise: E D R S N. Big enough to read across
+                                          * the room: with REVERB off HOME these letters are what tells you the
+                                          * reverb is on at all */
+        cv_text(184 + (int32_t)i * 11, 28, &FONT_B, FXLETTER[i], (act >> i & 1u) ? C_FX_ON : C_OFF);
     if (dr_morphing())                   /* the morph's progress along the header's foot */
         cv_rect(0, HEAD_H - 2, (int32_t)(240.0f * dr_morph_pos()), 2, C_TEXT);
     else
@@ -2877,6 +2897,15 @@ static void ui_frame(void)
         if (ui.stat_under) {             /* the USB audio ring's underruns: crackle in a recording */
             text_cat(t, " u");
             int_text((int32_t)(ui.stat_under & 0xFFFFu), v);
+            text_cat(t, v);
+        }
+        if (plat_cpu2_gave_up()) {       /* the second core off: 1 it misread a job, 2 one was late, 3 barred, 4 it
+                                          * never started. It renders half the bodies, so when it stops the sound
+                                          * changes under you and the first core takes the whole load - and nothing
+                                          * else in the log says it happened (late counts a missed deadline, which
+                                          * this is not) */
+            text_cat(t, " C");
+            int_text(plat_cpu2_gave_up(), v);
             text_cat(t, v);
         }
         plat_log(t);

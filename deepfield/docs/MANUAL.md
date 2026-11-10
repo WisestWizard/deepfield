@@ -77,8 +77,8 @@ SELECT is a knob: they are different controls.
    key lights up and its beam rises.
 3. Tap one of those keys again. That voice fades out as you let go, and its beam sinks. (Hold it and turn a knob
    instead, and the knobs set that voice alone: section 4.)
-4. Turn KNOB 1 (TIMBRE): every voice gets brighter or darker. Turn KNOB 3 (REVERB): they sink further into the
-   reverb. The four boxes along the bottom of the screen are the four knobs.
+4. Turn KNOB 1 (TIMBRE): every voice gets brighter or darker. Turn KNOB 3 (SUB): an octave comes up underneath
+   them. The four boxes along the bottom of the screen are the four knobs.
 5. Press PLAY. GEN starts, PLAY lights green and the GEN page opens under the knobs. Every few seconds one voice
    slides to a nearby note in the scale: watch its beam move.
 6. Press SEQ. FREEZE turns on (FRZ lights): the reverb holds what it has. Press SEQ again to let it go.
@@ -133,7 +133,7 @@ accent on a key that is already lit. While FX is held, the keys show the effect 
 
 | Part | What it shows |
 | --- | --- |
-| Header | The model's glyph, then the preset's slot (F1–F16, U1–U16) and name, with a small orange square after it while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 10); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many voices are sounding; how busy the processor is (LOAD in orange: see Troubleshooting); and, while a computer records, U and a count in orange if the recording ever dropped a frame (section 10). Below that, three pills named for their buttons, SEL LATCH (SEL TRANS while SEL held is moving the chord), PLAY GEN and SEQ FRZ, filled while on, always in the same places (while GEN runs, a white line fills along the foot of its pill toward the next move); the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise); and a cyan line along the bottom edge while a preset blends in. |
+| Header | The model's glyph, then the preset's slot (F1–F16, U1–U16) and name, with a small orange square after it while it has unsaved changes. On the right: OCT when the octave isn't zero; USB while a computer records (USB MUTE when the speaker is silenced, section 10); BLE when a computer, phone or tablet is connected over Bluetooth; DEV when the FM-1 is connected to a Bluetooth MIDI keyboard or controller; how many voices are sounding; how busy the processor is (LOAD in orange: see Troubleshooting); and, while a computer records, U and a count in orange if the recording ever dropped a frame (section 10). Below that, three pills named for their buttons, SEL LATCH (SEL TRANS while SEL held is moving the chord), PLAY GEN and SEQ FRZ, filled while on, always in the same places (while GEN runs, a white line fills along the foot of its pill toward the next move); the letters E D R S N, lit for the effects that are on (ensemble, delay, reverb, shimmer, noise) - the one place that tells you the reverb is on, since its amount lives on the FX pages; and a cyan line along the bottom edge while a preset blends in. |
 | The view | The voices. Each voice is a beam of light rising from its key, in its key's colour, brightest at its foot, with a white-hot head that marks its level: you see it swell in and sink as it fades (dim), and it breathes with the voice. A latched beam has a sun spark over its head; a locked one a sun bar across its foot; an open one (section 4) white frames, with the other beams dimmed. An ARP step flashes its voice's head. When GEN moves a voice, its beam slides to the new key and leaves a mark where it started, and before the move a line reaches from its head toward a dotted ghost at the key it is going to. A voice above or below the keys (a MIDI note, or after an octave change) stands thin at the edge. The noise layer is a mound of mist where its band sits, warm when brown and pale when white, drifting with the noise's RATE and lifting with each gust. Stars drift at DRIFT's speed, each twinkling slowly on its own, over a faint horizon; FREEZE stills all of it and puts ice brackets in the corners. Turning a knob shows its name, its value large and its bar here for a moment; the beams dim but stay in view behind it. Messages such as LATCH OFF, GEN ON or SAVED appear here too, and so does the list of presets while PRESETS turns (section 9). While FX is held, the five effect switches are shown here in a row. |
 | The keys strip | All 27 keys as dark glass, lit only by sound: a sounding voice's key glows in its colour, bright at the top and dimming down the key (dim while it fades), with a sun cap when latched; the keys of the scale are slightly lighter glass; a lead's key is white (grey as it fades); the held chord's keys are dim while LATCH is off; a voice's key is the one it sounds on, so it moves when GEN or SEL moves the voice; the voice you have open is framed white. |
 | Footer | The page band: the icon of the button that opened the page, its name, the page's name, and `<` `>` where SELECT can go, with the model, the scale and its root on the right. Below it, the four knobs in the order of the real knobs: each name, its value (a number large with its unit small, or a word), and a bar that shows the kind of value: segments filling for an amount, one cell per choice for a list, two cells for an on/off switch, hits and rests for EUCLID. TIMBRE, SHAPE and NOISE are named for what they do on each model (section 6). While a voice is open, the band reads VOICE and its note in the voice's colour, and the four knobs are its own (section 4). |
@@ -229,14 +229,16 @@ number.
 
 ## 5. The four macros (HOME)
 
-HOME is the main page. Its four knobs, TIMBRE, DRIFT, REVERB and TREMOLO, are the four macros: each one shapes every voice
-at once.
+HOME is the main page. Its four knobs, TIMBRE, DRIFT, SUB and TREMOLO, are the four macros: each one shapes every
+voice at once - what it is made of, how it wanders, how heavy it is, how it moves. REVERB was here while it was
+the only effect the FM-1 had; it has its own page and the FX mixer now (section 9), and every preset comes with
+it on.
 
 | Knob | Name | What it does |
 | --- | --- | --- |
 | KNOB 1 | TIMBRE | How full and bright the sound is. What it changes depends on the model: on ADDITIVE, how many harmonics and how bright; on SUPERSAW, the filter cutoff (shown in Hz); on FM and FM 4-OP, the FM depth; on BOWED, the string's brightness; on WAVETABLE, a filter that follows the note. The screen names it for the model (section 6). Aftertouch adds to it for that voice, and so does the voice's own TONE. |
 | KNOB 2 | DRIFT | How much everything wanders: the detuning, the slow drift of pitch, the breathing of the harmonics, and how fast the stars move on the screen. It also sets the vibrato's rate, 3.6 Hz at zero to 6.8 Hz at full. |
-| KNOB 3 | REVERB | How much reverb, and a little delay. The dry sound stays as it is. |
+| KNOB 3 | SUB | An octave below, on every model: how much weight is under the chord. The same value as SUB on the OSC page. |
 | KNOB 4 | TREMOLO | How much each voice fades down and back up on its own slow cycle. At full, each voice goes all the way to silence and back. TREM RATE (LFO page) sets how fast. |
 
 MASTER is the volume of everything the FM-1 sends out: the speaker, the headphones and the USB recording. It is
@@ -254,17 +256,20 @@ next or previous page, in the order of the table below: DELAY, DELAY 2 and REVER
 after ENSEMBLE, for example. The page band's `<` and `>` show where SELECT can go. A page stays open until you
 press another page button or turn SELECT. Most values show on the screen as a percentage.
 
-**Turning the knobs.** Turned slowly, a knob moves in small steps: about 43 clicks from one end to the other. Turned
-quickly, in big ones: 16 clicks end to end. SUPERSAW's TIMBRE, a free DLY TIME and ATTACK move in finer steps still, and
-TEMPO one BPM a click. A knob with only a few values (RANGE, VOICES, TRANSPOSE, the delay's note lengths,
-FM 4-OP's patches) moves one value a click at any speed.
+**Turning the knobs.** A knob shown as a percentage moves **one percent a click** turned slowly, so the number on
+the screen counts 38, 39, 40 and never steps over one: 100 clicks from end to end. Turned quickly - any click
+within 40 ms of the last - it moves in big steps instead, 16 clicks end to end, so a sweep is still a flick of the
+wrist. A knob that shows a time or a frequency (ATTACK, RELEASE, GLIDE, a free DLY TIME, SUPERSAW's and VOID's
+TIMBRE) covers too wide a range for every value it can show to have a click of its own, so those still move in
+small steps of their own; TEMPO moves one BPM a click. A knob with only a few values (RANGE, VOICES, TRANSPOSE,
+the delay's note lengths, FM 4-OP's patches) moves one value a click at any speed.
 
 A few names are on two pages (ATTACK and RELEASE on ENVELOPE and LEAD, RATE on NOISE and GEN, GATE on DELAY 2 and
 ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turning.
 
 | Button | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- | --- | --- |
-| HOME | HOME | TIMBRE | DRIFT | REVERB | TREMOLO |
+| HOME | HOME | TIMBRE | DRIFT | SUB | TREMOLO |
 | EDIT | OSC | MODEL (also on ALGORITHM) | SHAPE (named for the model) | SUB | NOISE (named for the model) |
 | EDIT, SELECT once | NOISE | LEVEL (0 is off) | COLOR (brown to white) | RATE (how fast it moves, how often it gusts) | BANDPASS (wide, narrow, or on the voices: see below) |
 | EDIT, SELECT twice | NOISE 2 | TYPE (hiss, rain, crackle) | GUST (how much it swells now and then) | DUCK (how far it drops under a chord) | WIDTH (its own stereo width) |
@@ -272,15 +277,15 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | ENV, SELECT once | LEAD | ATTACK (1 ms to 2 s) | RELEASE (30 ms to 7.7 s) | TRANSPOSE (0 to +2 octaves, in semitones) | LEVEL |
 | LFO | LFO | TREM RATE | VIBRATO (up to 40 cents either way, at DRIFT's rate; each voice a little faster than the one below) | RANDOM (a slow random drift of pitch) | WIDTH (stereo spread across the notes) |
 | LFO, SELECT once | VOICES | SPREAD (how unlike each other the voices are) | CROSS MOD (pairs bending each other's pitch) | TIMBRE DRIFT (each voice's TIMBRE wandering) | PAN DRIFT (each voice drifting across the stereo field) |
-| FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest) | ENS MIX | – | – |
+| FX | ENSEMBLE | ENSEMBLE (OFF, CHOR I, CHOR II or ENSEMBLE, the fullest; switching between them ducks the effect for 15 ms rather than cutting it) | ENS MIX | – | – |
 | FX, SELECT once | DELAY | TYPE (PING PONG, TAPE, DUB, REVERSE, OCT UP, OCT DOWN, GRANULAR) | DLY TIME | DLY FDBK (how many repeats) | DLY MIX (how loud) |
 | FX, SELECT twice | DELAY 2 | TONE (dark or bright repeats) | DIFFUSION (echoes blurred into a cloud) | WOW (how far the tape wanders) | GATE (only slices of the sound go in) |
-| FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (the same as on HOME) |
+| FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (how much, the same value as on the FX mixer) |
 | ARP | GEN | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
-| ARP, SELECT once | GEN 2 | RETURN | OCTAVES (ARP, 1 to 3) | EUCLID (ARP: its hits and rests) | DIV (ARP: a step's length) |
+| ARP, SELECT once | GEN 2 | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG, LOOP) or OCTAVES (ARP, 1 to 3) | EUCLID (ARP: its hits and rests) | DIV (ARP: a step's length) |
 | GLO | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
 | GLO, SELECT once | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
-| GLO, SELECT twice | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | – |
+| GLO, SELECT twice | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | TEMPO (40 to 240 BPM, EXT while MIDI clock comes in) |
 | GLO, SELECT three times | MIDI (and the Bluetooth device, in place of the view: section 10) | IN CH (OMNI or 1–16) | OUT CH (1–16) | LOCAL | VELOCITY |
 | GLO, SELECT four times | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (the recording's level, 0 to -18 dB) | CLOCK OUT | – |
 
@@ -307,7 +312,7 @@ empty. In this manual, and over MIDI, they are TIMBRE, SHAPE and NOISE.
 | TAPE | A loop on worn tape: wow (a slow sway in pitch, its own for each voice), flutter, and now and then a dropout, the sound sinking and darkening for a third of a second. DRIFT is how worn it is: more wow, more dropouts. Everything saturates a little. | BANDWIDTH: the tape's bandwidth | SOURCE: the sound on the tape, a soft organ (0%) to a saw (100%) |
 | RESONATOR | Noise played into five resonances over the note, like a singing bowl or a glass kept ringing: it sustains, shimmering as the noise moves through it. DRIFT adds a slow shimmer in their tuning. | BRIGHTNESS: how bright the upper resonances ring | MATERIAL: PURE (in tune with the note's harmonics), GLASS, BOWL, then BRONZE (a gong's crowded tones) |
 
-SUB adds an octave below on every model. The fourth OSC knob (NOISE) adds breath, noise or an edge: BOW NOISE on
+SUB adds an octave below on every model, and is the third knob on HOME as well. The fourth OSC knob (NOISE) adds breath, noise or an edge: BOW NOISE on
 BOWED, BREATH on FORMANT, STRIKE (the hiss of the strike) on BELL, NOISE (a breath of it) on SHEPARD, NOISE into the
 fold on WAVEFOLD, UNISON on WAVETABLE (a second, detuned copy from another place in the sweep), FEEDBACK on FM 4-OP
 (grit), RING MOD on SYNC (the sound rung with the note's sine: hollow, metallic, still in tune), HISS on TAPE, and
@@ -329,8 +334,8 @@ or on its own with no keys held: wind, sea, rain or breath.
   crackle beyond), its **GUST** (now and then, at RATE's pace, it swells louder, brighter and higher, sitting lower
   between; FREEZE holds the weather), how far it **DUCK**s under a chord, and its own stereo **WIDTH**.
 
-The four macros shape the noise too: TIMBRE brightens it, DRIFT widens its wander, REVERB sends it to the reverb, and
-TREMOLO makes it breathe. Aftertouch brightens it, and it fades in and out at ATTACK and RELEASE like a voice. Hold
+The four macros shape the noise too: TIMBRE brightens it, DRIFT widens its wander, SUB puts an octave under it, and
+TREMOLO makes it breathe. REVERB (FX) sends it to the reverb. Aftertouch brightens it, and it fades in and out at ATTACK and RELEASE like a voice. Hold
 FX and press C4 (white key 5) to switch it off and on again. Switched back on, it returns at the level it had when
 you last switched it off, or else at the preset's saved level, or else at a third. N lights in the header while it is
 on, and its beam on the screen rises with each gust. MIDI CC 20 sets its LEVEL.
@@ -367,7 +372,7 @@ held, REVERB down.
 - Over most of its turn, **DLY TIME** is a time from 50 to 800 ms, and the screen shows it in ms. On PING PONG the
   right-hand echo comes a little later than the left one, up to 1.1 s.
 - Near the top of its turn, DLY TIME becomes a note length: 1/16, 1/8, 1/4T, 1/8D, 1/4, 1/4D or 1/2 (T is a
-  triplet, D is dotted). The tempo comes from TEMPO (ARP's tempo, on the GEN page with MODE set to ARP), or from
+  triplet, D is dotted). The tempo comes from TEMPO (GLOBAL page, and on the GEN page with MODE set to ARP), or from
   MIDI clock when it is coming in, so the echoes land in time with ARP; on PING PONG the right-hand echo then lands on the
   beat too. A length that would be longer than 800 ms at that tempo plays at half length, still in time. On GRANULAR,
   DLY TIME is how often a piece comes.
@@ -437,13 +442,19 @@ longer than RATE the voices never land, a swarm. SHIFT that fast is mostly a blu
 stops showing where the moves go (they would only flicker). LOOP never runs faster than once a second: its phrase
 needs the time.
 
-**EUCLID** (GEN 2, for ARP) spreads the notes over a pattern of steps as evenly as they go, and rests on the
+**EUCLID** (GEN 2, in ARP) spreads the notes over a pattern of steps as evenly as they go, and rests on the
 others: 8/8 (every step a note), 5/8, 3/8, 7/12, 5/12, 4/9, 7/16 or 5/16. The notes move on only at a note, so four
 notes over five hits fall differently against the pattern every time round. **DIV** sets a step's length against
 TEMPO's beat: 1/16, 1/16T, 1/8, 1/8T, 1/8D, 1/4, 1/4T, 1/2 or 1 BAR (T a triplet, D dotted). Slow steps with a long
 RELEASE (LEAD page) toll like bells.
 
-![The GEN 2 page: RETURN, OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
+**GEN 2's knobs are the mode's, like the GEN page's.** A knob whose setting the mode's generator never reads is
+empty rather than sitting there turning to nothing: RETURN only in WALK, SHIFT and RANDOM, which are the modes
+that wander; ROAM in PROG and LOOP; OCTAVES, EUCLID and DIV only in ARP, since they are the runner's own. The
+value is kept either way - set EUCLID in ARP, go to WALK and back, and it is as you left it, and MIDI can set any
+of them at any time (section 11).
+
+![The GEN 2 page in ARP: OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
 
 **PROG leads the chord; it does not shift it.** Each step names the notes the next chord should contain, counted
 in scale degrees from where you played the chord, so the colour comes from SCALE. A voice already on one of those
@@ -510,8 +521,8 @@ outside it, which is why SCALE used to make so little difference to what you hea
 the scale itself which degree carries the diminished chord and which acts as a dominant, and passes through both
 in one step instead of resting on them.
 
-**RETURN** (GEN 2) is the chance that a voice, or in SHIFT the whole chord, is pulled back to the key where it
-started. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
+**RETURN** (GEN 2, in WALK, SHIFT and RANDOM) is the chance that a voice, or in SHIFT the whole chord, is pulled
+back to the key where it started. ARP, PROG and LOOP never wander from the key, so the knob is empty there. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
 a note on.
 
 **The next move now.** Hold SEL and press PLAY: the move that is coming comes at once, and the countdown starts

@@ -48,7 +48,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 ## Pages (KNOB 1 · 2 · 3 · 4)
 | Page | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
-| HOME | TIMBRE (bright) | DRIFT (wander) | REVERB (the hall) | TREMOLO (ebb and swell) |
+| HOME | TIMBRE (bright) | DRIFT (wander) | SUB (an octave below, as on OSC) | TREMOLO (ebb and swell) |
 | OSC | MODEL | SHAPE (named for the model) | SUB | NOISE (named for the model) |
 | NOISE | LEVEL (0 = off) | COLOR (brown → white) | RATE (how fast the band wanders; how often a gust) | BANDPASS (wide → narrow on the newest note → past half, breath on every voice) |
 | NOISE 2 | TYPE (hiss → rain → crackle) | GUST (the swells now and then) | DUCK (under a chord) | WIDTH (its own) |
@@ -59,12 +59,12 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | FX ENSEMBLE | ENSEMBLE (mode) | ENS MIX | – | – |
 | FX DELAY | TYPE: PING PONG (left, right), TAPE (centre, worn, wavering), DUB (one echo, darker and ringing more each pass, wide; near full FDBK it sits and drones), REVERSE (swells; a held chord breathes in), OCT UP (octaves up), OCT DOWN (octaves down), GRANULAR (pieces scattered, at the note, an octave either way or a fifth up) | DLY TIME (50 to 800 ms; from 100 the beat's division 1/16 1/8 1/4T 1/8D 1/4 1/4D 1/2, from ARP's TEMPO or the MIDI clock, halved when too long; GRANULAR: how often a piece) | DLY FDBK | DLY MIX (full: the first echo about as loud as the note) — a DLY TIME move takes the repeats out for 12 ms and lands them on the new time, so it no longer swoops; TAPE still slides, inside a tone and a half |
 | FX DELAY 2 | TONE (repeats dark and full to bright and thin) | DIFFUSION (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | GATE (only a slice of each DLY TIME goes in: a held chord pulses) |
-| FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER (the octave up read twice, 35 ms apart, one a side: wide) | REVERB (the send, as on HOME) |
+| FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER (the octave up read twice, 35 ms apart, one a side: wide) | REVERB (the send, as on the FX mixer) |
 | GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS (ROUND, UNDERTOW, SLOW RISE, TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES - 8 to 15 steps, unequal lengths, the chord led one or two voices at a time while the rest hold, nothing pinned - LOCK a voice yourself for a pedal); LOOP: OCT JUMP. REC on this page with LOOP showing records a phrase from the keys (LATCH lifted for the take, the rhythm AND each note's length kept, REC again to close and play; closing sets RATE to the phrase's own length; DECAY 0 never fades). Selecting LOOP with nothing recorded says REC THEN PLAY |
-| GEN 2 | RETURN | ROAM (PROG: 0 plays the table as written, up develops it; LOOP: how far each pass travels); OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
+| GEN 2 (the mode's knobs, the rest empty) | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG: 0 plays the table as written, up develops it; LOOP: how far each pass travels); OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
 | MIX (GLO) | BED (everything latched) | LEAD (what you play over it) | OUT (a trim under the MASTER pot, speaker and USB alike) | – |
 | FX MIX (GLO, SELECT once) | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen |
-| GLOBAL (GLO, SELECT twice) | SCALE | ROOT | MORPH | – |
+| GLOBAL (GLO, SELECT twice) | SCALE | ROOT | MORPH | TEMPO (40–240 BPM, EXT on MIDI clock; ARP steps at DIV of it and a synced DLY TIME follows it) |
 | MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY (on by default) |
 | USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
 

@@ -1404,22 +1404,37 @@ out
 tap PLAY
 wait 300
 # ---- 2026-11-07: the six asks of 2026-11-06
-# KNOB STEPS: a slow detent moves a 0..127 knob 3 (DRIFT), a fast one (within 40 ms) 8; RATE 1 a detent; LIFT one
-# semitone a detent at any speed; a delay division one a detent
+# KNOB STEPS: a knob shown as a percent (DRIFT) moves one percent a slow detent, so the screen counts 39, 40, 41
+# and never steps over a value - the raw 0..127 it is stored in moves 1 or 2 to do it. A fast detent (one within
+# 40 ms of the last) still moves 8 raw. RATE 1 a detent; LIFT one semitone a detent at any speed; a delay division
+# one a detent. A time or a frequency is not a percent: those still move 2 or 3, since no detent count could give
+# every millisecond its own
 reboot
 wait 700
 tap HOME
 wait 30
 expect p2 50
-turn K2 2
+listen
+turn K2 1
 wait 50
-expect p2 56
+said 40%
+turn K2 1
+wait 50
+said 41%
+turn K2 1
+wait 50
+said 42%
+expect p2 54
+turn K2 -1
+wait 50
+said 41%
+expect p2 53
 turn K2 3 20
 wait 50
-expect p2 75
+expect p2 70
 turn K2 -3 20
 wait 50
-expect p2 56
+expect p2 53
 tap ENV
 wait 30
 spin SELECT 1
@@ -1564,6 +1579,85 @@ expect orbitmode 0
 tap HOME
 wait 2000
 expect leads 0
+# GEN 2's knobs are the mode's: a knob whose setting the mode's generator never reads is empty and turns to
+# nothing, the way the GEN page's already were. RETURN pulls a wandering voice home, so it is there for WALK,
+# SHIFT and RANDOM and gone for ARP and PROG/LOOP, which never wander; OCTAVES, EUCLID and DIV are the runner's,
+# so they are there only in ARP; ROAM takes knob 2 in PROG and LOOP. All four knobs are turned in each mode here
+# and only the mode's own values move
+tap ARP
+wait 30
+spin SELECT 1
+wait 50
+expect page 13
+spin K1 4
+wait 60
+spin K2 2
+wait 60
+spin K3 3
+wait 60
+spin K4 3
+wait 60
+expect p27 34
+expect p42 1
+expect p60 0
+expect p61 2
+expect p54 0
+spin K1 -4
+wait 30
+spin SELECT -1
+wait 30
+spin K1 3
+wait 30
+expect orbitmode 3
+spin SELECT 1
+wait 50
+spin K1 4
+wait 60
+spin K2 1
+wait 60
+spin K3 3
+wait 60
+spin K4 3
+wait 60
+expect p27 30
+expect p42 2
+expect p60 3
+expect p61 5
+spin K2 -1
+wait 30
+spin K3 -3
+wait 30
+spin K4 -3
+wait 30
+spin SELECT -1
+wait 30
+spin K1 1
+wait 30
+expect orbitmode 4
+spin SELECT 1
+wait 50
+spin K1 4
+wait 60
+spin K2 2
+wait 60
+spin K3 3
+wait 60
+spin K4 3
+wait 60
+expect p27 30
+expect p42 1
+expect p60 0
+expect p61 2
+expect p54 2
+spin K2 -2
+wait 30
+spin SELECT -1
+wait 30
+spin K1 -4
+wait 30
+expect orbitmode 0
+tap HOME
+wait 1000
 # A BODY'S OWN VALUES: LATCH on, a knob turned while the key a latched body sounds on is held opens it (no timer:
 # let go without a turn, however slowly, and the body is let go); its LEVEL, TONE, TUNE and ORBIT pin on the four
 # knobs, out as NRPN, saved with the scene (a fresh chord: ORBIT moved the last one)
@@ -1851,9 +1945,14 @@ wait 50
 spin ALGO -9
 wait 50
 expect model 0
-tap HOME
-# an effect switched off on the FX keys reads OFF on its knobs (SPACE on HOME and REVERB, SHIMMER through the hall);
-# a turn of one of them brings the effect back on at the amount turned to, never a dead knob stuck at OFF
+tap GLO
+wait 30
+spin SELECT 1
+wait 30
+expect page 15
+# an effect switched off on the FX keys reads OFF on its knobs (REVERB on the FX mixer and on its own page, SHIMMER
+# through the hall); a turn of one of them brings the effect back on at the amount turned to, never a dead knob
+# stuck at OFF. REVERB used to sit on HOME as well, while it was the only effect there was
 wait 3000
 listen
 press FX
@@ -1866,7 +1965,7 @@ release FX
 wait 200
 said REVERB OFF
 expect fxon2 0
-expect page 0
+expect page 15
 turn K3 1
 wait 50
 unsaid OFF

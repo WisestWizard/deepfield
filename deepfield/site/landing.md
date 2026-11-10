@@ -18,8 +18,8 @@ work; on a phone, turn it sideways.
 2. Click a few keys, one at a time, or type them: Q to I and A to K are the white keys, 1 to 0 and the minus key
    the black ones. Each note swells in and keeps sounding.
 3. Click a lit key again: that note fades out.
-4. Drag KNOB 1 to KNOB 4 up or down. They set the brightness, the wander, the reverb and the slow rise and fall of
-   every note at once.
+4. Drag KNOB 1 to KNOB 4 up or down. They set the brightness, the wander, the octave underneath and the slow rise
+   and fall of every note at once.
 5. Press PLAY (or the P key): the notes start moving to nearby notes on their own.
 6. Turn PRESETS to change the preset: its sound blends in over a few seconds under the notes you are playing.
    Shift-click SEL to hold it while you turn, and the preset brings its own chord in place of yours.

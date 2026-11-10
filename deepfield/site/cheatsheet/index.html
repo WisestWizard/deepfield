@@ -134,7 +134,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>Getting around</h2>
   <dl>
     <dt><span class="v">tap</span><span class="c">HOME</span></dt>
-    <dd>HOME page: TIMBRE, DRIFT, REVERB, TREMOLO on KNOB 1–4.</dd>
+    <dd>HOME page: TIMBRE, DRIFT, SUB, TREMOLO on KNOB 1&ndash;4. Reverb lives on FX and the FX mixer; every preset comes with it on.</dd>
     <dt><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>The next or previous page.</dd>
     <dt><span class="v">tap</span><span class="c">EDIT</span></dt>
@@ -146,9 +146,9 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">FX</span></dt>
     <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
-    <dd>GEN. Turn SELECT for GEN 2.</dd>
+    <dd>GEN. Turn SELECT for GEN 2, whose knobs are the mode's too &mdash; a knob the mode never reads is empty.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span></dt>
-    <dd>MIX: BED (everything latched), LEAD (what you play over it), OUT (a trim under the MASTER pot). Turn SELECT for FX MIX (ensemble, delay, reverb, shimmer on one screen), then GLOBAL (scale, root, morph), MIDI and USB.</dd>
+    <dd>MIX: BED (everything latched), LEAD (what you play over it), OUT (a trim under the MASTER pot). Turn SELECT for FX MIX (ensemble, delay, reverb, shimmer on one screen), then GLOBAL (scale, root, morph, TEMPO &mdash; the arp and a synced delay time both follow it), MIDI and USB.</dd>
     <dt><span class="v">turn</span><span class="c k">MASTER</span></dt>
     <dd>Volume: the speaker, the headphones and the USB recording.</dd>
   </dl>
@@ -184,7 +184,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">turn</span><span class="c k">KNOB 2</span></dt>
     <dd>On HOME, DRIFT: how much each voice wanders.</dd>
     <dt><span class="v">turn</span><span class="c k">KNOB 3</span></dt>
-    <dd>On HOME, REVERB: how much reverb.</dd>
+    <dd>On HOME, SUB: an octave below, on every model. The same value as SUB on OSC.</dd>
     <dt><span class="v">turn</span><span class="c k">KNOB 4</span></dt>
     <dd>On HOME, TREMOLO: each voice slowly fades down and back up.</dd>
     <dt><span class="v">turn</span><span class="c k">ALGORITHM</span></dt>
@@ -260,7 +260,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
     <dd>MIDI: in and out channels, local, velocity (on by default). Turn again for USB: recording and clock out.</dd>
     <dt><span class="v">send</span><span class="c">a CC</span></dt>
-    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 15 CHORDS, 51 ROAM, 54 BED, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
+    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 21 SUB, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 15 CHORDS, 51 ROAM, 54 BED, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
     <dt><span class="v">send</span><span class="c">CC 57–63</span></dt>
     <dd>Switches: 57 LATCH, 58 GEN, 59 FREEZE, 60–63 ensemble, delay, reverb, shimmer (64 up is on); 12 the noise layer. Triggers: 13 the preset as saved, 14 GEN's next move now.</dd>
     <dt><span class="v">send</span><span class="c">SysEx</span></dt>
