@@ -32,6 +32,13 @@ typedef char fx_rv_check[RV_TOTAL == FX_RV_TOTAL ? 1 : -1];   /* fx.h's FX_BYTES
 static float *ens_l, *ens_r;
 static uint32_t ens_pos;
 static float ens_ph1, ens_ph2;
+static uint32_t ens_mode_held = ENS_CHORUS1;   /* the mode the heads are set to: held through a fade out, so the
+                                          * read offset does not move while the ensemble is on its way out */
+static float ens_wet_s, ens_dry_s;       /* the wet and dry gains as the last sample left them */
+#define ENS_SM_S 0.015f                  /* the gains reach a new setting over this rather than landing between one
+                                          * sample and the next. Switching the ensemble off, or to another chorus,
+                                          * used to take the wet away in one sample - a loud click, the worst of the
+                                          * ones heard while turning knobs */
 
 /* The delay: one 16-bit buffer at half the rate (the repeats are filtered well below 11 kHz anyway, and the same
  * memory holds twice the time), used by its TYPE in one of two ways. Two legs (the left 0.80 s, then the right
@@ -75,6 +82,17 @@ static int16_t *dly;
 static line_t dly_ap[4];
 static uint32_t dly_pos_l, dly_pos_r, dly_pos_w, dly_type_cur;
 static float dly_read, dly_ratio = DLY_RATIO, dly_lp[2], dly_hp_x[2], dly_hp_y[2], wow_ph, flut_ph;
+static float rv_dampc_s, rv_g_s[8], shim_dg_s;   /* the damping and the eight line gains the hall is really
+                                          * running, and the shimmer's direct gain: all three sit inside or on the
+                                          * output of a network holding seconds of sound, and all three used to be
+                                          * recomputed per block from the knobs */
+static float rv_outg_s, rv_shimg_s;      /* the hall's output gain and the shimmer's send, sliding. out_g scales
+                                          * the whole tail, which holds seconds of sound, so recomputing it per
+                                          * block stepped everything already ringing - the loudest unsmoothed gain
+                                          * in the engine, and worst in the middle of DECAY where the presets sit */
+static float dly_wa_s, dly_wfl_s;        /* the wander the heads are really using: WOW lands here over 20 ms. It
+                                          * used to be recomputed from the knob each block, so a detent moved every
+                                          * head's distance between one block and the next - a click while turning */
 static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
 static float dly_fade = 1.0f, chop_ph, chop_g = 1.0f, sh_ph, rev_ph, gr_left;
 static float dly_wet = 1.0f, dly_time_prev = -1.0f;   /* DLY TIME: the wet path's own fade, and the time it was
@@ -243,6 +261,16 @@ void fx_init(void *arena)
     ens_tail = dly_tail = rev_tail = 0;
     dly_live = rv_live = 0;
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
+    ens_wet_s = ens_dry_s = 0.0f;
+    dly_wa_s = dly_wfl_s = 0.0f;
+    rv_outg_s = rv_shimg_s = 0.0f;
+    rv_dampc_s = -1.0f;
+    shim_dg_s = 0.0f;
+    {
+        uint32_t q;
+        for (q = 0; q < 8u; q++)
+            rv_g_s[q] = -1.0f;
+    }
     dly_read = 2205.0f;
     dly_ratio = DLY_RATIO;
     dly_type_cur = DT_PING;
@@ -347,10 +375,24 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         else if (ens_tail)
             ens_tail--;
     }
-    if (ens_tail) {
-        float inc1 = 0.513f / FS, inc2 = 0.863f / FS, depth, base = 0.0035f * FS, wet = 0.8f * fm_sqrtf(p->ens_mix),
-              dry = 1.0f - 0.4f * p->ens_mix;   /* heard from the first turn: the wet rises as a square root */
-        depth = (p->ens_mode == ENS_CHORUS1 ? 0.0012f : p->ens_mode == ENS_CHORUS2 ? 0.0018f : 0.0015f) * FS;
+    if (ens_tail || ens_wet_s > 0.0005f) {   /* still fading out counts as running: leaving with the wet still up
+                                          * took the effect away between one sample and the next */
+        uint32_t on_now = ens_tail != 0u;
+        float inc1 = 0.513f / FS, inc2 = 0.863f / FS, depth, base = 0.0035f * FS,
+              wet = on_now ? 0.8f * fm_sqrtf(p->ens_mix) : 0.0f,   /* heard from the first turn: the wet rises as a
+                                          * square root. Off, it is a fade, not a disappearance */
+              dry = on_now ? 1.0f - 0.4f * p->ens_mix : 1.0f;
+        if (on_now && p->ens_mode != ens_mode_held) {
+            wet = 0.0f;                  /* another chorus moves the heads to a different LFO, which used to happen
+                                          * between one sample and the next. Duck the wet, swap once it is down, and
+                                          * let it come back: the same 15 ms the mix already slides over */
+            dry = 1.0f;
+            if (ens_wet_s < 0.002f)
+                ens_mode_held = p->ens_mode;
+        } else if (on_now) {
+            ens_mode_held = p->ens_mode;
+        }
+        depth = (ens_mode_held == ENS_CHORUS1 ? 0.0012f : ens_mode_held == ENS_CHORUS2 ? 0.0018f : 0.0015f) * FS;
         for (i = 0; i < n; i++) {
             float m, dl, dr, wl, wr;
             uint32_t b0;
@@ -360,12 +402,19 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             ens_ph2 += inc2;
             if (ens_ph2 >= 1.0f)
                 ens_ph2 -= 1.0f;
-            m = p->ens_mode == ENS_CHORUS1 ? tri(ens_ph1) : p->ens_mode == ENS_CHORUS2 ? tri(ens_ph2)
-                                                                                       : 0.5f * (tri(ens_ph1) + tri(ens_ph2));
+            m = ens_mode_held == ENS_CHORUS1 ? tri(ens_ph1) : ens_mode_held == ENS_CHORUS2 ? tri(ens_ph2)
+                                                                                           : 0.5f * (tri(ens_ph1) + tri(ens_ph2));
             ens_l[ens_pos] = l[i];
             ens_r[ens_pos] = r[i];
             dl = base + depth * m;
             dr = base - depth * m;
+            {                            /* how loud the ensemble is, sliding to what the settings ask: the depth
+                                          * and the LFO behind dl and dr are left alone, so the chorus is the same
+                                          * chorus it always was */
+                const float k = 1.0f / (ENS_SM_S * FS);
+                ens_wet_s += (wet - ens_wet_s) * k;
+                ens_dry_s += (dry - ens_dry_s) * k;
+            }
             b0 = (uint32_t)dl;
             {
                 uint32_t i0 = (ens_pos + ENS_LEN - b0) & (ENS_LEN - 1u), i1 = (i0 + ENS_LEN - 1u) & (ENS_LEN - 1u);
@@ -379,8 +428,8 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                 wr = ens_r[i0] + (ens_r[i1] - ens_r[i0]) * f;
             }
             ens_pos = (ens_pos + 1u) & (ENS_LEN - 1u);
-            l[i] = l[i] * dry + wl * wet;
-            r[i] = r[i] * dry + wr * wet;
+            l[i] = l[i] * ens_dry_s + wl * ens_wet_s;
+            r[i] = r[i] * ens_dry_s + wr * ens_wet_s;
         }
         pk_ens = block_peak(l, r, n);
         bus_pk = pk_ens;
@@ -432,6 +481,13 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                                           * its one long line has room for */
             wa = 600.0f * (0.12f + p->dly_wow);
             wfl *= 1.5f;
+        }
+        {
+            float k = 1.0f - fm_expf(-(float)n / (0.020f * FS));
+            dly_wa_s += (wa - dly_wa_s) * k;
+            dly_wfl_s += (wfl - dly_wfl_s) * k;
+            wa = dly_wa_s;
+            wfl = dly_wfl_s;
         }
         tmax = two ? (float)(DLY_LEN_L - 64u) - DLY_WOB_MAX - (ty == DT_PING ? 0.0f : (float)DLY_SHIFT_G)
                    : (float)(DLY_LEN - 64u) - DLY_WOB_MAX;
@@ -656,6 +712,15 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                 m = (outl + outr) * 0.5f;
                 outl = (m + (outl - m) * DLY_WIDTH) * dly_fade * dly_wet * DLY_OG[ty];
                 outr = (m + (outr - m) * DLY_WIDTH) * dly_fade * dly_wet * DLY_OG[ty];
+                if (want == ty && dly_fade < 1.0f) {         /* TYPE changed and changed back inside the fade: come
+                                          * back up. It used only ever to fall, and was restored at the bottom, so
+                                          * turning TYPE to and fro left the delay stranded quiet until the buffer
+                                          * emptied - and the next change then faded from there, in less than the
+                                          * 12 ms the fade is for */
+                    dly_fade += 1.0f / 256.0f;
+                    if (dly_fade > 1.0f)
+                        dly_fade = 1.0f;
+                }
                 if (want != ty) {                           /* a new TYPE: out over 12 ms, then a fresh start */
                     dly_fade -= 1.0f / 256.0f;
                     if (dly_fade <= 0.0f) {
@@ -728,6 +793,7 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
               send = p->rev_send * 0.2f, hpc = 0.017f, s8 = 0.35355339f, out_g;
         float shim_g = 0.0f, shim_inc = 1.0f / SHIM_W, shim_lpc = 0.25f, frz_t = p->freeze ? 3.5f : 1.0f, wander[4];
         uint32_t shim_on = p->shimmer > 0.001f && !(p->bypass & FX_BYP_SHIM) && !p->freeze, k;
+        float shim_dg_t = shim_on ? p->shimmer * 6.0f : 0.0f;
         rv_mod_ph += 0.45f * (float)n / FS;   /* the wander, once a block: at 0.45 Hz it moves a tenth of a sample
                                               * in a block, nothing a per-sample sine would add */
         if (rv_mod_ph >= 1.0f)
@@ -745,7 +811,34 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
             dampc = 1.0f;
             send = 0.0f;
         }
+        {                                /* the damping and the line gains are inside the loop, so a step in either
+                                          * does not just change what comes out - it changes the decay of everything
+                                          * already ringing. Both slide over about 12 ms */
+            float ks = 1.0f - fm_expf(-(float)n / (0.012f * FS));
+            if (rv_dampc_s < 0.0f)
+                rv_dampc_s = dampc;
+            else
+                rv_dampc_s += (dampc - rv_dampc_s) * ks;
+            dampc = rv_dampc_s;
+            gm = 0.0f;
+            for (k = 0; k < 8u; k++) {
+                if (rv_g_s[k] < 0.0f)
+                    rv_g_s[k] = g[k];
+                else
+                    rv_g_s[k] += (g[k] - rv_g_s[k]) * ks;
+                g[k] = rv_g_s[k];
+                gm += g[k] * 0.125f;   /* out_g follows the gains actually in use, not the ones asked for */
+            }
+        }
         out_g = 0.8f + 4.0f * (1.0f - gm);   /* the lines' sum: 6 dB under the dry at F1's SPACE, 3 under at full (measured) */
+        {                                /* over about 12 ms, so a detent on DECAY does not step the whole tail */
+            float k = 1.0f - fm_expf(-(float)n / (0.012f * FS));
+            if (rv_outg_s <= 0.0f)
+                rv_outg_s = out_g;
+            else
+                rv_outg_s += (out_g - rv_outg_s) * k;
+            out_g = rv_outg_s;
+        }
         if (shim_on) {                   /* the octave up fed back, less the longer the hall already rings; the loop
                                           * stays bounded up to the cap (measured: a let-go chord dies away at every
                                           * size; each side carries one pair, so the energy a side is as it was) */
@@ -812,10 +905,16 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
                 shim[shim_pos] = (int16_t)(c > 32767.0f ? 32767.0f : c < -32767.0f ? -32767.0f : c);
                 shim_pos = (shim_pos + 1u) & (SHIM_LEN - 1u);
             }
-            if (shim_on) {               /* and the octave up heard straight away, outside the loop, each side its
-                                          * own pair: it stands apart from the hall instead of sitting in its middle */
-                outl += shim_lp * p->shimmer * 6.0f;
-                outr += shim_lp2 * p->shimmer * 6.0f;
+            {                            /* and the octave up heard straight away, outside the loop, each side its
+                                          * own pair: it stands apart from the hall instead of sitting in its
+                                          * middle. The gain slides: it is multiplied by six, so one detent of
+                                          * SHIMMER moved it a long way, and it used to be switched rather than
+                                          * faded - FREEZE and the reverb bypass both flip that switch, and
+                                          * shim_lp holds its last value when the shimmer stops, so the term
+                                          * appeared and vanished at full size */
+                shim_dg_s += (shim_dg_t - shim_dg_s) * (1.0f / (0.012f * FS));
+                outl += shim_lp * shim_dg_s;
+                outr += shim_lp2 * shim_dg_s;
             }
             outl_b[i] = outl;
             outr_b[i] = outr;

@@ -58,7 +58,11 @@ typedef struct {
     float fs[6];                         /* CHOIR: the three formant filters' states */
     float gp;                            /* SHEPARD: the glide's place in its octave, 0..1 */
     uint32_t rng, age, lpos;
-    uint32_t pad[6];                     /* to a whole number of 32-byte lines: the two cores write different voices */
+    float fc_s;                          /* the filter corner this voice really uses, sliding to the block's */
+    float dxfade;                        /* DX: the dip across a change of patch, 1 open */
+    uint32_t mip_s;                      /* WAVETABLE: the table copy in use, kept so vibrato cannot flip it */
+    uint32_t dxv;                        /* DX: the patch it is sounding, to catch a change of patch */
+    float dc2x, dc2y;                    /* SYNC: a second blocker, at the very end */
 } voice_t;
 typedef char voice_on_lines[(sizeof(voice_t) % 32u) == 0u ? 1 : -1];
 
@@ -295,6 +299,11 @@ static void voice_osc_init(voice_t *v, uint32_t model)
         v->z[i] = model == M_GLASS ? 0.0f : x * x;
     }
     v->lp1 = v->lp2 = v->sl = v->dc_x = v->dc_y = 0.0f;
+    v->fc_s = 0.0f;                      /* the first block sets the corner outright, with nothing to slide from */
+    v->dxfade = 1.0f;
+    v->dxv = 0xFFFFFFFFu;
+    v->mip_s = 0;
+    v->dc2x = v->dc2y = 0.0f;
     for (i = 0; i < 6u; i++)
         v->fs[i] = 0.0f;
     v->gp = 0.0f;
@@ -1215,6 +1224,19 @@ static void render_solar(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     v->lvl_s = lvl;
 }
 
+/* the corner a voice really filters at. TIMBRE reaches these models through an exponential - 320 Hz to 13 kHz over
+ * the knob on TAPE - so one detent can move the corner by thousands of hertz between one block and the next, and a
+ * two-pole whose coefficient jumps that far steps its output. A fast turn made a pop you could hear across the
+ * room. The corner slides to what the knob asks over about 20 ms, which no turn can outrun, and the knob still
+ * answers at once everywhere else. */
+static float voice_fc(voice_t *v, float fc, uint32_t m)
+{
+    if (v->fc_s <= 0.0f)
+        v->fc_s = fc;
+    else
+        v->fc_s += (fc - v->fc_s) * (1.0f - fm_expf(-(float)m / (0.020f * FS)));
+    return v->fc_s;
+}
 static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
     float det = (0.3f + b->drift) * (0.04f + b->shape * 0.45f), inc0 = f / FS,
@@ -1227,6 +1249,7 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     uint32_t i;
     if (fc < f * 1.2f)
         fc = f * 1.2f;
+    fc = voice_fc(v, fc, m);
     a = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (a > 0.95f)
         a = 0.95f;
@@ -1551,6 +1574,7 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     uint32_t i, rng = v->rng;
     if (fc < f * 1.5f)
         fc = f * 1.5f;
+    fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (c > 0.95f)
         c = 0.95f;
@@ -1606,8 +1630,17 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     const int16_t *a0, *a1, *c0, *c1;
     uint32_t i, g0, g2, mip = 0;
-    while (mip < DF_WT_MIPS - 1u && (float)(64u >> mip) * f > 19000.0f)   /* the copy with as many harmonics as fit */
+    mip = v->mip_s;                      /* the copy with as many harmonics as fit. The thresholds fall at 296.9,
+                                          * 593.8, 1187.5 and 2375 Hz, and f carries the vibrato, the pitch walk and
+                                          * the glide, so a note sitting near one used to flip between two tables
+                                          * of different harmonic content every tick, at the vibrato's rate. It
+                                          * rises at the threshold and falls only six percent under it: a glide
+                                          * still crosses, a wobble does not */
+    while (mip < DF_WT_MIPS - 1u && (float)(64u >> mip) * f > 19000.0f)
         mip++;
+    while (mip > 0u && (float)(64u >> (mip - 1u)) * f < 19000.0f * 0.94f)
+        mip--;
+    v->mip_s = mip;
     v->hb[0] += b->hinc * (0.5f + 0.13f * (float)(v - vc));   /* its own wander through the frames */
     if (v->hb[0] >= 1.0f)
         v->hb[0] -= 1.0f;
@@ -1615,7 +1648,17 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     pos = fm_clampf(pos, 0.0f, (float)(SCAN_FR - 1u) - 0.001f);
     g0 = (uint32_t)pos;
     fr = pos - (float)g0;
-    pos2 = pos < (float)SCAN_FR * 0.5f ? pos + 7.0f : pos - 7.0f;   /* AIR's copy: another place in the sweep */
+    {                                    /* AIR's copy: another place in the sweep. It used to flip from pos + 7 to
+                                          * pos - 7 the moment pos crossed the middle, which swapped one end of the
+                                          * table for the other between one tick and the next - the loudest jump a
+                                          * threshold made anywhere. The two cross over a few frames instead, and
+                                          * DRIFT and the timbre walk carry pos across that line on their own, with
+                                          * no knob turning, so this had to stop being a step */
+        float mid = (float)SCAN_FR * 0.5f, w = 8.0f, up = pos + 7.0f, dn = pos - 7.0f;
+        float t = (pos - (mid - w)) * (1.0f / (2.0f * w)), x;
+        x = t <= 0.0f ? 0.0f : t >= 1.0f ? 1.0f : t * t * (3.0f - 2.0f * t);
+        pos2 = up + (dn - up) * x;
+    }
     g2 = (uint32_t)pos2;
     fr2 = pos2 - (float)g2;
     {                                    /* every frame as loud, whatever MASS (DF_WT_GAIN, at five of its settings) */
@@ -1629,6 +1672,7 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     a1 = scan_frame(g0 + 1u < SCAN_FR ? g0 + 1u : g0, mip);
     c0 = scan_frame(g2, mip);
     c1 = scan_frame(g2 + 1u < SCAN_FR ? g2 + 1u : g2, mip);
+    fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (c > 0.95f)
         c = 0.95f;
@@ -1697,9 +1741,35 @@ static const float DX_GAIN[DR_DX_VOICES] = {1.459f, 1.301f, 1.924f, 1.619f, 1.41
                                          * voice as loud as SOLAR at F1's settings (measured) */
 const char *const DR_DX_NAME[DR_DX_VOICES] = {"GLASS PAD", "BRASS", "ORGAN", "BELL PAD", "E.PIANO", "WOOD", "STRINGS",
                                              "CLUSTER"};
+/* FM 4-OP: the patch a voice is sounding. Every detent of PATCH is another patch, and it swaps four operators'
+ * ratios, levels, algorithm and feedback in one tick, with up to 4.9 dB of output gain riding on it - by a long
+ * way the loudest step any knob made in the engine. The voice dips out over 6 ms, takes the new patch there, and
+ * comes back over 12 ms. The dip is also what lets the operator envelopes restart: without it they could not, and
+ * an operator parked at the last patch's L3 stayed there for the rest of the note, so the new patch sounded with
+ * the old one's balance. */
+static uint32_t dx_patch(voice_t *v, uint32_t want)
+{
+    uint32_t k;
+    if (v->dxv == 0xFFFFFFFFu || morph_pos < 1.0f) {   /* the note's first tick, so nothing to come from; or a
+                                          * preset blending in, which is a crossfade already and sweeps PATCH
+                                          * itself on its way - dipping and restarting envelopes through that
+                                          * wrecks the preset it lands on (RAIN CLOCK, 8 dB down) */
+        v->dxv = want;
+        v->dxfade = 1.0f;
+    } else if (want != v->dxv && v->dxfade <= 0.0f) {
+        v->dxv = want;
+        for (k = 0; k < 4u; k++)
+            v->dxs[k] = 1;   /* the stage machine runs again, from the level the operator is at: it glides to the
+                              * new patch's L1, L2, L3 at the new patch's rates. Setting the level to zero as well
+                              * restarts the operator from silence, which wrecks a preset whose morph sweeps PATCH
+                              * across several patches on its way in (RAIN CLOCK came out 8 dB down) */
+    }
+    return v->dxv;
+}
 static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
-    uint32_t vi = (uint32_t)(b->shape * ((float)DR_DX_VOICES - 0.01f));
+    uint32_t want = (uint32_t)(b->shape * ((float)DR_DX_VOICES - 0.01f));
+    uint32_t vi = dx_patch(v, want);
     const dx_voice_t *dv = &DX_V[vi];
     uint32_t car = DX_CAR[dv->alg], i, k, nc = 0;
     float inc[4], amp[4], ph[4], fb1 = v->z[0], fb2 = v->z[1], mass = vmass(v, b);
@@ -1710,6 +1780,7 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
                                          * Each modulator takes its share by its own level and envelope, so a voice
                                          * keeps its balance while FM AMOUNT sweeps the whole set */
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float fd, fd1, dfd, dcx = v->dc_x, dcy = v->dc_y, d2x = v->dc2x, d2y = v->dc2y;
     float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     fbv = fm_clampf((float)dv->fb + b->air * 4.0f, 0.0f, 7.0f) * (1.0f / 7.0f);
     fbg = fbv * fbv * 0.75f * 0.5f;
@@ -1766,6 +1837,20 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
         if (ph[k] >= 1.0f)                                                                                          \
             ph[k] -= 1.0f;                                                                                          \
     } while (0)
+    fd = v->dxfade;
+    if (want != vi) {                    /* on its way to another patch */
+        fd1 = fd - (float)m / (0.006f * FS);
+        if (fd1 < 0.0f)
+            fd1 = 0.0f;
+    } else if (fd < 1.0f) {
+        fd1 = fd + (float)m / (0.012f * FS);
+        if (fd1 > 1.0f)
+            fd1 = 1.0f;
+    } else {
+        fd1 = 1.0f;
+    }
+    dfd = (fd1 - fd) / (float)m;         /* a sample at a time, like the level: a dip in steps of a tick would be
+                                          * the very thing it is there to stop */
     for (i = 0; i < m; i++) {            /* each algorithm straight through: a modulator is always a higher operator */
         float s, o0, o1, o2, o3;
         DXPH(0);
@@ -1801,14 +1886,34 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
         sph += sinc;
         if (sph >= 1.0f)
             sph -= 1.0f;
-        s = s * cg + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* level-matched by render */
+        s *= cg;                         /* level-matched by render */
+        dcy = s - dcx + 0.99715f * dcy;   /* no DC, and nothing under about 10 Hz. Four operators with feedback
+                                          * leave an offset that wanders at the breath's pace: measured on one
+                                          * sustained note with no effects at all, FM 4-OP had a fifth of its
+                                          * energy below 5 Hz (-19.9 dB, where ADDITIVE is -95). An offset that
+                                          * moves is worse than a fixed one: the level, the tremolo, the limiter
+                                          * and every knob multiply it, so each one steps by wherever the offset
+                                          * happens to be - the zero point is not at zero */
+        dcx = s;
+        d2y = dcy - d2x + 0.99715f * d2y;   /* a second section: at TIMBRE and PATCH full one was not enough, the
+                                          * operators' wander still reaching -25 dB below 5 Hz where every other
+                                          * model sits under -51 */
+        d2x = dcy;
+        s = d2y + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* the sub is a clean sine and goes in
+                                          * after the blocker, so the lowest notes keep it */
         l += dl;
-        s *= l;
+        fd += dfd;
+        s *= l * fd;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
 #undef DXS
 #undef DXPH
+    v->dxfade = fd1;
+    v->dc_x = fm_flush(dcx);
+    v->dc_y = fm_flush(dcy);
+    v->dc2x = fm_flush(d2x);
+    v->dc2y = fm_flush(d2y);
     v->ph = ph[0];
     v->ph2 = ph[1];
     v->mph = ph[2];
@@ -1832,7 +1937,8 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float inc = f / FS, sinc, sub = b->sub * 0.5f, air = b->air, fc = f * 3.0f * fm_exp2f(mass * 6.0f), c,
           drive = 0.9f + mass * 0.8f, keep = (1.0f + 0.48f * b->shape) * fm_exp2f((2.55f - 5.15f * mass) * 0.1661f),
           pm = v->ph, ps = v->ph2, sph = v->sub_ph, prev = v->sl, lp1 = v->lp1,
-          lp2 = v->lp2, dcx = v->dc_x, dcy = v->dc_y, l = v->lvl_s, dl = (lvl - l) / (float)m;
+          lp2 = v->lp2, dcx = v->dc_x, dcy = v->dc_y, d2x = v->dc2x, d2y = v->dc2y,
+          l = v->lvl_s, dl = (lvl - l) / (float)m;
     float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
     float incs;
     uint32_t i;
@@ -1842,6 +1948,7 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         r = 14000.0f / f;
     incs = inc * r;
     sinc = inc * 0.5f;
+    fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * (fc > 16000.0f ? 16000.0f : fc) / FS);
     for (i = 0; i < m; i++) {
         float cur, out, x, ring;
@@ -1881,7 +1988,13 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         sph += sinc;
         if (sph >= 1.0f)
             sph -= 1.0f;
-        x = lp2 * TEAR_GAIN * keep + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
+        x = lp2 * TEAR_GAIN * keep;
+        d2y = x - d2x + 0.99715f * d2y;   /* again at the end: the blocker above sits before the ring modulator
+                                          * and the soft clip, which put an offset back. PULSAR is this model,
+                                          * and it carried a DC of 10 with a fifth of a percent of its energy
+                                          * under 5 Hz - the moving zero point every gain change steps on */
+        d2x = x;
+        x = d2y + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
         x *= l;
         ml[i] += x * gl;
@@ -1895,6 +2008,8 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->lp2 = fm_flush(lp2);
     v->dc_x = fm_flush(dcx);
     v->dc_y = fm_flush(dcy);
+    v->dc2x = fm_flush(d2x);
+    v->dc2y = fm_flush(d2y);
     v->lvl_s = lvl;
 }
 
@@ -1935,6 +2050,7 @@ static void render_tape(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     dip = v->mph > 0.0f ? v->gp * fm_minf(1.0f, wear * 1.6f)
                           * (v->mph < 0.12f ? v->mph * (1.0f / 0.12f) : (1.0f - v->mph) * (1.0f / 0.88f)) : 0.0f;
     fc = fm_maxf(f * 2.0f, 320.0f * fm_exp2f(mass * 5.4f)) * (1.0f - 0.7f * dip);
+    fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * (fc > 16000.0f ? 16000.0f : fc) / FS);
     k = TAPE_GAIN * (1.0f - dip);
     for (i = 0; i < m; i++) {
@@ -1993,6 +2109,7 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     float cr[RES_MODES], sr[RES_MODES], gin[RES_MODES], ga[RES_MODES], y1[RES_MODES], y2[RES_MODES];
     float *st[2 * RES_MODES] = {&v->fs[0], &v->fs[1], &v->fs[2], &v->fs[3], &v->fs[4], &v->fs[5], &v->ph3[0], &v->ph3[1],
                                 &v->ph3[2], &v->z[0]};
+    float dcx = v->dc_x, dcy = v->dc_y;
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub = b->sub * 0.5f, scrape = b->air * 0.12f, ex = v->lp1,
           l = v->lvl_s, dl = (lvl - l) / (float)m;
     float gl = tsin(0.25f - (v->pan_live * b->width + 1.0f) * 0.125f), gr = tsin((v->pan_live * b->width + 1.0f) * 0.125f);
@@ -2036,7 +2153,11 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         sph += sinc;
         if (sph >= 1.0f)
             sph -= 1.0f;
-        s = s * RES_GAIN + ex * scrape + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
+        s = s * RES_GAIN + ex * scrape;
+        dcy = s - dcx + 0.99715f * dcy;   /* the coupled resonators settle off zero: -34.5 dB below 5 Hz, second
+                                          * only to FM 4-OP */
+        dcx = s;
+        s = dcy + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
         s *= l;
         ml[i] += s * gl;
@@ -2047,6 +2168,8 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         *st[2u * j + 1u] = fm_flush(y2[j]);
     }
     v->lp1 = fm_flush(ex);
+    v->dc_x = fm_flush(dcx);
+    v->dc_y = fm_flush(dcy);
     v->sub_ph = sph;
     v->rng = rng;
     v->lvl_s = lvl;
@@ -3120,8 +3243,10 @@ static struct {
     uint32_t gust_wait;                  /* samples to the next gust */
     float burst_l, burst_r;              /* TEXTURE: the bursts under way */
     float cs1[NZ_BANDS], cs2[NZ_BANDS];  /* the chord bands' states */
+    uint8_t cs_v[NZ_BANDS];              /* which body each band is tuned to, 0xFF none: the state belongs to the
+                                          * body, not to the slot */
 } nz = {0x1234567u, 0x89ABCDEu, 0.0f, 0.3f, 0.0f, 0.0f, 60.0f, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 60.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0u, 0.0f, 0.0f, {0, 0, 0, 0}, {0, 0, 0, 0}};
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0u, 0.0f, 0.0f, {0, 0, 0, 0}, {0, 0, 0, 0}, {0xFF, 0xFF, 0xFF, 0xFF}};
 static float nz_gust_amt;                /* what GUST does to the level now, 0..1, for the screen */
 static uint32_t nz_gusts;
 
@@ -3226,6 +3351,17 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
                     pick[q] = i;
             }
         }
+        for (j = 0; j < cn; j++)         /* a slot that has changed hands starts clean. The four bands are picked
+                                          * afresh every block by level, so with five or more bodies sounding they
+                                          * overtake each other and a slot is handed to another body - and the
+                                          * resonator behind it, at a Q of up to 17, was retuned with the previous
+                                          * body's energy still ringing in it: a chirp, with nobody touching a knob */
+            if (nz.cs_v[j] != (uint8_t)pick[j]) {
+                nz.cs1[j] = nz.cs2[j] = 0.0f;
+                nz.cs_v[j] = (uint8_t)pick[j];
+            }
+        for (j = cn; j < NZ_BANDS; j++)
+            nz.cs_v[j] = 0xFFu;
         for (j = 0; j < cn; j++) {
             float fb = 440.0f * fm_exp2f((vc[pick[j]].pitch - 69.0f) * (1.0f / 12.0f)), gb;
             if (fb < 110.0f)
@@ -3309,7 +3445,8 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
                 nz.cs1[j] = 2.0f * w1 - nz.cs1[j];
                 nz.cs2[j] = 2.0f * w2 - nz.cs2[j];
                 o = w1 * cg[j];
-                if (j & 1u) {
+                if (nz.cs_v[j] & 1u) {   /* the side follows the body, not the slot: a body that moves slot as the
+                                          * levels shift used to jump from one side to the other */
                     cl += o * (1.0f - 0.5f * width);
                     cr += o;
                 } else {
