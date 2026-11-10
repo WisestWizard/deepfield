@@ -405,7 +405,7 @@ and PLAY's colour shows it:
 | SHIFT | orange | RATE, CHANCE, RANGE | All the voices move together by the same number of scale steps, up to RANGE, so the whole chord shifts to a related one. |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
-| PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time over a pinned pedal. ROAM (GEN 2) sets how far the generator may develop it. |
+| PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time while the rest hold. ROAM (GEN 2) sets how far the generator may develop it. |
 | LOOP | orange | RATE, DECAY, OCT JUMP | A phrase you played, coming back at the velocities, the rhythm and the note lengths you played it with: a note you held for a second comes back held for a second. Closing a take sets RATE to the phrase's own length, so it loops at the speed it was played. Record one with REC (below), or just play with LATCH off and your last eight notes are caught on their own. DECAY drops notes and fades the phrase, OCT JUMP throws notes an octave; ROAM (GEN 2) carries each pass to another degree of the scale. The pill counts the phrase (LOOP 5) and lights while it plays. |
 
 **Recording a phrase (LOOP).** Selecting LOOP with nothing recorded puts **REC THEN PLAY** on the screen, since an
@@ -454,11 +454,14 @@ distance at the same moment, which the ear reads as the whole instrument sliding
 parallel motion of everything is a pitch bend, not a progression. Where a voice cannot reach a note of the new
 chord it hangs on instead, as a suspension, and rejoins on the next long step.
 
-**The pedal.** When PROG starts with three or more notes held, the lowest is pinned and never moves, so there is
-always one note under the harmony. It is the only note held through every change, and it turns each step into a
-chord over a bass rather than a transposition - which is also what takes the pull out of the degree the old
-cadences leaned on. Pin a voice yourself (section 4) and PROG leaves your choice alone; with only one or two notes
-held it pins nothing, since a pedal costs a voice and there would be nothing left to lead.
+**No note is frozen.** PROG locks nothing of its own. What holds a chord together for the ear is the common
+tones - a voice already on a note of the next chord stays where it is, which the leading does for every voice
+including the lowest - and that is enough. Earlier versions pinned the lowest note as a permanent pedal, which
+meant every chord of every progression was heard as an inversion over one bass note and no progression could
+ever arrive anywhere; it also cost a voice out of eight for as long as PROG ran. The bass now holds whenever it
+is a note of the chord, which is most steps, and moves on the steps where the root really changes. **For a
+pedal, lock a voice yourself** (hold its key and turn KNOB 4 to LOCK ON): PROG leaves a locked voice where it
+is, and the chord is led above it - or below it, for a progression whose body sinks.
 
 **Steps are different lengths.** Every progression below holds some chords two, four or more times as long as
 others. With every step the same length nothing is an arrival and nothing is a departure, and the eight old
@@ -479,10 +482,12 @@ so RATE sets the pace and the table sets the shape.
 **Where each step sits.** Every progression also carries a contour: how high or low the chord should sit at each
 step, in semitones from where you struck it. A voice already on a note of the chord keeps its pitch class and
 takes the octave nearer that mark, so the body of the sound really rises or falls while the harmony is untouched -
-one voice a step, so it reads as the music breathing. UNDERTOW sinks about eight semitones over its turn and comes
-home in one move; SLOW RISE climbs the same way; TWO ROOMS goes upstairs and then downstairs. **For a progression
-whose body sinks, the pedal is the ceiling rather than the floor** - the highest note is the one pinned and the
-chord falls away beneath it, which is the only way it can get down there at all.
+one voice a step, so it reads as the music breathing. Measured from a struck C3 G3 C4 E4: UNDERTOW takes the
+chord's middle down about five semitones over its turn, SLOW RISE lifts it three and keeps lifting. The chord is
+allowed to open out as it travels, but not past an octave wider than you struck it - without that bound a single
+voice runs to the end of its octave leash on the first step and parks there, leaving two chords a fifth apart
+rather than one chord that moved. If you lock a voice yourself it is the floor the chord stays above, or, for a
+progression whose body sinks, the ceiling it falls away beneath.
 
 **ROAM** (GEN 2, knob 2) is how far the generator may take the written progression. At 0 the table is
 played exactly as written. Turned up, the progression becomes the theme: the next chord is chosen by weight

@@ -143,7 +143,7 @@ static const int8_t PROG_R[DR_PROGS][DR_PROG_LEN] = {
     { 0, -2,  0,  3,  0, -4, -5,  0,  5,  6,  0, -6, -7, -8,  0},       /* BREATH: each trip further out */
     { 0, -3,  0,  2,  0, -5,  0,  3,  0}};                              /* STONES: it leans, and stands again */
 static uint8_t sc_deg[12], sc_n = 12u, sc_dim = 255u, sc_dom = 255u;
-static uint32_t cyc_pos, cyc_left = 1u, cyc_pin, cyc_top;   /* cyc_top: the pedal is the ceiling, not the floor */
+static uint32_t cyc_pos, cyc_left = 1u, cyc_top;   /* cyc_top: a locked voice is the ceiling, not the floor */
 static uint8_t cyc_recent[2], cyc_visit[12];   /* ROAM: the last two degrees, and how long each has had */
 static int32_t cyc_homeoff;              /* the generator's own home, in degrees from the struck chord */
 static uint32_t cyc_turn, cyc_debt;      /* turns of the table, and steps since the chord was last at home */  /* the step the chord stands on, and the periods it has left to stand */
@@ -795,14 +795,12 @@ void dr_scale(uint32_t mask12, uint32_t root)
     }
 }
 static void orbit_reset(void);
-static void cycle_pedal(int on);
 void dr_orbit(int on)
 {
     uint32_t was = orbit_on;
     orbit_on = on != 0;
     orbit_left = orbit_per = 0;
     orbit_reset();
-    cycle_pedal(orbit_on);
     if (clk_out && !clk_ext && rt_out && dr_orbit_mode() == OM_ARP && was != orbit_on) {   /* the runner's start and stop */
         rt_out(orbit_on ? 0xFAu : 0xFCu);
         clk_acc = 0.0f;
@@ -2315,43 +2313,6 @@ static int32_t cyc_near(int32_t cur, uint32_t pc, int32_t lo, int32_t hi, int32_
     }
     return cur;
 }
-static void cycle_pedal(int on)
-{                                        /* PROG holds the lowest latched note still while the chord moves over it.
-                                          * It is the only note held through every change, so it is what the ear
-                                          * hears the harmony against, and it turns each step into a chord over a
-                                          * bass rather than a transposition - which is also what takes the pull
-                                          * out of the degree the old cadences leaned on. */
-    uint32_t i, low = NV, held = 0;
-    if (cyc_pin) {                       /* the one PROG pinned is let go as soon as PROG is not what is running */
-        if (cyc_pin - 1u < NV)
-            vc[cyc_pin - 1u].pinned = 0;
-        cyc_pin = 0;
-    }
-    if (!on || dr_orbit_mode() != OM_CYCLE)
-        return;
-    for (i = 0; i < NV; i++)
-        if (vc[i].on && !vc[i].fading && vc[i].latched && vc[i].pinned)
-            return;                      /* the player has chosen a pedal already: leave it where it is */
-    {
-        uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u;
-        cyc_top = prog_falls(prog) ? 1u : 0u;
-    }
-    for (i = 0; i < NV; i++)
-        if (vc[i].on && !vc[i].fading && vc[i].latched) {
-            held++;
-            if (low == NV
-                || (cyc_top ? vc[i].home > vc[low].home : vc[i].home < vc[low].home))
-                low = i;                 /* the highest note for a falling progression, the lowest otherwise */
-        }
-    if (held < 3u)
-        return;                          /* a pedal costs a voice and never moves: under three notes there would
-                                          * be nothing left to lead, and a single held note would sit there in
-                                          * silence while PROG ran */
-    if (low < NV) {
-        vc[low].pinned = 1;
-        cyc_pin = low + 1u;
-    }
-}
 static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, int32_t reg)
 {                                        /* the chord is led to the step's target, not shifted onto it: a voice
                                           * already on one of its notes stays, the rest take the nearest note they
@@ -2363,8 +2324,11 @@ static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, 
     voice_t *v[DR_NV];
     if (!cnt)
         return;
-    for (i = 0; i < NV; i++)             /* a pinned voice is the ground the chord stays above, or, for a falling
-                                          * progression, the ceiling it stays under */
+    for (i = 0; i < NV; i++)             /* a voice the player locked is the ground the chord stays above, or,
+                                          * for a falling progression, the ceiling it stays under. PROG locks
+                                          * nothing of its own: the common tones below are what hold a chord
+                                          * together, and a bass frozen for every step of a progression can
+                                          * never let it arrive anywhere */
         if (vc[i].on && !vc[i].fading && vc[i].pinned) {
             int32_t pp = (int32_t)(vc[i].target + 0.5f);
             if (cyc_top) {
@@ -2416,9 +2380,6 @@ static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, 
             continue;
         if (pc >> (uint32_t)(((cur[i] % 12) + 12) % 12) & 1u)
             continue;                    /* already one of the chord's notes: it holds, and that is the point */
-        if (!i && units < 3u)
-            continue;                    /* the bass moves only on a long step: stepwise under a drone it stops
-                                          * being the ground and turns into another part */
         want = pc & ~covered;            /* a note of the chord nobody is on yet, by preference: letting every
                                           * voice take whatever is nearest piles them onto the same two notes and
                                           * the chord wears down to a shell over a dozen steps */
@@ -2515,7 +2476,17 @@ static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, 
             if (i + 1u < cnt && cand_to >= to[i + 1u])
                 continue;
             if (cand_to <= floor_n)
-                continue;                /* the pedal stays the ground */
+                continue;                /* a voice the player locked stays the ground */
+            {                            /* the chord may open out as it moves, but not into two chords an octave
+                                          * apart: with nothing pinned there is no floor to push against, and an
+                                          * octave move would otherwise take a voice straight to the end of its
+                                          * leash and leave it parked there */
+                int32_t lowv = i == 0u ? cand_to : to[0];
+                int32_t highv = i + 1u == cnt ? cand_to : to[cnt - 1u];
+                int32_t span = (int32_t)v[cnt - 1u]->home - (int32_t)v[0]->home;
+                if (highv - lowv > span + 12)
+                    continue;
+            }
             gain = pull > 0 ? cand_to - cur[i] : cur[i] - cand_to;
             if (gain > best) {
                 best = gain;
@@ -2643,6 +2614,9 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
                 units = 1u;
         }
         cyc_left = units ? units : 1u;
+        cyc_top = prog_falls(prog) ? 1u : 0u;   /* a progression whose body sinks wants a ceiling over it,
+                                          * not a floor under it; read each step, so it follows CHORDS as it
+                                          * is turned */
         cycle_plan(cand, cnt, d, units, (int32_t)gen_r[cyc_pos]);
         return;
     }

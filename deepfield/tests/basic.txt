@@ -953,9 +953,10 @@ release SEL
 tap HOME
 wait 7000
 # PROG: the chord is led through a progression from where it was struck (F3's C3 G3 C4 G4 in C MAJOR, ROUND), one
-# step about a second with CHANCE full. The lowest note is pinned as the pedal and never moves; of the rest only
-# one or two go at a time, and a voice already on a note of the next chord stays where it is - which is the whole
-# point, since with every voice moving in parallel there is nothing held for the ear to hear them move against
+# step about a second with CHANCE full. Only one or two voices go at a time and the rest hold - which is the whole
+# point, since with every voice moving in parallel there is nothing held for the ear to hear them move against.
+# Nothing is pinned: the bass holds here because C is a note of the chord, not because PROG froze it, and on a
+# step whose chord has no C in it the bass is free to move like any other voice
 midi C0 02
 wait 300
 press SEL
@@ -975,16 +976,16 @@ expect p24 46
 expect cyclepos 0
 tap PLAY
 wait 100
-expect pending 1
+expect pending 2
 expect cyclepos 1
 out
 wait 1600
 expect_out USB 80 43 00
-expect_out USB 90 40 7F
+expect_out USB 90 45 7F
 expect pitch48 48
 expect pitch55 55
-expect pitch60 60
-expect pitch67 64
+expect pitch60 57
+expect pitch67 69
 out
 wait 3000
 expect pitch48 48
