@@ -1,0 +1,35 @@
+# A tag builds DEEP FIELD through the Firmware Hub's shared workflow, which attests the package with
+# actions/attest-build-provenance and publishes it as the release of that tag. thefirmwarehub.com shows
+# "Built from source" only for packages attested this way, at a reviewed tag of that workflow.
+#
+# The shared workflow installs Python, Pillow, JieLi's Linux toolchain and the AC79 SDK, and sets
+# JIELI_TOOLCHAIN and AC79_SDK, which is what base/tools/build.py reads. It runs on an x86-64 Linux runner,
+# where build.py calls the toolchain directly; the Docker container it uses here is only for macOS.
+name: release
+
+on:
+  push:
+    tags: ['[0-9]*']          # the tags in this repository are bare versions: 1.3, not v1.3
+
+permissions: {}
+
+jobs:
+  build:
+    uses: zvenson/fm1-build/.github/workflows/build.yml@v1
+    permissions:
+      contents: write         # the release on a tag
+      id-token: write         # the attestation's signing identity
+      attestations: write
+    with:
+      # base is a submodule and the shared workflow's checkout does not fetch submodules, so bring it in first.
+      # It is pinned, so this takes the commit this tag was built against.
+      build: >-
+        git submodule update --init base &&
+        python3 base/tools/build.py deepfield --release "$GITHUB_REF_NAME"
+      # the same two checks run here before a release: the simulator's suite, then every preset against its golden
+      test: >-
+        python3 base/tools/build.py deepfield --host &&
+        mkdir -p "$RUNNER_TEMP/ci" &&
+        deepfield/build/host/deepfield_host deepfield/tests/basic.txt "$RUNNER_TEMP/ci" &&
+        python3 deepfield/tools/render_scenes.py
+      packages: deepfield/build/deepfield-${{ github.ref_name }}.fwsc
