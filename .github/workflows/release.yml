@@ -22,10 +22,11 @@ jobs:
       id-token: write         # the attestation's signing identity
       attestations: write
     with:
-      # base is a submodule and the shared workflow's checkout does not fetch submodules, so bring it in first.
-      # It is pinned, so this takes the commit this tag was built against.
+      # base is a submodule and the shared workflow's checkout does not fetch submodules, so bring it in first -
+      # recursively, because base carries felucca-bsp as a submodule of its own and the loader is built from it.
+      # Both are pinned, so this takes the commits this tag was built against.
       build: >-
-        git submodule update --init base &&
+        git submodule update --init --recursive base &&
         V="$GITHUB_REF_NAME" &&
         case "$V" in [0-9]*) ;; *) V=0.0 ;; esac &&
         python3 base/tools/build.py deepfield --release "$V"
