@@ -2,6 +2,40 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: 1.3 committed, tagged and pushed - the site is built but NOT published (2026-11-09)
+
+**Committed and pushed**, five commits, `1cb1d8f..d1edea1` on master, tag **1.3** pushed:
+
+- `0ff0a44` the panel: GEN 2's knobs by mode, SUB on HOME in REVERB's place, TEMPO on GLOBAL, the bigger
+  E D R S N, one percent a click, and the second core's state in the log
+- `8160fd8` the engine: the ensemble, WOW, the hall, the shimmer, `dly_fade`, the filter corners, the wavetable
+  threshold, FM 4-OP's patch dip, and the DC blockers
+- `b25c677` the handoff for all of it
+- `d1edea1` the docs back in step (`deepfield/README.md` still called the four macros TIMBRE, DRIFT, REVERB,
+  TREMOLO; the CC table had 51 out of order; the FM 4-OP row now says the voice dips as the patch changes)
+
+**The site is built and checked but not published.** `deepfield/tools/publish_site.sh 1.3 --local` ran clean:
+five PHOSPHOR pages, `install/` at identity **FM-1_14010300**, `firmware/deepfield-1.3.fwsc` (614,938 B), the
+CNAME, and the manual's HOME row reading TIMBRE / DRIFT / SUB / TREMOLO with TEMPO on GLOBAL. `firmware.json` at
+the root is refreshed, description exactly 600 characters; the spec says it carries no version by design.
+
+**The real publish was refused** - the permission classifier blocks it as a public surface, since the script
+force-replaces the gh-pages branch. It needs running by hand:
+
+    deepfield/tools/publish_site.sh 1.3
+
+**For thefirmwarehub.com**, from `docs/fm1-research-findings.md` section 67: a listing needs `fmhub.json` and a
+release built by the shared workflow `zvenson/fm1-build/.github/workflows/build.yml@v1` with a matching SHA-256
+for the "Built from source" badge.
+
+- `fmhub.json` is at the root and current (what, author, kinds, play, cheat, image, color).
+- **There are no GitHub releases at all** - `gh release list` is empty - so the 1.3 package is not downloadable
+  from the repository, only from the site.
+- **There is no `.github/workflows/`**, so nothing is built by the hub's shared workflow and the badge cannot be
+  earned as things stand.
+
+Still open from before: the hub's three install tests and the mail to zven@thefirmwarehub.com.
+
 ## Start here: every voice checked for a moving zero point (flashed 2026-11-09; on the unit, not pushed)
 
 **On the unit:** flashed 2026-11-09 with `fm1_install.py deepfield/build/deepfield.fwsc --yes`, image 424,020 B,
