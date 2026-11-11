@@ -34,10 +34,19 @@ Only `usb_level` moved - SPEAKER, CLOCK OUT and the selected preset all came thr
 exactly what it was meant to and nothing else. **The hand-setting chore is gone**: no unit, Kyle's or anyone's,
 needs USB LEVEL set by hand any more.
 
-**Left for Kyle**: that install (optional but worth it), `deepfield/tools/publish_site.sh 1.6` (the site still
-serves 1.3, so his own install page is three releases behind while the hub card would offer 1.6), and the
-submission form at thefirmwarehub.com/submit - every answer written out, install table included, needing only his
-address and the tick.
+**The site is published** - Kyle ran `deepfield/tools/publish_site.sh 1.6` himself and it pushed to gh-pages at
+deepfield.fog.baby: five PHOSPHOR pages, `install/` at identity **FM-1_44010600**, `firmware/deepfield-1.6.fwsc`,
+the emulator rebuilt. It had been stuck on 1.3 since 2026-11-11 morning.
+
+**One inconsistency the hub listing makes newly visible.** `publish_site.sh` *builds* the package it serves, so
+the site's `firmware/deepfield-1.6.fwsc` is `1135efdedcbb8624` while the attested GitHub release is
+`4e9bac1ddc53d0e1` - same source and identity, different bytes, because local and CI builds are not
+byte-reproducible here. Harmless until now; but the hub card will carry "Built from source on GitHub" against
+the release, while his own install page hands out bytes no attestation covers. The fix, if it is wanted, is for
+`publish_site.sh` to take the release asset instead of building one. Not done, not asked for.
+
+**Left for Kyle**: only the submission form at thefirmwarehub.com/submit - every answer written out, the install
+table included, needing his address and the tick.
 
 ## Start here: the hub pass - the identity had to move, FM-1_14 is inside LOOM-8's range (2026-11-11)
 
