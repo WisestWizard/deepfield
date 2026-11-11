@@ -2,6 +2,31 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: 1.6 is released, with the hub's identity and the USB LEVEL migration (2026-11-11)
+
+**1.6 is out**, built and attested by CI from the tag on Kyle's "Cut 1.6". Run 43100149803 green, every step
+including the repository's own tests. `deepfield-1.6.fwsc`, 614,938 B, SHA-256 `4e9bac1ddc53d0e1`, identity
+**FM-1_44010600**, loader mark present. `gh attestation verify ... --repo WisestWizard/deepfield --signer-repo
+zvenson/fm1-build` exits 0, and the attestation names that same digest, built from `.github/workflows/release.yml`
+at commit `8873fcee1574` - the tip. So the "Built from source on GitHub" key applies.
+
+**What 1.6 carries over 1.5**: the identity move off `FM-1_14` (LOOM-8's range) to `FM-1_44`, and the **DEF7
+settings migration** that puts USB LEVEL back to unity once on any unit carrying the old -6 dB default. Nothing
+else - no audio change, the 16 goldens are untouched.
+
+**The unit is NOT on the released bytes.** It runs the *local* 1.6 build, `4d869dad928ac453`, from the install
+tests; the release is `4e9bac1ddc53d0e1`. Same source, same identity, different bytes - local and CI builds have
+never been byte-reproducible here (recorded at 1.3 and again now). Two reasons to install the released asset over
+it when Kyle says so: the hub form claims "I installed **this release** on a real FM-1", which is then exactly
+true; and it is the only way to test the DEF7 migration, because his unit is the thing carrying a real DEF6 blob
+with `usb_level = 2` and the simulator always starts with no settings at all. After that install the GLO/USB page
+should read **0 DB** without anyone touching it.
+
+**Left for Kyle**: that install (optional but worth it), `deepfield/tools/publish_site.sh 1.6` (the site still
+serves 1.3, so his own install page is three releases behind while the hub card would offer 1.6), and the
+submission form at thefirmwarehub.com/submit - every answer written out, install table included, needing only his
+address and the tick.
+
 ## Start here: the hub pass - the identity had to move, FM-1_14 is inside LOOM-8's range (2026-11-11)
 
 Kyle: "Prep the hub." The six rules were re-read from the live pages (they have changed since 2026-11-08) and
