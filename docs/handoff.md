@@ -2,7 +2,12 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the output was 9 dB quiet, and it was two trims stacked (2026-11-11, not released)
+## Start here: 1.5 is released - the output was 9 dB quiet, and it was two trims stacked (2026-11-11)
+
+**1.5 is out**, built and attested by CI from the tag: `deepfield-1.5.fwsc` (614,938 B), SHA-256
+`de6a9423d9c71027`, which is the hash its attestation names, and it verifies with
+`--signer-repo zvenson/fm1-build`. **The site still serves 1.3** - `deepfield/tools/publish_site.sh 1.5` has to
+be run by hand. The unit still runs the pre-1.4 build.
 
 Kyle: "we lowered the output volume via USB too much ... I think I was conflating the pops and crackles with
 level issues." Measured, at **full MASTER**, which is what the goldens render at (`render_scenes.py` sets
@@ -36,7 +41,6 @@ saved, and only a fresh unit or a V3 upgrade takes the new default. He has to se
 GLO, SELECT four times, knob 2.
 
 Goldens re-recorded (every preset is 3 dB louder by design), 787 checks, device image 424,004 B, build 009F5C4D.
-**Not committed, not tagged** - 1.4 is already released, so this wants a 1.5.
 
 ## Start here: 1.4 is released and attested; LOOP no longer fades out on its own (2026-11-11)
 
