@@ -14,13 +14,25 @@ at commit `8873fcee1574` - the tip. So the "Built from source on GitHub" key app
 settings migration** that puts USB LEVEL back to unity once on any unit carrying the old -6 dB default. Nothing
 else - no audio change, the 16 goldens are untouched.
 
-**The unit is NOT on the released bytes.** It runs the *local* 1.6 build, `4d869dad928ac453`, from the install
-tests; the release is `4e9bac1ddc53d0e1`. Same source, same identity, different bytes - local and CI builds have
-never been byte-reproducible here (recorded at 1.3 and again now). Two reasons to install the released asset over
-it when Kyle says so: the hub form claims "I installed **this release** on a real FM-1", which is then exactly
-true; and it is the only way to test the DEF7 migration, because his unit is the thing carrying a real DEF6 blob
-with `usb_level = 2` and the simulator always starts with no settings at all. After that install the GLO/USB page
-should read **0 DB** without anyone touching it.
+**The unit runs the released bytes** (Kyle's "Install it"). The downloaded `4e9bac1ddc53d0e1` was installed over
+the local 1.6 build `4d869dad928ac453` - same source and identity, different bytes, because local and CI builds
+have never been byte-reproducible here. So the hub form's "I installed **this release** on a real FM-1" is now
+literally true, not just true in substance. Clean boot: no crash, `late 00000000`, `lock 00000000`, CPU 5%, BLE
+MIDI advertising.
+
+**The DEF7 migration is confirmed on hardware, which is the only place it could be.** The simulator always starts
+with no stored settings, so it takes the fresh-default path and never exercises a migration; Kyle's unit was the
+one thing carrying a real DEF6 blob with `usb_level = 2`. Read on the GLO/USB page immediately before and after
+the install, nothing touched in between:
+
+| | SPEAKER | USB LEVEL | CLOCK OUT |
+| --- | --- | --- | --- |
+| before | AUTO | **-6 DB** | OFF |
+| after | AUTO | **0 DB** | OFF |
+
+Only `usb_level` moved - SPEAKER, CLOCK OUT and the selected preset all came through unchanged, so the step did
+exactly what it was meant to and nothing else. **The hand-setting chore is gone**: no unit, Kyle's or anyone's,
+needs USB LEVEL set by hand any more.
 
 **Left for Kyle**: that install (optional but worth it), `deepfield/tools/publish_site.sh 1.6` (the site still
 serves 1.3, so his own install page is three releases behind while the hub card would offer 1.6), and the
