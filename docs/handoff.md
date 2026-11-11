@@ -13,6 +13,11 @@ range of LOOM-8 (their next versions may take it)."* LOOM-8 0.15 holds the patte
 said on 2026-11-08 that "the FM-1_14 identity nobody else uses" was met; whether LOOM-8 was listed then is not
 knowable from here, but it is listed now.
 
+**On hold, on Kyle's word (2026-11-11).** The identity move is committed and pushed, but **1.6 is not cut**: he
+is playing 1.5 on the unit and wants his listening notes folded in first, so the next release carries both. The
+hub form goes nowhere until that release exists - it would read 1.5 and the old number. The site stays at 1.3
+for the same reason: publishing it twice in a day is wasted work.
+
 **The check is client-side**, so it can be done without hammering their server: /submit/ fetches `/catalog.json`
 (187 firmwares, each with a `product` and an `ident` regex naming the range it holds) and tests against it. Two
 notes for anyone redoing this: entries whose `ident` is the catch-all `FM-1_\d{3,8}` are deliberately skipped by
