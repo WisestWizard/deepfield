@@ -2,6 +2,42 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: 1.4 is released and attested; LOOP no longer fades out on its own (2026-11-11)
+
+**The bug Kyle reported: "the loop just stops playing after a while."** A phrase caught by playing with LATCH off
+lost a twentieth of its level on **every pass, whatever DECAY said** - `echo_vel *= 1 - 0.45*decay*0.01 -
+(loop_have ? 0 : 0.05)`. Measured on the wire over four minutes: velocity 56 down to 10, then silence, with
+nothing on the panel able to hold it. A phrase recorded with REC never did this (`loop_have` is set only by
+`dr_loop_rec`), which is why it looked intermittent. DECAY is now the only thing that fades a phrase:
+`echo_vel *= 1 - (0.45 + (loop_have ? 0 : 0.25)) * decay * 0.01`. At 0 nothing fades either way; turned up, a
+caught phrase still dies faster than a recorded one (40 notes against 60 at DECAY 40). Before and after on the
+same test: **105.6 -> 11.3** became **117.0 -> 117.0**.
+
+**The guard took three goes to make honest**, which is the lesson worth keeping:
+
+1. Inserted mid-suite, it broke four later tests - `basic.txt` is sequential and stateful.
+2. Moved to the end, it **passed with the fault still in**: `loop_have` carries over from an earlier take in the
+   suite, so the phrase counted as recorded. It now opens with an empty REC pair to clear it.
+3. `out` has to come **before** `tap PLAY`, or the first replay lands inside the tap and is never captured - the
+   same trap as the LOOP length work.
+
+Checked by reverting the fix and running the whole suite: the guard fails without it. 785 -> 787 checks, goldens
+unchanged. Three existing expectations moved too, because they pinned faded velocities.
+
+**1.4 is out.** Tag pushed, `.github/workflows/release.yml` built it, and the release carries
+`deepfield-1.4.fwsc` (614,938 B, identity `FM-1_14010400`) and `SHA256SUMS`. The asset's SHA-256 is
+`1f0e1fa3c6055e7f`, the same the attestation names.
+
+**Verifying it needs the signer spelled out**, because the shared workflow signs it, not this repository - the
+plain form fails with a bare "verifying with issuer sigstore.dev", which says nothing:
+
+    gh attestation verify deepfield-1.4.fwsc --repo WisestWizard/deepfield --signer-repo zvenson/fm1-build
+
+**Not done:** the site still serves 1.3. `deepfield/tools/publish_site.sh 1.4` is refused from here and needs
+running by hand - and note it builds its own package, which will not be byte-identical to the released one (the
+build is not reproducible across machines: the same 0.0 source gave `492afd54` in CI and `ec24382f` here). The
+unit still runs the pre-LOOP-fix build; 1.4's app image is 424,004 B, build 7021ECFB.
+
 ## Start here: a tag now builds and releases itself (2026-11-10)
 
 `.github/workflows/release.yml` calls the Firmware Hub's shared workflow,
