@@ -2,12 +2,21 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: 1.5 is released - the output was 9 dB quiet, and it was two trims stacked (2026-11-11)
+## Start here: 1.5 is released and on the unit - the output was 9 dB quiet, and it was two trims stacked (2026-11-11)
 
 **1.5 is out**, built and attested by CI from the tag: `deepfield-1.5.fwsc` (614,938 B), SHA-256
 `de6a9423d9c71027`, which is the hash its attestation names, and it verifies with
 `--signer-repo zvenson/fm1-build`. **The site still serves 1.3** - `deepfield/tools/publish_site.sh 1.5` has to
-be run by hand. The unit still runs the pre-1.4 build.
+be run by hand.
+
+**On the unit (2026-11-11).** On Kyle's "Flash it", the **released asset itself** was installed, not a local
+build: `/usr/bin/python3 base/tools/fm1_install.py <the downloaded deepfield-1.5.fwsc> --yes`, after checking
+its SHA-256 against the attestation again. The loader took the fast path (changed sectors only) and the unit
+came back as `FM-1_14010500`. A clean boot: no crash recorded, `late 00000000`, `lock 00000000`, CPU 5%, heap
+peak 11352 of 24576, BLE advertising as FM-1 F9FC. The screen came up on HOME with **FM AMOUNT, DRIFT, SUB,
+TREMOLO**, so the SUB-for-REVERB swap is live. Flashing the release asset rather than a rebuild is worth
+keeping: local and CI builds are not byte-reproducible, so this is the only way the unit runs the same bytes
+the download does.
 
 Kyle: "we lowered the output volume via USB too much ... I think I was conflating the pops and crackles with
 level issues." Measured, at **full MASTER**, which is what the goldens render at (`render_scenes.py` sets
