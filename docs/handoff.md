@@ -2,6 +2,42 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: the output was 9 dB quiet, and it was two trims stacked (2026-11-11, not released)
+
+Kyle: "we lowered the output volume via USB too much ... I think I was conflating the pops and crackles with
+level issues." Measured, at **full MASTER**, which is what the goldens render at (`render_scenes.py` sets
+`master 4096`):
+
+- the loudest factory preset peaked at **-6.0 dBFS** and the limiter **never moved** (`fx_lim_min` 1000), so
+  6 dB of headroom sat unused;
+- and the USB recording took **another 6 dB** off on top, because `set.usb_level` defaulted to 2 and
+  `USB_TRIM_Q12[2]` is -6 dB. A recording therefore started 12 dB under full scale before MASTER was touched.
+
+**Two trims, stacked, neither of them obvious.** The master constant had been pulled down twice for recordings
+that redlined in Live - first to 4.35 M with MASTER cubed, then to 6.15 M with the law back to squared - and the
+second trim was never taken off when the first was. The USB default was the other one.
+
+**Both reset.** The constant is **8.69 M** (+3 dB) and `set.usb_level` defaults to **0** (unity), in the fresh
+settings and in the V3 -> V4 migration, so an older unit comes up at unity too. Measured after:
+
+| | before | after |
+| --- | --- | --- |
+| loudest factory preset, full MASTER | -6.0 dBFS | **-3.0 dBFS** |
+| quietest (INIT) | -14.5 | -11.5 |
+| an ordinary chord | -7.0 | -4.0 |
+| the same recorded over USB | -13.0 | **-3.0** |
+| eight voices, every effect up | - | **-0.1 dBFS, 0 samples clipped** |
+
+The limiter is still idle on ordinary material (1000) and only moves on that last case, where it holds 0.770 -
+which is what it is for. Nine checks moved, all of them `usblevel` and `recgain` encoding the old default.
+
+**Kyle's own unit will not pick the USB default up**: his settings are already a V4 blob with `usb_level = 2`
+saved, and only a fresh unit or a V3 upgrade takes the new default. He has to set USB LEVEL to 0 dB himself -
+GLO, SELECT four times, knob 2.
+
+Goldens re-recorded (every preset is 3 dB louder by design), 787 checks, device image 424,004 B, build 009F5C4D.
+**Not committed, not tagged** - 1.4 is already released, so this wants a 1.5.
+
 ## Start here: 1.4 is released and attested; LOOP no longer fades out on its own (2026-11-11)
 
 **The bug Kyle reported: "the loop just stops playing after a while."** A phrase caught by playing with LATCH off

@@ -3537,10 +3537,13 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     blk_t *b = &g_blk;
     fx_params_t fx;
     uint32_t i;
-    float gain = (float)master_q12 * (1.0f / 4096.0f) * 6150000.0f * volume, space;   /* the limiter's ceiling
-                                          * at -3.1 dBFS, not -0.1: Kyle's USB recordings redlined in Live. 4.35 M
-                                          * (-6 dB) with MASTER cubed took too much; with the law back to squared,
-                                          * this trim alone holds every output 3 dB under where 0.9 had it */
+    float gain = (float)master_q12 * (1.0f / 4096.0f) * 8690000.0f * volume, space;   /* the ceiling is about
+                                          * -3 dBFS, which is where it was meant to be. It had been pulled down
+                                          * twice over for recordings that redlined in Live - first to 4.35 M with
+                                          * MASTER cubed, then to 6.15 M with the law back to squared - and the
+                                          * second trim was never taken off, so with MASTER full the loudest
+                                          * factory preset peaked at -6.0 dBFS and the limiter never moved at all.
+                                          * Measured across all sixteen; the limiter still catches what goes over */
     int on_two = 0;
     if (n > MAXBLOCK)
         n = MAXBLOCK;

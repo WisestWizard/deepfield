@@ -347,7 +347,8 @@ static void settings_defaults(void)
     set.local = 1;
     set.latch = 1;
     set.speaker = SPK_AUTO;
-    set.usb_level = 2;
+    set.usb_level = 0;                   /* unity: the trim is there to pull a hot recording down, and it was
+                                          * pulling every recording 6 dB down before anyone touched it */
     set.clock_out = 0;
     set.out_level = 127;
 }
@@ -400,7 +401,7 @@ static void project_load(void)
         if (got == (int)SET_SIZE_V3 && set.magic == SET_MAGIC_V3) {   /* DEF3: the same, without SPEAKER */
             set.magic = SET_MAGIC_V4;
             set.speaker = SPK_AUTO;
-            set.usb_level = 2;
+            set.usb_level = 0;           /* an older unit comes up at unity too, not 6 dB under */
             set.clock_out = 0;
             got = (int)sizeof set;
         }

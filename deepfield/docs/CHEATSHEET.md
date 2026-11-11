@@ -66,7 +66,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | FX MIX (GLO, SELECT once) | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen |
 | GLOBAL (GLO, SELECT twice) | SCALE | ROOT | MORPH | TEMPO (40–240 BPM, EXT on MIDI clock; ARP steps at DIV of it and a synced DLY TIME follows it) |
 | MIDI (the view shows the Bluetooth device: CONNECTED and its name, or NOT CONNECTED and the devices found, searched for while the page is up) | IN CH | OUT CH | LOCAL | VELOCITY (on by default) |
-| USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
+| USB | SPEAKER (ON; AUTO: silent while a computer records; OFF) | USB LEVEL (the recording, 0 to -18 dB; 0 by default, so it matches the speaker) | CLOCK OUT (24 a beat while ARP runs from TEMPO) | – |
 
 
 ## Models

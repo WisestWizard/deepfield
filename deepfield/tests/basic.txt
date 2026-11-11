@@ -875,25 +875,26 @@ expect gain 0
 spin K1 -1
 wait 30
 expect speaker 1
-expect usblevel 2
+expect usblevel 0
 spin K2 2
 wait 30
-expect usblevel 4
+expect usblevel 2
 spin K2 -2
 wait 30
-expect usblevel 2
+expect usblevel 0
 # MASTER sets the recording as well as the speaker, so the knob always moves what leaves the FM-1 (it used to
-# render the recording at USB LEVEL alone, and turning MASTER with Live armed did nothing). MASTER is half here
-expect recgain 512
-master 4096
-expect recgain 2048
-spin K2 2
-expect usblevel 4
+# render the recording at USB LEVEL alone, and turning MASTER with Live armed did nothing). MASTER is half here,
+# and USB LEVEL starts at unity: it used to start 6 dB down, which quietly took 6 dB off every recording made
 expect recgain 1024
+master 4096
+expect recgain 4096
+spin K2 2
+expect usblevel 2
+expect recgain 2048
 spin K2 -2
 master 2048
-expect usblevel 2
-expect recgain 512
+expect usblevel 0
+expect recgain 1024
 tap HOME
 # MIDI clock: the runner steps every twelve clocks while they come (120 BPM: 21 ms apart) and says EXT; two
 # seconds without one, RATE's own tempo returns; CLOCK OUT (USB page) sends 24 a beat while the runner runs
