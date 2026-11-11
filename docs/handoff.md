@@ -58,10 +58,45 @@ must say if the firmware cannot read other firmwares' projects or samples - now 
 `zven@thefirmwarehub.com` is gone from that page; `fw@thefirmwarehub.com` is for closed source and removals.
 Kyle fills the form himself - the answers are written out in the session that prepared this.
 
-**Left, and it needs Kyle.** Rule 5 is the only one not yet met: *installed from V15 and from another firmware,
-and you can leave it again*. That is three installs on his own unit, and it means putting M-VAVE's stock V15 and
-some third firmware on it and back. Not started - his word first. And the identity move means the hub must see a
-release carrying it: **1.6 has to be cut** before the form is sent, or the hub will read 1.5 and its old number.
+**Rule 5 is met (2026-11-11), on his "Run it now".** Four installs on the real unit over USB-MIDI, each
+finishing and reporting the identity expected:
+
+| # | From | To | Reported |
+| --- | --- | --- | --- |
+| 0 | DEEP FIELD 1.5 | stock V15 | `FM-1_015` |
+| 1 | stock V15 | DEEP FIELD 1.6 | `FM-1_44010600` |
+| 2 | DEEP FIELD 1.6 | Felucca 1.8.2-beta | `FM-1_918` |
+| 3 | Felucca 1.8.2-beta | DEEP FIELD 1.6 | `FM-1_44010600` |
+
+Row 1 is "from V15", row 3 "from another firmware", rows 0 and 2 "you can leave it again". Clean boot after each
+DEEP FIELD install: no crash, `late 00000000`, `lock 00000000`, BLE MIDI up. **The new identity is proven on real
+hardware**, which is the thing the submission claims. Both packages came from the hub and their SHA-256 matched
+`catalog.json` exactly (V15 699,956 B `db1642b2`, Felucca 610,286 B `b57724ff`).
+
+**Nothing on the unit was lost, and the warning given beforehand was wrong.** Kyle was told the V15 install would
+wipe his presets; it did not. The settings and the bank sit in the store region every loader is forbidden to
+write (`FL_RANGE_OK` in `base/bsp/loader/loader.c` excludes `[0x97000, 0xE0000)`), and they survived all four
+installs - **USB LEVEL still reads -6 DB on the GLO/USB page**, which is the proof, since a fresh settings blob
+would read 0 dB. So the manual USB LEVEL step is still outstanding, and `set.usb_level = 0` will only ever be
+seen by a brand-new unit or a V3 upgrade.
+
+**Left.** The identity move means the hub must see a release carrying it: **1.6 has to be cut** before the form
+is sent, or the hub reads 1.5 and the old number. 1.6 waits on Kyle's listening notes. Then: publish the site,
+and send the form (the answers are written out, install table included).
+
+**The loader's `ota-FM-1_900` is not to be changed** - Kyle asked, and the evidence says leave it. It is
+`FELUCCA_ID` in `base/bsp/loader/loader.c`, the update loader's USB name while it waits in update mode. Three
+reasons: `base/bsp/chip/ota.c` documents that M-UPGRADE 3.11 takes `NAME_` and **1-3 digits** and refuses
+anything longer ("Invalid device identity"), so a longer name breaks M-VAVE's own updater; the hub's KB says it
+resumes an interrupted update for identities **of the form `FM-1_9NN`**, which is exactly what the loader
+answers, so renaming it costs DEEP FIELD interrupted-install recovery on the hub's web installer; and it lives in
+felucca-bsp, a nested submodule pinned to upstream, so changing it revives the fork killed on 2026-11-08. The KB
+also says "almost every custom firmware uses the loader from Felucca" - it is a shared convention hosts rely on.
+
+**A correction to the entry above.** Rule 3 was called a failure; that was too strong. The hub's KB says a shared
+identity "breaks nothing - installing, updating and going back work exactly the same", and the only cost is that
+the hub will not mark a card as *on your FM-1* when more than one firmware fits. Moving to `FM-1_44` was still
+right, and the hub asks authors to do it, but it was never blocking the listing.
 
 ## Start here: 1.5 is released and on the unit - the output was 9 dB quiet, and it was two trims stacked (2026-11-11)
 
