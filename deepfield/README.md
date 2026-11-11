@@ -21,7 +21,7 @@ the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
 
 | Path | What |
 | --- | --- |
-| `fm1.toml` | build settings (package identity FM-1_1400, Bluetooth both roles, the second core) |
+| `fm1.toml` | build settings (package identity FM-1_4400, Bluetooth both roles, the second core) |
 | `app.h`, `app.c` | the contract with fm1-base, MIDI in (the CC map, the switches and triggers queued for the main loop), the bank over SysEx, the simulator's checks and commands (`param`, `land`, `sxloop`) |
 | `scenes.c` | settings, the preset bank, the factory presets, the scales |
 | `ui.c` | the keys, buttons, pages, the screen that mirrors the panel: beams over the keys strip |

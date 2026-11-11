@@ -1,6 +1,7 @@
 # DEEP FIELD's build settings (fm1-base's tools/build.py: ../build.sh deepfield)
 name = "deepfield"             # the build's files: deepfield.fwsc, deepfield-X.Y.fwsc
-id_prefix = "FM-1_14"          # package identity (each firmware its own): dev FM-1_1400, releases FM-1_14XXYYZZ
+id_prefix = "FM-1_44"          # package identity (each firmware its own): dev FM-1_4400, releases FM-1_44XXYYZZ
+                               # it was FM-1_14 until 1.6: the hub's checker has LOOM-8 holding every FM-1_1 + 7 digits
 usb_manufacturer = "Deep Field"
 usb_product = "DEEP FIELD FM-1"
 include = ["engine"]

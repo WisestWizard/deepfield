@@ -2,6 +2,62 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: the hub pass - the identity had to move, FM-1_14 is inside LOOM-8's range (2026-11-11)
+
+Kyle: "Prep the hub." The six rules were re-read from the live pages (they have changed since 2026-11-08) and
+checked one by one. **Five pass. Rule 3 did not: the identity.**
+
+**`FM-1_14` is not ours.** The hub's checker on /submit/#check answered `FM-1_14010500` with *"In use: inside the
+range of LOOM-8 (their next versions may take it)."* LOOM-8 0.15 holds the pattern `FM-1_1\d{7}`, which is every
+8-digit identity beginning with 1 - so every DEEP FIELD release identity ever built sits inside it. The handoff
+said on 2026-11-08 that "the FM-1_14 identity nobody else uses" was met; whether LOOM-8 was listed then is not
+knowable from here, but it is listed now.
+
+**The check is client-side**, so it can be done without hammering their server: /submit/ fetches `/catalog.json`
+(187 firmwares, each with a `product` and an `ident` regex naming the range it holds) and tests against it. Two
+notes for anyone redoing this: entries whose `ident` is the catch-all `FM-1_\d{3,8}` are deliberately skipped by
+the checker, and `FM-1_015` / `FM-1_016` are reserved for M-VAVE's own V15 and V16.
+
+**Moved to `FM-1_44`.** The prefix can only be 1-2 digits (an identity is `FM-1_` and 3 to 8 digits, and a
+release is the prefix plus six). Of the 90 two-digit prefixes, 24 are both free across every plausible version
+number and have no textual neighbour in the catalogue at all; `44` is one, and the 90s were avoided on purpose -
+that is where the Felucca-derived crowd sits and where the hub warns against keeping the number you started from
+(`FM-1_900`, `FM-1_980`). `deepfield/fm1.toml` now reads `id_prefix = "FM-1_44"`: dev builds are `FM-1_4400`,
+releases `FM-1_44XXYYZZ`. The hub's own checker answers **"Free"** for both.
+
+**Nothing of Kyle's is lost by the move**: the settings and the preset bank are keyed by their own magics
+(`DEF6`, `SCN6` in `deepfield/scenes.c`), not by the identity, so they survive the change.
+
+**Built and verified**: `deepfield-1.6.fwsc`, 614,938 B, identity **FM-1_44010600**, build 41B1A0C2, image
+424,020 B. 787 checks pass, all 16 golden renders match (the identity does not touch the audio).
+
+**What `ota-FM-1_900` in the package is, before anyone panics**: it is the *update loader's* own USB name, in the
+stock JieLi loader's string table beside `usb_update_mode` and `DO NOT UNPLUG`. Every base-derived firmware
+carries it. The firmware's real identity is not an ASCII string in the package at all - it is one marker byte
+after each of the first 20 blocks (`fm1_install.product_of`), which is why grepping finds only the loader's.
+
+**The other five rules.** 1 open licence: MPL-2.0, `LICENSE` at the root, source public. 2 release with the
+`.fwsc`: 1.5 is out and attested, and the hub takes the newest release with one, within three hours. 4 update
+loader: `FELUCCA-LOADER-1` is in the package. 6 `fmhub.json`: validated field by field - seven of the eight
+allowed fields (`editor` is optional and DEEP FIELD has no editor), `what` 268 characters with no links and none
+of `< > { } \``, `author` 11, `kinds` `["synth"]`, image 240x240 PNG at 173,118 B (the minimum legal size - a
+larger capture would read better on the card), `color` #E5482E at luminance 103.5.
+
+**Two rules changed since 2026-11-08** and both are already met: the hub now wants the **flash chip** rule
+(autumn-2026 units carry a UC25HQ80, JEDEC `0xB36014`, and a firmware checking only `0x856014` refuses to
+install) - `base/device/fm1_flash_ok.h` accepts both and `base/tests/flash_ok_test.c` covers it; and the README
+must say if the firmware cannot read other firmwares' projects or samples - now in `README.md` under Install.
+
+**Submission is no longer a mail.** /submit/ has a form that checks the repository and release on the spot
+(source, licence, `fmhub.json`, the package, its identity and flash chip) and posts to `/api/submit/new`.
+`zven@thefirmwarehub.com` is gone from that page; `fw@thefirmwarehub.com` is for closed source and removals.
+Kyle fills the form himself - the answers are written out in the session that prepared this.
+
+**Left, and it needs Kyle.** Rule 5 is the only one not yet met: *installed from V15 and from another firmware,
+and you can leave it again*. That is three installs on his own unit, and it means putting M-VAVE's stock V15 and
+some third firmware on it and back. Not started - his word first. And the identity move means the hub must see a
+release carrying it: **1.6 has to be cut** before the form is sent, or the hub will read 1.5 and its old number.
+
 ## Start here: 1.5 is released and on the unit - the output was 9 dB quiet, and it was two trims stacked (2026-11-11)
 
 **1.5 is out**, built and attested by CI from the tag: `deepfield-1.5.fwsc` (614,938 B), SHA-256

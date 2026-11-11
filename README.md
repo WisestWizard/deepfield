@@ -77,6 +77,10 @@ At your own risk. Hold OCT− (or OCT− and OCT+ for five seconds) at power-on 
 Firmware Hub can put M-VAVE's own firmware back. If the FM-1 only shows up as the chip's `WL82 UBOOT1.00` disk,
 see `base/bsp/tools/fm1_rescue`.
 
+DEEP FIELD keeps only its own 32 presets and its settings. **It does not read any other firmware's projects,
+songs or samples**, and nothing it saves is meant to be read by another firmware. Installing any firmware over
+another rewrites the app area, so back up what the firmware you are leaving holds before you install this one.
+
 ## The site
 
 ```
