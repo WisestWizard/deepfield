@@ -4,7 +4,10 @@
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
  * Slots 0..15 are F1..F16, 16..31 are U1..U16. A scene is the whole instrument: every parameter and the bodies
  * that were latched when it was saved. */
-#define SET_MAGIC 0x36464544u            /* "DEF6": the settings record (the MIX page's OUT trim in the byte DEF5
+#define SET_MAGIC 0x37464544u            /* "DEF7": the same record, USB LEVEL back at unity - the -6 dB it used to
+                                          * default to was a trim nobody chose, and a unit that had ever saved its
+                                          * settings kept it however the default moved */
+#define SET_MAGIC_V6 0x36464544u         /* "DEF6": the settings record (the MIX page's OUT trim in the byte DEF5
                                           * kept spare, so a DEF5 record reads straight with OUT at unity) */
 #define SET_MAGIC_V5 0x35464544u         /* "DEF5": the same record, VELOCITY on by default; DEF4 and DEF3 are
                                           * read and brought up to date, another magic loads defaults */
@@ -412,8 +415,14 @@ static void project_load(void)
         }
         if (got == (int)sizeof set && set.magic == SET_MAGIC_V5) {   /* DEF5: the spare byte becomes OUT, at unity, so
                                           * nothing a unit was set to changes under it */
-            set.magic = SET_MAGIC;
+            set.magic = SET_MAGIC_V6;
             set.out_level = 127;
+        }
+        if (got == (int)sizeof set && set.magic == SET_MAGIC_V6) {   /* DEF6: USB LEVEL to unity once. It defaulted to
+                                          * -6 dB, so a unit carrying that was never asked; turn it down again and
+                                          * DEF7 keeps it. */
+            set.magic = SET_MAGIC;
+            set.usb_level = 0;
         }
         if (got != (int)sizeof set || set.magic != SET_MAGIC
             || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u

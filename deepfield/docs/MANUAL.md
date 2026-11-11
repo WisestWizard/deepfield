@@ -773,8 +773,10 @@ The header says USB while a computer is recording. **USB LEVEL** takes a fixed a
 and OFF, under MASTER, without touching the speaker. **It is 0 dB by default**, so the recording is as loud as the
 speaker: with MASTER full the factory presets peak between -3 and -11 dB in the recording, and eight voices played
 hard with every effect up stop at -0.1 dB, held there by the limiter rather than clipping. It used to start at
--6 dB, which quietly took 6 dB off every recording anyone made. Turn it down if you want more room in a DAW's
-meters; MASTER below full leaves more room still. The recording is 16-bit stereo; the computer picks 44.1
+-6 dB, which quietly took 6 dB off every recording anyone made, and a unit that had saved its settings kept that
+-6 dB however the default moved - so **updating to 1.6 sets USB LEVEL back to 0 dB once**, on any unit carrying
+the old value. Turn it down afterwards if you want more room in a DAW's meters and it stays there; MASTER below
+full leaves more room still. The recording is 16-bit stereo; the computer picks 44.1
 or 48 kHz.
 
 If the recording ever drops a frame (the processor was too busy for a moment to feed the cable), the header shows
