@@ -2688,9 +2688,14 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
                 echo_gate[j] = g < lo ? lo : g > orbit_per ? orbit_per : g;
             }
         }
-        echo_vel *= 1.0f - 0.45f * (float)decay * 0.01f - (loop_have ? 0.0f : 0.05f);
-        return;                          /* a recorded phrase at DECAY 0 keeps going: it is a loop the player
-                                          * made, not an echo of something played in passing */
+        echo_vel *= 1.0f - (0.45f + (loop_have ? 0.0f : 0.25f)) * (float)decay * 0.01f;
+        return;                          /* DECAY is the only thing that takes a phrase away, and at 0 nothing
+                                          * fades however the phrase arrived. A phrase only caught in passing
+                                          * still dies faster than a recorded one once DECAY is up, which is the
+                                          * difference that was wanted - but it used to lose a twentieth of its
+                                          * level every pass whatever DECAY said, so a caught loop went quiet
+                                          * after a few minutes with nothing on the panel able to hold it:
+                                          * measured, velocity 56 down to 10 over four minutes */
     }
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
     if (!orbit_force && (orbit_rng >> 8) % 100u >= chance)

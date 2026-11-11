@@ -1034,7 +1034,8 @@ release HOME
 release SEL
 wait 7000
 expect bodies 0
-# ECHO: the keys' leads (LATCH off) make a phrase; in ECHO the phrase replays each period, quieter, until gone.
+# LOOP: the keys' leads (LATCH off) make a phrase; it replays each period, and DECAY is what takes it away - a
+# phrase only caught in passing fades faster than one recorded with REC, but at DECAY 0 neither fades at all
 # PULSE: a roll of dips across the chord each period; the bodies stay
 midi C0 02
 wait 300
@@ -1067,7 +1068,7 @@ wait 100
 expect echorun 1
 out
 wait 1200
-expect_out USB 90 43 62
+expect_out USB 90 43 5C
 out
 wait 17000
 expect echorun 0
@@ -2508,8 +2509,8 @@ tap PLAY
 wait 60
 expect echorun 1
 wait 1400
-expect_out USB 90 3C 5F
-expect_out USB 90 40 5F
+expect_out USB 90 3C 64
+expect_out USB 90 40 64
 out
 # and the phrase is let go with it: PLAY off between a replay and its note off used to leave that note sounding and
 # its note off owed for ever
@@ -2804,3 +2805,44 @@ expect echorun 1
 tap PLAY
 wait 100
 expect orbit 0
+
+# DECAY 0 holds a loop for good, however the phrase arrived. A phrase caught by playing (no REC) used to lose a
+# twentieth of its level every pass whatever DECAY said, so it went quiet after a few minutes and nothing on the
+# panel could hold it: measured on the wire, velocity 56 down to 10 over four minutes. Two minutes here, full
+# velocity at both ends. The empty REC pair first is what makes the phrase a caught one - loop_have carries over
+# from any earlier take, and without clearing it this passes even with the fault in. Last in the file: it runs
+# two minutes and the suite is stateful, so it sits where it disturbs nothing after it
+reboot
+wait 700
+tap SEL
+wait 50
+expect latchmode 0
+param 36 5
+param 52 0
+tap ARP
+wait 100
+tap REC
+wait 300
+tap REC
+wait 300
+expect loopnotes 0
+key 3 down
+wait 200
+key 3 up
+wait 300
+key 10 down
+wait 200
+key 10 up
+wait 400
+expect loopnotes 2
+out
+wait 6000
+expect echorun 1
+expect_out USB 90 38 7F
+wait 115000
+out
+wait 8000
+expect echorun 1
+expect_out USB 90 38 7F
+tap PLAY
+wait 100
