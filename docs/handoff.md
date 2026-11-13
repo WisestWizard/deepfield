@@ -2,7 +2,21 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: SHIFT moves as a cascade and lands by weight; a chord brings its scale (flashed 2026-11-12; on the unit, committed, not pushed)
+## Start here: 1.7 is released - SHIFT moves as a cascade and lands by weight; a chord brings its scale (2026-11-12)
+
+**1.7 is out**, built and attested by CI from the tag on Kyle's "Push it and do whatever we need to do to make the
+new version live on the firmware hub too". A dry run of the workflow on master went first (run 43371982791, green,
+so the 53 new checks and the 16 goldens pass on Linux too), then the tag: run 43372203914 green, every step.
+`deepfield-1.7.fwsc`, 614,938 B, SHA-256 `1121ea7eee28283f`, identity **FM-1_44010700**. `gh attestation verify
+... --repo WisestWizard/deepfield --signer-repo zvenson/fm1-build` exits 0 and names that digest, built from
+`.github/workflows/release.yml` at `refs/tags/1.7`, commit `f241ef578751`. The hub takes a new release and
+`fmhub.json` by itself within three hours; **neither was seen on the hub from here**.
+
+**What 1.7 carries over 1.6**: everything in this section, and the hub card's new text. The release notes are
+GitHub's changelog link, as 1.6's were.
+
+**Still to do:** the site serves 1.6 (publish_site.sh 1.7 wants Kyle's word "publish"), and **the unit runs the
+local build `FM-1_4400`, not the released bytes** - the same source as 1.7, a different package.
 
 **On the unit:** flashed 2026-11-12 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
 over the released 1.6, image 426,292 B, build 5B4458A4, dev identity `FM-1_4400` (the package rebuilt first: the
@@ -52,8 +66,8 @@ its F#, and no move splits the voices.
 PLAY off, no leap over a tritone in a minute of SHIFT at 0.1 s nor over a fifth in WALK - both fail with the old
 send-home put back, leap 12 - and the scale arriving with a chord, staying put without one, surviving a save and a
 SysEx round trip). All 16 goldens match: no render runs GEN. Device image 426,292 B (+2,272), build 5B4458A4.
-Manual (sections 4, 7, 9, 12), both cheat sheets and `screen-orbit-going` updated. **Committed, not pushed, not
-published; no version yet.** Two simulator-only probes were added for the checks: `expect leap` and
+Manual (sections 4, 7, 9, 12), both cheat sheets and `screen-orbit-going` updated. **Committed 73b4497 (this) and f241ef5
+(the hub card), pushed, released as 1.7; the site not published.** Two simulator-only probes were added for the checks: `expect leap` and
 `expect span`.
 
 **Not heard by anyone.** The weights and the cascade's timing are numbers, not ears. To check on the unit:
