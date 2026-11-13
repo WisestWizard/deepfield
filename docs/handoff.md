@@ -33,8 +33,7 @@ image 430,552 B (+660 over the click pass), build **BEAB0020**, package 616,003 
 unchanged. Manual (MASTER glides), both cheat sheets (a value glides, a choice fades), README (the fork pin) and
 BUDGET (flash row) updated.
 
-**On the unit:** still the click pass on the old base (build 7864699C, flashed this morning). BEAB0020, with the
-ramp and the warble fix, is **not flashed**.
+**On the unit: the released 1.8 itself**, flashed on Kyle's "Flash 1.8" (below).
 
 **1.8 is out**, built and attested by CI from the tag on Kyle's "Release 1.8". master pushed (40105af), a dry run
 of the workflow on it first (run 43485517866, green: the fork-pinned base fetched on Linux, the 840 checks and the
@@ -44,10 +43,13 @@ WisestWizard/deepfield --signer-repo zvenson/fm1-build` exits 0 and names that d
 commit `40105af64f29`. GitHub's latest release is 1.8; the hub takes it within three hours by itself, **not seen on
 the hub from here**. `fmhub.json` unchanged.
 
-**Still to do:** the unit runs the local 7864699C (the click pass on the old base), neither the site's 1.8 bytes
-(`2977df994d7ffb9d`, the script builds its own) nor the attested release's. Installing 1.8 from the hub once it
-shows there would put the released bytes on the unit and test the hub's install with the new package format
-(`c8e0599`, `b7b25a4`).
+**Flashed 2026-11-13** on Kyle's "Flash 1.8": the release asset downloaded with `gh release download`, its SHA-256
+checked against the attestation's (`6e02c373a4bdfe91`), installed with `fm1_install.py <it> --yes` over the local
+7864699C (fast install). `done: the FM-1 runs FM-1_44010800`, so the package's new format (`c8e0599` resource entry,
+`b7b25a4` ciphered SPL head) installs from fm1_install. `screen` reads FIRST LIGHT on HOME, VOICES 0, CPU 6 %; the
+log reads `no crash recorded`, BT advertising, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`. **Not heard yet**, and
+the CPU under load is not read: the test steps in the next section are the listening pass. Still untested: an
+install from the hub itself.
 
 **The site is published** as 1.8 on Kyle's "publish": committed 2255f98 first, then `deepfield/tools/publish_site.sh
 1.8` pushed gh-pages (8a317c8) and Pages built it. Checked live at deepfield.fog.baby: the home page links
