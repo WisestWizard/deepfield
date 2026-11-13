@@ -25,7 +25,7 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | ARP | GEN page (SELECT for GEN 2) | |
 | GLO | GLOBAL page (SELECT for MIDI, again for USB) | |
 | SEL | LATCH on / off (lit while on) | The chord's button: + key moves the chord, + PRESETS brings the preset's chord, + PLAY GEN's next move now, + HOME every voice let go |
-| PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go; the bar's first step accented), and orange LOOP (your last notes replayed at the velocities you played them, fading; it needs nothing latched and ignores CHANCE, and the pill counts the phrase or reads EMPTY); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
+| PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale one voice after another, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go; the bar's first step accented), and orange LOOP (your last notes replayed at the velocities you played them, fading; it needs nothing latched and ignores CHANCE, and the pill counts the phrase or reads EMPTY); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
 | SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
@@ -40,7 +40,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | Encoder | Does |
 | --- | --- |
 | SELECT | The page before or after (HOME, OSC, NOISE, NOISE 2, ENVELOPE, LEAD, LFO, VOICES, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, GEN, GEN 2, GLOBAL, MIDI, USB) |
-| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too) |
+| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too, and SCALE changes to the chord's own) |
 | ALGO | Model (the algorithm): ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC, TAPE, RESONATOR (each voice crosses over in 0.8 s) |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click |
 | MASTER | Volume: the speaker, the headphones and the USB recording (USB LEVEL trims the recording under it) |
@@ -61,7 +61,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | FX DELAY 2 | TONE (repeats dark and full to bright and thin) | DIFFUSION (repeats smeared into a cloud) | WOW (the tape's wander, clean to seasick) | GATE (only a slice of each DLY TIME goes in: a held chord pulses) |
 | FX REVERB | DECAY (0.6–8 s) | DAMPING | SHIMMER (the octave up read twice, 35 ms apart, one a side: wide) | REVERB (the send, as on the FX mixer) |
 | GEN | MODE | WALK, SHIFT, RANDOM, PROG, LOOP: RATE (0.1–60 s; under MIDI clock in beats, shown; LOOP from 1 s; no destination shown under 0.5 s); ARP: TEMPO (BPM, EXT on MIDI clock) | CHANCE; RANDOM: VOICES; ARP: GATE; LOOP: DECAY | RANGE; SHIFT: RANGE; ARP: PATTERN; PROG: CHORDS (ROUND, UNDERTOW, SLOW RISE, TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES - 8 to 15 steps, unequal lengths, the chord led one or two voices at a time while the rest hold, nothing pinned - LOCK a voice yourself for a pedal); LOOP: OCT JUMP. REC on this page with LOOP showing records a phrase from the keys (LATCH lifted for the take, the rhythm AND each note's length kept, REC again to close and play; closing sets RATE to the phrase's own length; DECAY 0 never fades, recorded or caught). Selecting LOOP with nothing recorded says REC THEN PLAY |
-| GEN 2 (the mode's knobs, the rest empty) | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG: 0 plays the table as written, up develops it; LOOP: how far each pass travels); OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
+| GEN 2 (the mode's knobs, the rest empty) | RETURN (WALK, RANDOM: the chance a voice goes back to its key; SHIFT: how hard home pulls, harder the longer the chord is away) | ROAM (PROG: 0 plays the table as written, up develops it; LOOP: how far each pass travels); OCTAVES (ARP) | EUCLID (ARP: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16, hits spread evenly, rests between) | DIV (ARP: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR of TEMPO's beat) |
 | MIX (GLO) | BED (everything latched) | LEAD (what you play over it) | OUT (a trim under the MASTER pot, speaker and USB alike) | – |
 | FX MIX (GLO, SELECT once) | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen |
 | GLOBAL (GLO, SELECT twice) | SCALE | ROOT | MORPH | TEMPO (40–240 BPM, EXT on MIDI clock; ARP steps at DIV of it and a synced DLY TIME follows it) |
@@ -113,7 +113,8 @@ amount, a cell per choice, two cells for on/off, hits and rests for EUCLID). TIM
 model (see Models). A voice open: VOICE and its note, its four values.
 
 ## Factory presets
-Every model once, every GEN mode on two, every delay type on one; chords on C, in ROOT; SEL held + PRESETS brings the chord.
+Every model once, every GEN mode on two, every delay type on one; chords on C, in ROOT; SEL held + PRESETS brings the chord
+and its scale (MAJOR, but F4 LYDIAN, F5 MIXOLYDIAN, F9 DORIAN, F10 MINOR, F11 MAJ PENTA).
 F1 FIRST LIGHT (ADDITIVE, WALK) · F2 VOID TIDE (SUPERSAW, WALK, wind) · F3 GLASS ORBIT (FM, WALK, OCT UP; made for GEN) ·
 F4 BOWED SKY (BOWED, SHIFT, REVERSE) · F5 PULSAR (SYNC, ARP 5/8, gated PING PONG) · F6 NEBULA (ADDITIVE cluster, RANDOM,
 GRANULAR, wind) · F7 DEEP VOID (TAPE, one low note, LOOP, TAPE delay, crackle) · F8 STARLIGHT (WAVETABLE, WALK) ·

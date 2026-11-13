@@ -845,6 +845,13 @@ static void scene_go(uint32_t slot, int say, int chord)
     if (dr_orbit_on() && !chord)
         for (i = 0; i < sizeof ORB_P; i++)
             sc.p[ORB_P[i]] = dr_scene.p[ORB_P[i]];
+    if (chord && sc.scale && sc.scale - 1u != set.scale) {   /* its chord's own scale comes with it. The scale
+                                          * is what GEN moves a voice along, so a chord written in another one had
+                                          * its notes pulled onto this one's the first time they moved */
+        set.scale = (uint8_t)(sc.scale - 1u);
+        scale_apply();
+        cc_send(PID_SCALE);
+    }
     if (chord && sc.root) {              /* stored on its own root: moved to ROOT, the nearer way */
         int32_t d = ((int32_t)set.root - (int32_t)(sc.root - 1u) + 12) % 12;
         if (d > 6)

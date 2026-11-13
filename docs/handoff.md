@@ -2,6 +2,76 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: SHIFT moves as a cascade and lands by weight; a chord brings its scale (flashed 2026-11-12; on the unit, committed, not pushed)
+
+**On the unit:** flashed 2026-11-12 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
+over the released 1.6, image 426,292 B, build 5B4458A4, dev identity `FM-1_4400` (the package rebuilt first: the
+same build number, so it is this tree). `screen` reads FIRST LIGHT on HOME, VOICES 0, CPU 5 %; the log reads `no
+crash recorded`, `cpu 5% b0 ADDITIVE s0 x0` with no `C` field, `late 00000000`, and `lock 00000002`, the same on a
+second read a minute later (earlier clean boots read 0; not looked into). **Not heard yet.**
+
+Kyle heard SHIFT as "a little off" and asked whether it keeps to the scale. It does; what was off was measured in
+the simulator on the real engine, a C major triad in C MAJOR at RANGE 3 and RETURN 0, 375 moves:
+
+- **Every move was fully parallel**: 375 of 375 with every voice leaving in the same instant, none held. Nothing
+  to hear the change against, so it reads as the instrument bent (what PROG stopped doing in 1.2).
+- **The landing was an even draw**: C maj 65, B dim 55, G 54, Em 52, F 51, Dm 51, Am 47. The diminished chord one
+  landing in seven, rested on a full RATE like any other, and no home.
+- **The octave limit sent a voice to its key**: 23 moves leapt more than a tritone, the chord dropping an octave
+  from C5 to C4 in one move.
+- **A note outside the scale is taken from the scale note below**, and BOWED SKY (F4, a factory SHIFT preset) is
+  C G F# B under a global scale that defaults to MAJOR: the F# went to F at the first move, and because it stood a
+  semitone off it reached the octave limit one move before the others (three voices down 3 or 4, one up 9).
+
+**What changed** (`engine/drone.c` unless said):
+
+1. **The octave limit turns a voice round** instead of sending it home (`orbit_step_from`, which WALK and RANDOM
+   use too, so they changed with it). In SHIFT a move that would take any voice past its octave is not on offer,
+   so the chord turns round as one and cannot split.
+2. **SHIFT's landing is weighed** (`orbit_plan`, the `OM_CHORD` branch): a step 100, a third 220, a fourth 170;
+   a landing with more semitone or tritone pairs than the chord struck (`rough_of`, locked voices counted) an
+   eighth of that, and when it is taken the next countdown is half as long and ignores CHANCE (`shift_pass`);
+   straight back a third; toward home times (1 + RETURN x moves away); home in one move, from no further than a
+   fifth off, at RETURN x moves away x 8. **RETURN in SHIFT is no longer a chance**: it is how hard home pulls.
+   WALK and RANDOM keep it as a chance.
+3. **SHIFT's move is a cascade** (`orbit_apply`, `stag_tick`): the leading voice at once (top on the way up,
+   bottom on the way down) and the rest across three tenths of RATE, at most 1.2 s apart. It runs before the PLAY
+   switch is read, so a cascade begun is finished; a transpose carries a waiting move along; `body_at` is where a
+   voice is or is waiting to leave for, and the planners read that.
+4. **A preset's chord brings its scale** (`scene_t.scale`, the byte that was `rsv`, so the bank's layout and its
+   SysEx frame are unchanged; 0 means none kept). `scene_go` sets SCALE and sends CC 2 only when a chord comes
+   (SEL + PRESETS); a save stores the scale you are in. Factory chords: MAJOR, but **F4 LYDIAN, F5 MIXOLYDIAN,
+   F9 DORIAN, F10 MINOR, F11 MAJ PENTA** - the five whose chord or description is not C major.
+
+**Measured after**, same chord and settings: no two voices left within 20 ms of each other in 386 moves; the
+diminished chord 9 landings of 386 (2.3 %), resting 0.42 s against 1.47 s; no move over a tritone. RETURN 0 / 31 %
+/ 100 %: home 10 % / 26 % / 35 % of landings, away runs of 9.2 / 2.9 / 1.9 moves. BOWED SKY arrives in LYDIAN, keeps
+its F#, and no move splits the voices.
+
+**Where it stands:** 840 checks pass (787 plus 53: the cascade counted voice by voice, a cascade finishing with
+PLAY off, no leap over a tritone in a minute of SHIFT at 0.1 s nor over a fifth in WALK - both fail with the old
+send-home put back, leap 12 - and the scale arriving with a chord, staying put without one, surviving a save and a
+SysEx round trip). All 16 goldens match: no render runs GEN. Device image 426,292 B (+2,272), build 5B4458A4.
+Manual (sections 4, 7, 9, 12), both cheat sheets and `screen-orbit-going` updated. **Committed, not pushed, not
+published; no version yet.** Two simulator-only probes were added for the checks: `expect leap` and
+`expect span`.
+
+**Not heard by anyone.** The weights and the cascade's timing are numbers, not ears. To check on the unit:
+
+1. Hold SEL and turn PRESETS to **F4 BOWED SKY**. The footer should read **C LYDIAN**.
+2. Press PLAY. Each move: one voice slides, then the next, about 0.8 s apart; never all four at once.
+3. Listen for a minute for an octave drop or a sour landing. There should be neither.
+4. Press PLAY in the middle of a move. The remaining voices should still finish it.
+5. Open GEN 2 and turn RETURN to 0, then to 100 %: at 0 the chord wanders, at 100 % it keeps coming home.
+6. Hold SEL and turn PRESETS to **F1 FIRST LIGHT**: the footer goes back to **C MAJOR**. Turn to F4 without SEL: it
+   stays MAJOR.
+7. F9 CATHEDRAL (now DORIAN) and F11 GAMELAN (now MAJ PENTA) with SEL held: these two move differently than they
+   did, since PROG and RANDOM follow the scale. Say if either was better before.
+
+**Open:** a note struck by hand outside the scale is still taken from the scale note below when GEN moves it.
+RATE under about 0.3 s leaves under 30 ms between a cascade's voices. If the cascade is wanted wider or tighter,
+it is the 0.3 and the 1.2 in `orbit_apply`.
+
 ## Start here: 1.6 is released, with the hub's identity and the USB LEVEL migration (2026-11-11)
 
 **1.6 is out**, built and attested by CI from the tag on Kyle's "Cut 1.6". Run 43100149803 green, every step

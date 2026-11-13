@@ -425,6 +425,19 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "moves")) {      /* ORBIT's moves so far */
         uint32_t f, t;
         *got = (int)dr_orbit_moved(&f, &t);
+    } else if (!strcmp(what, "leap"))        /* the furthest one of them took a body, in semitones, since PLAY */
+        *got = (int)dr_orbit_leap();
+    else if (!strcmp(what, "span")) {        /* from the lowest latched body to the highest, where they are going */
+        uint32_t i;
+        int lo = 128, hi = -1;
+        dr_body_t b;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && b.latched && !b.fading) {
+                int t = (int)(b.target + 0.5f);
+                lo = t < lo ? t : lo;
+                hi = t > hi ? t : hi;
+            }
+        *got = hi < 0 ? 0 : hi - lo;
     } else if (!strcmp(what, "fxrun"))       /* the effect stages still sounding: 1 ensemble, 2 delay, 4 hall */
         *got = (int)fx_running();
     else if (!strcmp(what, "bodyopen")) {    /* bodies open under held keys (their own values on the knobs) */

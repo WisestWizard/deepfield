@@ -220,7 +220,9 @@ Let go of SEL and the keys strike voices again (or play leads, with LATCH off), 
 **The scale.** SCALE on the GLOBAL page picks the scale: CHROMATIC, MAJOR, MINOR, DORIAN, PHRYGIAN, LYDIAN, MIXOLYDIAN,
 MAJ PENTA (major pentatonic), MIN PENTA (minor pentatonic), WHOLE TONE or HARM MINOR (harmonic minor). ROOT picks its root note.
 Every key, black keys included, always plays its own note. The scale does two things: its notes glow on the keys,
-and GEN only moves voices to notes in it.
+and GEN only moves voices to notes in it. A voice on a note outside the scale is taken from the scale note below
+it the first time GEN moves it, so a chord wants the scale it was written in: a preset's chord brings its own
+(section 9).
 
 **OCT- and OCT+** move the keys down or up an octave, up to two octaves each way. The header shows OCT and the
 number.
@@ -407,7 +409,7 @@ and PLAY's colour shows it:
 | Mode | PLAY | KNOB 2, 3, 4 | What happens |
 | --- | --- | --- | --- |
 | WALK | green | RATE, CHANCE, RANGE | Every RATE seconds (give or take a quarter), with a CHANCE, one voice moves to a nearby note in the scale, up to RANGE scale steps away. It never moves onto a note another voice is playing. |
-| SHIFT | orange | RATE, CHANCE, RANGE | All the voices move together by the same number of scale steps, up to RANGE, so the whole chord shifts to a related one. |
+| SHIFT | orange | RATE, CHANCE, RANGE | The whole chord shifts to a related one: every voice goes the same number of scale steps, up to RANGE, one voice after another rather than all at once (below). |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
 | PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time while the rest hold. ROAM (GEN 2) sets how far the generator may develop it. |
@@ -439,7 +441,7 @@ altogether. A locked voice (section 4) is never moved.
 
 **RATE** runs from 0.1 s to 60 s, shown in tenths of a second below ten. Under a second GEN stops changing the
 chord and starts playing it: at half a second WALK and RANDOM make a slow melody inside the chord, and with GLIDE
-longer than RATE the voices never land, a swarm. SHIFT that fast is mostly a blur. Under half a second the screen
+longer than RATE the voices never land, a swarm. SHIFT that fast rolls each chord in like a strum. Under half a second the screen
 stops showing where the moves go (they would only flicker). LOOP never runs faster than once a second: its phrase
 needs the time.
 
@@ -456,6 +458,33 @@ value is kept either way - set EUCLID in ARP, go to WALK and back, and it is as 
 of them at any time (section 11).
 
 ![The GEN 2 page in ARP: OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
+
+**SHIFT moves the chord one voice at a time.** Every voice ends up the same number of scale steps away, but they
+do not leave together. The voice at the leading edge goes when the countdown ends - the top voice on the way up,
+the bottom one on the way down, so no voice lands on a note the next has not left yet - and the rest follow one
+after another across the next three tenths of RATE, never more than 1.2 s apart. Some notes are always held while
+one moves, and that is what lets the ear hear a chord changing: in earlier versions every voice left in the same
+instant, and a chord sliding as one is heard as the whole instrument being bent. Stop GEN in the middle of a move
+and the move still finishes, so the chord is never left half moved. Each voice's line and ghost stay on the screen
+until its own turn comes.
+
+**Where SHIFT lands is weighed.** It used to be an even draw, which rested on every chord of the scale equally
+often, the diminished one included. Now:
+
+- A move of two or three scale steps is likelier than a move of one: a chord a third or a fourth away shares notes
+  with the one it leaves, and the chord a step away shares none.
+- A landing rougher than the chord you played - more notes a semitone or a tritone apart, which under a plain triad
+  means the diminished chord - is unlikely, and when the chord does land there it stays half as long and then moves
+  on whatever CHANCE says. A locked voice counts: it is part of what the landing sounds like.
+- Straight back to the chord it just left is unlikely.
+- Home pulls harder the longer the chord has been away, as hard as RETURN says (below).
+- No voice goes further than an octave from its key. A move that would take any voice past that is not on offer, so
+  the chord turns round there as one. It used to be sent back to its keys from there, a drop of up to an octave
+  in one move.
+
+Measured on a C major triad in C MAJOR at RANGE 3 and RETURN 0, over some 380 moves: the diminished chord fell from
+one landing in seven to one in forty, the octave drops from 23 to none, and no two voices left within a fiftieth
+of a second of each other.
 
 **PROG leads the chord; it does not shift it.** Each step names the notes the next chord should contain, counted
 in scale degrees from where you played the chord, so the colour comes from SCALE. A voice already on one of those
@@ -522,8 +551,12 @@ outside it, which is why SCALE used to make so little difference to what you hea
 the scale itself which degree carries the diminished chord and which acts as a dominant, and passes through both
 in one step instead of resting on them.
 
-**RETURN** (GEN 2, in WALK, SHIFT and RANDOM) is the chance that a voice, or in SHIFT the whole chord, is pulled
-back to the key where it started. ARP, PROG and LOOP never wander from the key, so the knob is empty there. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
+**RETURN** (GEN 2, in WALK, SHIFT and RANDOM). In WALK and RANDOM it is the chance that a voice is pulled back to
+the key where it started. In SHIFT it is how hard home pulls on the chord: at 0 not at all, and above that harder
+with every move the chord has been away, so it comes back by steps, or in one move from no further than a fifth
+off, instead of by a throw of the dice from anywhere. At 30 % the chord is home for about one landing in four and
+away for three moves at a time; at 100 %, one in three and two. In all three a voice stays within an octave of its
+key and turns round at the end of it. ARP, PROG and LOOP never wander from the key, so the knob is empty there. GEN leaves alone the voices held over MIDI, the locked voices, and the leads. Each move goes out over MIDI as a note off and
 a note on.
 
 **The next move now.** Hold SEL and press PLAY: the move that is coming comes at once, and the countdown starts
@@ -626,6 +659,13 @@ To bring in the chord of the preset you are on, hold SEL and turn PRESETS one cl
 no chord (U1–U16 as shipped, and F16 INIT) leaves your voices alone. Every factory chord is stored on C and plays
 in ROOT (GLOBAL page); a chord you save plays in the ROOT it was saved in, moved to today's.
 
+**A chord brings its scale.** When a preset's chord comes in, SCALE (GLOBAL page) changes to the scale the chord was
+saved in, and its CC goes out as if you had turned the knob. GEN moves a voice along the scale, so a chord written
+in another one has its notes pulled onto yours the first time they move: BOWED SKY is a Lydian voicing, and heard
+under MAJOR its raised fourth went flat at the first SHIFT. ROOT stays yours, and the chord moves to it as before.
+The scale only ever changes this way with a chord: PRESETS alone, a program change and HOME held all leave it where
+it is, and so does a preset saved before this version, which kept no scale.
+
 **Back to the preset as saved.** What you change on a preset stays until you save or change preset, and LATCH, GEN and
 FREEZE carry over from preset to preset. To put the preset you are on back as it was saved, hold HOME for a second (it
 blinks while it counts): its sound, its effect switches and its GEN values blend back in over MORPH, the screen says
@@ -639,8 +679,8 @@ key, or hold SEL and turn PRESETS to bring in a chord.
 
 1. Press SAVE. The screen says SAVE PRESET TO and a user slot.
 2. Turn PRESETS (or SELECT, or KNOB 1) to choose U1–U16.
-3. Press SAVE again. The sound and the voices latched right now (each with its own values, in the ROOT you are
-   in) go into that slot, and the screen says SAVED. Press HOME instead to cancel.
+3. Press SAVE again. The sound and the voices latched right now (each with its own values, in the ROOT and the
+   SCALE you are in) go into that slot, and the screen says SAVED. Press HOME instead to cancel.
 
 ![The save dialog: SAVE PRESET TO U1 USER 1](img/screen-save.png "Saving a preset")
 
@@ -652,27 +692,27 @@ MORPH, the MIDI channels, the USB page, and Bluetooth on or off. Nothing is stor
 without saving and all of it goes back to the last save.
 
 **The factory presets.** Every model appears, every GEN mode is the mode of two presets (press PLAY to hear it),
-and every delay type is on one. Their chords stand on C and play in ROOT; bring a chord in with SEL held to hear
-the preset as meant.
+and every delay type is on one. Their chords stand on C and play in ROOT, each in the scale it was written in;
+bring a chord in with SEL held to hear the preset as meant.
 
-| Preset | Model | Chord | GEN | Delay | Sound |
-| --- | --- | --- | --- | --- | --- |
-| F1 FIRST LIGHT | ADDITIVE | C3 G3 E4 | WALK | – | Warm, open; the first sound |
-| F2 VOID TIDE | SUPERSAW | C2 G2 C3 D4 | WALK | – | Low and breathing, ensemble, a brown wind |
-| F3 GLASS ORBIT | FM | C3 G3 C4 G4 | WALK, fast | OCT UP | Shimmer; the echoes climb out of the drone |
-| F4 BOWED SKY | BOWED | C3 G3 F#4 B4 | SHIFT | REVERSE | Wide Lydian strings; the whole chord shifts, the echoes breathe in |
-| F5 PULSAR | SYNC | C3 G3 Bb3 F4 | ARP 120, 5/8 | PING PONG, gated | Dry and pulsing; a hard-sync arpeggio over a gated echo |
-| F6 NEBULA | ADDITIVE | C4 D4 E4 F4 G4 | RANDOM | GRANULAR | A hollow cluster, very slow swells, drowned in reverb, a wind bed |
-| F7 DEEP VOID | TAPE | C2 | LOOP | TAPE | One low note on worn tape, sub and crackle; your leads loop back an octave up |
-| F8 STARLIGHT | WAVETABLE | C4 G4 D5 G5 | WALK | PING PONG | High glass, drifting |
-| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | PROG ROUND | – | An open vowel in a big hall, led through a progression |
-| F10 RAIN CLOCK | FM 4-OP | C3 Bb3 Eb4 G4 D5 | ARP 92, 5/8, random | DUB, gated | An electric piano under rain, its echo ringing; nearly dry |
-| F11 GAMELAN | BELL | C4 D4 G4 A4 C5 | RANDOM, fast | PING PONG, gated | Bell ratios, gated echo pulses; nearly dry |
-| F12 BRONZE BOWL | RESONATOR | C3 G3 D4 A4 | WALK | GRANULAR | Singing bowls under glitter and shimmer |
-| F13 ASCENT | SHEPARD | C3 G3 C4 | SHIFT | OCT UP | Rising, the echoes climbing with it |
-| F14 DESCENT | SHEPARD | C2 G2 G3 | PROG UNDERTOW | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
-| F15 FOLDED SUN | WAVEFOLD | C3 G3 E4 A4 D5 | LOOP | TAPE | Bright 6/9, ensemble; your leads loop back over it |
-| F16 INIT | ADDITIVE | none | WALK | – | Every value at its starting point: build your own from here |
+| Preset | Model | Chord | Scale | GEN | Delay | Sound |
+| --- | --- | --- | --- | --- | --- | --- |
+| F1 FIRST LIGHT | ADDITIVE | C3 G3 E4 | MAJOR | WALK | – | Warm, open; the first sound |
+| F2 VOID TIDE | SUPERSAW | C2 G2 C3 D4 | MAJOR | WALK | – | Low and breathing, ensemble, a brown wind |
+| F3 GLASS ORBIT | FM | C3 G3 C4 G4 | MAJOR | WALK, fast | OCT UP | Shimmer; the echoes climb out of the drone |
+| F4 BOWED SKY | BOWED | C3 G3 F#4 B4 | LYDIAN | SHIFT | REVERSE | Wide Lydian strings; the whole chord shifts, the echoes breathe in |
+| F5 PULSAR | SYNC | C3 G3 Bb3 F4 | MIXOLYDIAN | ARP 120, 5/8 | PING PONG, gated | Dry and pulsing; a hard-sync arpeggio over a gated echo |
+| F6 NEBULA | ADDITIVE | C4 D4 E4 F4 G4 | MAJOR | RANDOM | GRANULAR | A hollow cluster, very slow swells, drowned in reverb, a wind bed |
+| F7 DEEP VOID | TAPE | C2 | MAJOR | LOOP | TAPE | One low note on worn tape, sub and crackle; your leads loop back an octave up |
+| F8 STARLIGHT | WAVETABLE | C4 G4 D5 G5 | MAJOR | WALK | PING PONG | High glass, drifting |
+| F9 CATHEDRAL | FORMANT | C3 F3 Bb3 Eb4 | DORIAN | PROG ROUND | – | An open vowel in a big hall, led through a progression |
+| F10 RAIN CLOCK | FM 4-OP | C3 Bb3 Eb4 G4 D5 | MINOR | ARP 92, 5/8, random | DUB, gated | An electric piano under rain, its echo ringing; nearly dry |
+| F11 GAMELAN | BELL | C4 D4 G4 A4 C5 | MAJ PENTA | RANDOM, fast | PING PONG, gated | Bell ratios, gated echo pulses; nearly dry |
+| F12 BRONZE BOWL | RESONATOR | C3 G3 D4 A4 | MAJOR | WALK | GRANULAR | Singing bowls under glitter and shimmer |
+| F13 ASCENT | SHEPARD | C3 G3 C4 | MAJOR | SHIFT | OCT UP | Rising, the echoes climbing with it |
+| F14 DESCENT | SHEPARD | C2 G2 G3 | MAJOR | PROG UNDERTOW | OCT DOWN | Falling, dark, a low wind, the echoes sinking |
+| F15 FOLDED SUN | WAVEFOLD | C3 G3 E4 A4 D5 | MAJOR | LOOP | TAPE | Bright 6/9, ensemble; your leads loop back over it |
+| F16 INIT | ADDITIVE | none | – | WALK | – | Every value at its starting point: build your own from here |
 
 ---
 
@@ -834,6 +874,7 @@ screen words (`words.tsv` in the source code).
 | I changed a preset and want it back | Hold HOME for a second: the preset as saved, under your chord (section 9). |
 | GEN does nothing | No voice is latched. Every mode but ARP needs at least one. |
 | The reverb won't die away | FREEZE is on (SEQ lit). Press SEQ. |
+| SCALE changed by itself | You brought in a preset's chord (SEL held + PRESETS): the chord's own scale comes with it (section 9). Set SCALE on the GLOBAL page to change it back. |
 | A preset is silent | PRESETS alone changes only the sound: hold SEL while you turn it to bring the preset's chord in (section 9). Switching on is silent too. Or a voice is muted (its LEVEL at MUTE). Or TREMOLO at full fades each voice all the way down on its cycle. Or the preset is still blending in. |
 | Holding SEL does nothing | By design: SEL held is a modifier. Touch a key (the chord moves), turn PRESETS (its chord comes), press PLAY (GEN moves now) or tap HOME (every voice stops) while you hold it. A tap on SEL switches LATCH. |
 | U and a number in the header | The recording over USB dropped a frame or more: a crackle in it (section 10). Fewer voices or an effect off. |

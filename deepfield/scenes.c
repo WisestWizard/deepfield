@@ -132,7 +132,7 @@ static void scene_init(scene_t *s, const char *name)
         s->lvl[i] = s->tone[i] = s->tune[i] = 0;
     }
     s->fx_off = 0;
-    s->pins = s->root = s->rsv = 0;
+    s->pins = s->root = s->scale = 0;
     scene_name_set(s, name);
 }
 
@@ -153,7 +153,8 @@ typedef struct { uint8_t id, v; } change_t;
 #define END {255, 0}
 /* lvl: the preset's own balance in whole dB. Its chord is struck full (127), as VELOCITY off strikes a key, so the
  * preset's weight is in each body's LEVEL and not in a velocity, which now means how hard a key was hit */
-static void scene_make(scene_t *s, const char *name, const change_t *c, const uint8_t *notes, int32_t lvl)
+static void scene_make(scene_t *s, const char *name, const change_t *c, const uint8_t *notes, int32_t lvl,
+                       uint32_t scale)
 {
     uint32_t i;
     scene_init(s, name);
@@ -165,6 +166,9 @@ static void scene_make(scene_t *s, const char *name, const change_t *c, const ui
         s->lvl[i] = (int8_t)lvl;
     }
     s->root = 1;                         /* every factory chord stands on C, and follows ROOT when it is recalled */
+    s->scale = (uint8_t)(scale + 1u);    /* and in the scale it was written in, which comes with it: GEN moves a
+                                          * voice along the scale, and BOWED SKY's raised fourth, heard under MAJOR,
+                                          * was flattened the first time it moved */
 }
 
 static void factory_build(void)
@@ -315,21 +319,21 @@ static void factory_build(void)
                                           {P_ECHO_JUMP, 35}, {P_LD_ATTACK, 20}, {P_LD_RELEASE, 70}, {P_LD_LEVEL, 85},
                                           {P_CROSS, 30}, {P_SPREAD, 50}, {P_TWALK, 30}, {P_SWAY, 30}, END};
     static const uint8_t FOLDED_SUN_N[] = {48, 55, 64, 69, 74, 0};
-    scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, -1);
-    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 0);
-    scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, -2);
-    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, -2);
-    scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, -1);
-    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, -3);
-    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 0);
-    scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, -2);
-    scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, -2);
-    scene_make(&factory[9], "RAIN CLOCK", RAIN_CLOCK, RAIN_CLOCK_N, -2);
-    scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, -1);
-    scene_make(&factory[11], "BRONZE BOWL", BRONZE_BOWL, BRONZE_BOWL_N, -2);
-    scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, -1);
-    scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, -1);
-    scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, -1);
+    scene_make(&factory[0], "FIRST LIGHT", FIRST_LIGHT, FIRST_LIGHT_N, -1, SC_MAJOR);
+    scene_make(&factory[1], "VOID TIDE", VOID_TIDE, VOID_TIDE_N, 0, SC_MAJOR);
+    scene_make(&factory[2], "GLASS ORBIT", GLASS_ORBIT, GLASS_ORBIT_N, -2, SC_MAJOR);
+    scene_make(&factory[3], "BOWED SKY", BOWED_SKY, BOWED_SKY_N, -2, SC_LYDIAN);
+    scene_make(&factory[4], "PULSAR", PULSAR, PULSAR_N, -1, SC_MIXO);
+    scene_make(&factory[5], "NEBULA", NEBULA, NEBULA_N, -3, SC_MAJOR);
+    scene_make(&factory[6], "DEEP VOID", DEEP_VOID, DEEP_VOID_N, 0, SC_MAJOR);
+    scene_make(&factory[7], "STARLIGHT", STARLIGHT, STARLIGHT_N, -2, SC_MAJOR);
+    scene_make(&factory[8], "CATHEDRAL", CATHEDRAL, CATHEDRAL_N, -2, SC_DORIAN);
+    scene_make(&factory[9], "RAIN CLOCK", RAIN_CLOCK, RAIN_CLOCK_N, -2, SC_MINOR);
+    scene_make(&factory[10], "GAMELAN", GAMELAN, GAMELAN_N, -1, SC_PENTA_MAJ);
+    scene_make(&factory[11], "BRONZE BOWL", BRONZE_BOWL, BRONZE_BOWL_N, -2, SC_MAJOR);
+    scene_make(&factory[12], "ASCENT", ASCENT, ASCENT_N, -1, SC_MAJOR);
+    scene_make(&factory[13], "DESCENT", DESCENT, DESCENT_N, -1, SC_MAJOR);
+    scene_make(&factory[14], "FOLDED SUN", FOLDED_SUN, FOLDED_SUN_N, -1, SC_MAJOR);
     scene_init(&factory[15], "INIT");    /* F16: the INIT scene as it is, no chord */
 }
 
@@ -523,6 +527,8 @@ static void bank_check(uint32_t i)       /* user scene i's values within range, 
     bank.u[i].fx_off &= 15u;
     if (bank.u[i].root > 12u)
         bank.u[i].root = 0;
+    if (bank.u[i].scale > SC_COUNT)
+        bank.u[i].scale = 0;
 }
 
 static int project_save(void)            /* the settings and the bank: 0 = ok */
@@ -535,7 +541,8 @@ static int project_save(void)            /* the settings and the bank: 0 = ok */
     return 0;
 }
 
-/* the live scene into a user slot, with the bodies latched now, their own values, and the ROOT they stand in */
+/* the live scene into a user slot, with the bodies latched now, their own values, and the ROOT and SCALE they
+ * stand in */
 static void scene_capture(scene_t *s)
 {
     uint32_t i, n = 0;
@@ -558,4 +565,5 @@ static void scene_capture(scene_t *s)
             n++;
         }
     s->root = (uint8_t)(set.root + 1u);
+    s->scale = (uint8_t)(set.scale + 1u);
 }

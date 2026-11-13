@@ -64,7 +64,8 @@ typedef struct {
     uint8_t fx_off;                      /* the effect switches off (DR_FX_* bits), saved with the scene */
     uint8_t pins;                        /* bit k: body k is pinned (ORBIT and the arp leave it alone) */
     uint8_t root;                        /* the ROOT its chord stands in, + 1 (0: the chord as it is, never moved) */
-    uint8_t rsv;
+    uint8_t scale;                       /* the SCALE its chord was written in, + 1 (0: none kept, as every preset
+                                          * saved before this byte meant anything: the scale stays as it is) */
     int8_t lvl[DR_NV], tone[DR_NV], tune[DR_NV];   /* each body's own LEVEL (dB), TONE (MASS, %) and TUNE (cents) */
 } scene_t;
 
@@ -169,6 +170,9 @@ uint32_t dr_noise_gusts(void);                      /* gusts so far */
 void dr_note_out(void (*fn)(uint32_t note, uint32_t vel, int on));   /* the keys' note offs and ORBIT's moves, for MIDI out
                                                                       * (render context) */
 uint32_t dr_orbit_moved(uint32_t *from, uint32_t *to);   /* moves so far, and the last one's notes */
+#ifdef PLAT_HOST
+uint32_t dr_orbit_leap(void);            /* the furthest one move has taken a body since PLAY (the simulator) */
+#endif
 void dr_overload(void);                             /* the render ran long: one body fewer until a restart */
 void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12);
 

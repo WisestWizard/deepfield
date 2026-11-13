@@ -2847,3 +2847,160 @@ expect echorun 1
 expect_out USB 90 38 7F
 tap PLAY
 wait 100
+
+# SHIFT moves the chord as a cascade: the voice at the leading edge at once and the rest one after another, so
+# some notes are always held. Every voice used to leave in the same instant, and with nothing held to hear the
+# change against a chord sliding as one is heard as the instrument bent, not as a new chord. Three Fs two octaves
+# apart: no landing can be rougher than the chord struck, so nothing is passed through, and the chord is whole
+# only while it spans 24. CHANCE 0, so nothing is planned behind the move and only the cascade is counted; CC 14
+# brings the move at once whatever CHANCE says. RATE 127 is 60 s, where the gap is its 1.2 s ceiling. The top
+# goes first on the way up and the bottom on the way down, so until the last voice has gone the chord is wider.
+reboot
+wait 2500
+midi B0 39 7F
+midi B0 02 10
+midi B0 03 00
+wait 50
+expect latchmode 1
+expect scale 1
+expect bodies 0
+param 36 1
+param 24 127
+param 25 0
+param 37 127
+param 27 0
+key 0 down
+wait 60
+key 0 up
+wait 100
+key 12 down
+wait 60
+key 12 up
+wait 100
+key 24 down
+wait 60
+key 24 up
+wait 100
+expect latch 3
+expect span 24
+tap PLAY
+wait 100
+expect orbit 1
+expect orbitmode 1
+expect pending 0
+midi B0 0E 7F
+wait 100
+expect pending 2
+expect span >24
+wait 1200
+expect pending 1
+expect span >24
+wait 1200
+expect pending 0
+expect span 24
+# a cascade begun is finished, PLAY stopped or not: the chord is never left half moved
+midi B0 0E 7F
+wait 100
+expect pending 2
+tap PLAY
+wait 100
+expect orbit 0
+expect pending 2
+wait 2500
+expect pending 0
+expect span 24
+expect latch 3
+# at the end of its octave the chord turns round as one. A voice used to be sent back to its key from there, a
+# leap of up to an octave, and the voices of a chord could reach the end on different moves and split. A minute
+# at RATE 0.1 s is some six hundred moves with nothing pulling home: three scale steps are a tritone at most
+param 24 0
+param 25 127
+tap PLAY
+wait 60000
+expect moves >900
+expect leap <7
+expect leap >2
+tap PLAY
+wait 300
+expect orbit 0
+expect pending 0
+expect span 24
+# and one voice in WALK and RANDOM turns round there too (RANGE 127: four steps, a fifth at most)
+param 36 0
+param 26 127
+tap PLAY
+wait 60000
+expect leap <8
+expect leap >4
+tap PLAY
+wait 100
+expect orbit 0
+param 36 1
+param 24 78
+param 25 70
+param 26 40
+param 27 30
+param 37 40
+press SEL
+wait 30
+press HOME
+wait 30
+release HOME
+release SEL
+wait 8000
+expect bodies 0
+
+# a preset's chord brings the scale it was written in. GEN moves a voice along the scale, so a chord written in
+# another one had its notes pulled onto this one's the first time they moved: BOWED SKY's raised fourth, heard
+# under MAJOR, went flat at the first SHIFT. Landing on a preset for its sound alone leaves the scale where it
+# is, as before, and so does a preset with no chord. A saved preset keeps the scale it was saved in, and the scale
+# travels in a preset's SysEx frame
+expect scale 1
+out
+land 3
+wait 300
+expect scene 3
+expect scale 5
+expect_out USB B0 02 40
+expect latch 4
+out
+land 0
+wait 300
+expect scene 0
+expect scale 1
+expect_out USB B0 02 11
+spin PRESET 3
+wait 1500
+expect scene 3
+expect scale 1
+expect latch 3
+midi B0 02 28
+wait 50
+expect scale 3
+tap SAVE
+wait 30
+expect dialog 1
+tap SAVE
+wait 50
+expect dialog 0
+expect scene 16
+midi B0 02 10
+wait 50
+expect scale 1
+land 15
+wait 300
+expect scene 15
+expect scale 1
+expect latch 3
+land 16
+wait 300
+expect scale 3
+sxloop 3 20
+wait 1200
+midi B0 02 10
+wait 50
+expect scale 1
+land 20
+wait 300
+expect scene 20
+expect scale 5
