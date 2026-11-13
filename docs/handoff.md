@@ -36,6 +36,13 @@ BUDGET (flash row) updated.
 **On the unit:** still the click pass on the old base (build 7864699C, flashed this morning). BEAB0020, with the
 ramp and the warble fix, is **not flashed**. **Not released:** the hub still offers 1.7, and master is not pushed.
 
+**The site is published** as 1.8 on Kyle's "publish": committed 2255f98 first, then `deepfield/tools/publish_site.sh
+1.8` pushed gh-pages (8a317c8) and Pages built it. Checked live at deepfield.fog.baby: the home page links
+`deepfield-1.8.fwsc` (616,003 B, SHA-256 `2977df994d7ffb9d`), `install/` is at **FM-1_44010800**, the manual and the
+cheat sheet carry the glide text, the emulator boots, and the domain held. The emulator asks for
+`emu/reader/words.js` and gets a 404: the build warns there is no `fm1-reader/` beside the repository, so the screen
+is read as plain text without its voice (not looked into; nothing in this change touches it).
+
 ## Start here: the click pass - turning a knob no longer steps the sound (flashed 2026-11-13)
 
 Kyle: "im getting a lot of clicks and pops still when using encoders - the ascent preset was especially bad ... it
