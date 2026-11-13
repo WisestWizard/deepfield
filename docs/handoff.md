@@ -15,8 +15,14 @@ so the 53 new checks and the 16 goldens pass on Linux too), then the tag: run 43
 **What 1.7 carries over 1.6**: everything in this section, and the hub card's new text. The release notes are
 GitHub's changelog link, as 1.6's were.
 
-**Still to do:** the site serves 1.6 (publish_site.sh 1.7 wants Kyle's word "publish"), and **the unit runs the
-local build `FM-1_4400`, not the released bytes** - the same source as 1.7, a different package.
+**The site is published** on Kyle's "Publish 1.7": `deepfield/tools/publish_site.sh 1.7` pushed gh-pages (d004cd9)
+and Pages built it. Checked live at deepfield.fog.baby: the home page links `deepfield-1.7.fwsc`, `install/` is at
+**FM-1_44010700**, the manual and the cheat sheet carry the SHIFT text, the emulator answers, and the domain held.
+As with 1.6 the script builds the package it serves, so the site's file is `3d13afbd807d6769` against the attested release's
+`1121ea7eee28283f`: the same source and identity, different bytes.
+
+**Still to do:** **the unit runs the local build `FM-1_4400`, not the released bytes** - the same source as 1.7, a
+different package. Installing 1.7 from the hub once it shows there would settle that and test the hub's install.
 
 **On the unit:** flashed 2026-11-12 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
 over the released 1.6, image 426,292 B, build 5B4458A4, dev identity `FM-1_4400` (the package rebuilt first: the
