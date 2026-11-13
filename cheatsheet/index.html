@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEEP FIELD cheat sheet</title>
+<meta name="description" content="Every control of DEEP FIELD, the ambient drone firmware for the M-VAVE FM-1, on one page.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground: #faf4e8; --card: #fffaf1; --ink: #48392f; --muted: #6e5c4b; --rule: #e6dccb; --accent: #b84a1e;
+  --cap: #efe5d6; --cap-ink: #3a2c22; --cap-rule: #d6c8b3; --key: #ffffff; --key-ink: #3a2c22;
+  --green: #2f8a45; --orange: #c2551f; --red: #b8321f; --focus: #1f6fd1;
+  --font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #1c1814; --card: #26201b; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a;
+    --cap: #3a332d; --cap-ink: #f2e8d8; --cap-rule: #514740; --key: #efe2d0; --key-ink: #2a1d14;
+    --green: #5cc46a; --orange: #f28a5a; --red: #f0614a; --focus: #79adff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #1c1814; --card: #26201b; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a;
+  --cap: #3a332d; --cap-ink: #f2e8d8; --cap-rule: #514740; --key: #efe2d0; --key-ink: #2a1d14;
+  --green: #5cc46a; --orange: #f28a5a; --red: #f0614a; --focus: #79adff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 400 1.02rem/1.4 var(--font); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 56px; }
+a { color: inherit; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+header { margin-bottom: 28px; }
+.eyebrow { margin: 0 0 .4rem; font-weight: 600; font-size: .82rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.eyebrow a { text-decoration: none; }
+.eyebrow a:hover { color: var(--accent); }
+h1 { margin: 0; font-weight: 700; font-size: clamp(2.2rem, 6vw, 3.6rem); line-height: 1; letter-spacing: .01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.for { margin: .7rem 0 0; color: var(--muted); font-size: .95rem; }
+.lede { margin: .7rem 0 0; max-width: 46rem; font-size: 1.2rem; line-height: 1.45; text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.2rem; }
+.actions a, .actions button { font: 600 .98rem/1 var(--font); padding: .7em 1em; border-radius: 8px; border: 1px solid var(--rule);
+  background: var(--card); color: var(--ink); text-decoration: none; cursor: pointer; }
+.actions a:hover, .actions button:hover { border-color: var(--accent); }
+.actions .primary { background: var(--accent); border-color: var(--accent); color: var(--ground); }
+.actions .primary:hover { filter: brightness(1.08); }
+
+.sheet { columns: 2 26rem; column-gap: 16px; }
+section { break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 16px; padding: 16px 18px 18px;
+  background: var(--card); border: 1px solid var(--rule); border-top: 3px solid var(--accent); border-radius: 12px; }
+h2 { margin: 0 0 .8rem; font-weight: 700; font-size: .95rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+dl { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: .55rem 1rem; margin: 0; }
+dt { display: flex; flex-wrap: wrap; align-items: center; align-content: start; gap: .3rem; }
+dd { margin: 0; padding-top: .08rem; text-wrap: pretty; }
+.v { font-size: .82rem; color: var(--muted); }
+.p { color: var(--muted); font-size: .85rem; }
+.c { display: inline-block; font: 600 .78rem/1 var(--font); letter-spacing: .05em; padding: .32em .55em .28em; white-space: nowrap;
+  background: var(--cap); color: var(--cap-ink); border: 1px solid var(--cap-rule); border-radius: 5px; box-shadow: 0 1px 0 var(--cap-rule); }
+.c.k { border-radius: 999px; }
+.c.w { background: var(--key); color: var(--key-ink); border-color: var(--cap-rule); }
+.c.pc { font: 600 .76rem/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; margin-right: .1em; }
+.dot.g { background: var(--green); } .dot.o { background: var(--orange); } .dot.r { background: var(--red); }
+.mode { font-weight: 600; font-size: .85rem; letter-spacing: .05em; }
+ul.notes { margin: 0; padding-left: 1.1rem; display: grid; gap: .45rem; }
+ul.notes li::marker { color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; margin: 0 0 18px; color: var(--muted); font-size: .9rem; }
+.nw { white-space: nowrap; }
+.legend span { display: inline-flex; align-items: center; gap: .35rem; }
+footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
+
+@media (max-width: 460px) {
+  dl { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
+  dd { margin-bottom: .55rem; }
+}
+@media print {
+  :root, :root:not([data-theme="light"]) {
+    --ground: #fff; --card: #fff; --ink: #1d1611; --muted: #5a4a3c; --rule: #cfc4b4; --accent: #a8431b;
+    --cap: #f1ebe2; --cap-ink: #1d1611; --cap-rule: #b9ab97; --key: #fff; --key-ink: #1d1611;
+    --green: #2f8a45; --orange: #c2551f; --red: #b8321f; color-scheme: light;
+  }
+  @page { margin: 10mm; }
+  html { font-size: 7.3pt; }
+  body { font-size: 1rem; line-height: 1.22; }
+  .browser { display: none; }
+  .wrap { max-width: none; padding: 0; }
+  header { margin-bottom: 10px; }
+  h1 { font-size: 20pt; }
+  .lede { font-size: 9.5pt; margin-top: .3rem; }
+  .for { margin-top: .3rem; }
+  .actions, .legend { display: none; }
+  .sheet { columns: 2; column-gap: 10px; }
+  section { padding: 6px 9px 7px; margin-bottom: 6px; border-radius: 6px; border-top-width: 2px; }
+  h2 { font-size: 8pt; margin-bottom: .3rem; }
+  dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: .18rem .6rem; }
+  ul.notes { gap: .2rem; }
+  .c { box-shadow: none; }
+  footer { font-size: 8pt; }
+}
+</style>
+<style id="phosphor">
+/* PHOSPHOR: DEEP FIELD's site in the unit's own screen. The colours are ui.c's (C_SKY ground, C_TEXT cyan, C_LABEL,
+   C_RULE, C_BRIGHT, C_FX_ON teal, the body hues), the type its Barlow Semi Condensed; a strip of keys with beams
+   rising heads every page. tools/site_theme.py puts this in every page of the built site, after the page's own
+   styles, so it sets each page's colour variables (fm1-base's manual and front page, installer and emulator, and
+   the cheat sheet) whatever the visitor's light or dark setting. */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+:root, :root:not([data-theme]), :root[data-theme], :root:not([data-theme="light"]) {
+  --pf-sky: #000410; --pf-band: #07101f; --pf-card: #0a1628; --pf-rule: #1a2c46; --pf-rule-hi: #2a4466;
+  --pf-text: #cddae8; --pf-label: #96a0af; --pf-cyan: #78d7ff; --pf-bright: #f0f8ff; --pf-teal: #28d2a0;
+  --pf-sun: #ffc460; --pf-magenta: #ff60d0; --pf-violet: #a878ff; --pf-warn: #ff9646;
+  --pf-font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  /* fm1-base's manual and front page */
+  --paper: var(--pf-sky) !important; --sheet: var(--pf-card) !important; --rule: var(--pf-rule) !important;
+  --ink: var(--pf-text) !important; --muted: var(--pf-label) !important; --hot: var(--pf-sun) !important;
+  --hot-t: rgba(40, 210, 160, .16) !important; --hot-ink: var(--pf-teal) !important;
+  --cool: var(--pf-violet) !important; --cool-t: rgba(168, 120, 255, .12) !important;
+  /* the installer */
+  --bg: var(--pf-sky) !important; --fg: var(--pf-text) !important; --dim: var(--pf-label) !important;
+  --accent: var(--pf-teal) !important; --on-accent: var(--pf-sky) !important; --bad: var(--pf-warn) !important;
+  --focus: var(--pf-cyan) !important;
+  /* the emulator and the cheat sheet */
+  --ground: var(--pf-sky) !important; --card: var(--pf-card) !important; --teal: var(--pf-teal) !important;
+  --cap: #0c1a33 !important; --cap-ink: var(--pf-bright) !important; --cap-rule: var(--pf-rule-hi) !important;
+  --key: #e8ecf4 !important; --key-ink: var(--pf-sky) !important;
+  --green: #60ffb0 !important; --orange: var(--pf-sun) !important; --red: #ff5a64 !important;
+  --font: var(--pf-font) !important;
+  color-scheme: dark !important;
+}
+
+html { background: var(--pf-sky); }
+body {
+  font-family: var(--pf-font) !important; font-size: 18px; color: var(--pf-text);
+  background-color: var(--pf-sky) !important;
+  background-image: repeating-linear-gradient(to bottom, rgba(120, 215, 255, .022) 0 1px, transparent 1px 3px) !important;
+  padding-top: 0 !important; overflow-x: clip;
+}
+body::before {                           /* the keys strip with beams rising, as on the unit's BEAMS view; edge to edge
+                                          * whatever the page's own padding */
+  content: ""; display: block; height: 76px; margin: 0 calc(50% - 50vw) 28px;
+  background: var(--pf-band) url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 960 80%22 preserveAspectRatio=%22none%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient id=%22b4%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ffc460%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23ffc460%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ffc460%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b6%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%2340d8ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%2340d8ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%2340d8ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b8%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ff58c8%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23ff58c8%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ff58c8%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b10%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23b070ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23b070ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23b070ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b12%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23a8f060%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23a8f060%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23a8f060%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b1%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%234878ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%234878ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%234878ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3C/defs%3E%0A%3Crect x=%221%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%2261%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%234878ff%22/%3E%0A%3Crect x=%22121%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22181%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22241%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23ffc460%22/%3E%0A%3Crect x=%22301%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22361%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%2340d8ff%22/%3E%0A%3Crect x=%22421%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22481%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23ff58c8%22/%3E%0A%3Crect x=%22541%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22601%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23b070ff%22/%3E%0A%3Crect x=%22661%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22721%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23a8f060%22/%3E%0A%3Crect x=%22781%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22841%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22901%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%2243%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22103%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22163%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22283%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22343%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22463%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22523%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22583%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22703%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22763%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22883%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22261.0%22 y=%228%22 width=%2218%22 height=%2254%22 fill=%22url%28%23b4%29%22/%3E%0A%3Crect x=%22261.0%22 y=%228%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22381.0%22 y=%2232%22 width=%2218%22 height=%2230%22 fill=%22url%28%23b6%29%22/%3E%0A%3Crect x=%22381.0%22 y=%2232%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22501.0%22 y=%2216%22 width=%2218%22 height=%2246%22 fill=%22url%28%23b8%29%22/%3E%0A%3Crect x=%22501.0%22 y=%2216%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22621.0%22 y=%2242%22 width=%2218%22 height=%2220%22 fill=%22url%28%23b10%29%22/%3E%0A%3Crect x=%22621.0%22 y=%2242%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22741.0%22 y=%2224%22 width=%2218%22 height=%2238%22 fill=%22url%28%23b12%29%22/%3E%0A%3Crect x=%22741.0%22 y=%2224%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%2281.0%22 y=%2248%22 width=%2218%22 height=%2214%22 fill=%22url%28%23b1%29%22/%3E%0A%3Crect x=%220%22 y=%2262%22 width=%22960%22 height=%221%22 fill=%22%231a2c46%22/%3E%0A%3C/svg%3E%0A") center bottom / 100% 100% no-repeat;
+  border-bottom: 1px solid var(--pf-rule);
+}
+::selection { background: rgba(40, 210, 160, .35); color: var(--pf-bright); }
+
+h1, h2, h3 { color: var(--pf-bright); font-family: var(--pf-font); }
+h1 { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 0 18px rgba(120, 215, 255, .35); }
+h2 { font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border-top-color: var(--pf-rule-hi) !important; }
+h2 .num { color: var(--pf-sun); }
+h3 { font-weight: 600; letter-spacing: .03em; color: var(--pf-cyan); }
+strong { color: var(--pf-bright); }
+em { color: var(--pf-cyan); font-style: normal; }
+a { color: var(--pf-bright); text-decoration-color: var(--pf-teal); }
+a:hover { color: var(--pf-teal); background: none !important; }
+li::marker { color: var(--pf-sun); }
+code { background: var(--pf-card); color: var(--pf-sun); }
+pre { background: var(--pf-card); border: 1px solid var(--pf-rule); }
+pre code { color: var(--pf-text); }
+th { color: var(--pf-cyan) !important; border-bottom-color: var(--pf-rule-hi) !important; letter-spacing: .1em; }
+td { border-bottom-color: var(--pf-rule) !important; }
+tr:hover td { background: rgba(120, 215, 255, .03); }
+.site, main > a.home { border-bottom-color: var(--pf-rule-hi) !important; }
+main > a.home { color: var(--pf-cyan) !important; letter-spacing: .16em; }
+.callout { background: var(--cool-t); border-left-color: var(--pf-violet); }
+details { background: var(--pf-card); border: 1px solid var(--pf-rule); }
+figure.shot img { box-shadow: 0 0 0 1px var(--pf-rule-hi), 0 0 28px rgba(80, 224, 255, .14) !important; }
+figcaption { color: var(--pf-label); }
+
+/* the installer: its buttons as the unit's lit FX switch */
+button { font-family: var(--pf-font); font-weight: 600; letter-spacing: .04em; }
+main > h1 + p, .small { color: var(--pf-label); }
+dialog { border: 1px solid var(--pf-rule-hi); }
+
+/* the emulator's Switch on */
+.start { background: rgba(0, 4, 16, .62) !important; }
+.start button { background: var(--pf-teal) !important; color: var(--pf-sky) !important; }
+
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  body::before { height: 56px; margin-bottom: 20px; }
+}
+
+@media print {                           /* paper, not the screen: dark ink on white, no strip */
+  :root, :root:not([data-theme]), :root[data-theme], :root:not([data-theme="light"]) {
+    --pf-sky: #ffffff; --pf-band: #ffffff; --pf-card: #f3f5f8; --pf-rule: #c8d0da; --pf-rule-hi: #8a96a6;
+    --pf-text: #10161e; --pf-label: #4a5566; --pf-cyan: #0a5a7a; --pf-bright: #000000; --pf-teal: #0a6a52;
+    --pf-sun: #8a5a00; --cap: #ffffff !important; --cap-ink: #10161e !important; --key: #ffffff !important;
+    --key-ink: #10161e !important; color-scheme: light !important;
+  }
+  body { background: #fff !important; }
+  body::before { display: none; }
+  h1 { text-shadow: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow"><a href="../">DEEP FIELD</a> · Cheat sheet</p>
+  <h1>DEEP FIELD <span>at a glance</span></h1>
+  <p class="for">For DEEP FIELD 1.8, checked against its source.</p>
+  <p class="lede">An ambient drone machine for the <span class="nw">M-VAVE FM-1</span>. Each key starts a voice, a note that
+    swells in and keeps sounding. KNOB 1–4 shape every voice at once, and PLAY sets them moving.</p>
+  <div class="actions">
+    <a class="primary" href="../emu/">Play it in your browser</a>
+    <a href="../manual/">The full manual</a>
+    <a href="../install/">Install on an FM-1</a>
+    <button type="button" onclick="window.print()">Print</button>
+  </div>
+</header>
+
+<p class="legend">
+  <span><span class="c">FX</span> a button</span>
+  <span><span class="c k">PRESETS</span> a knob</span>
+  <span><span class="c w">white key 1</span> a key, counted from the left</span>
+  <span><span class="c pc">Q</span> your computer's keyboard, in the browser</span>
+</p>
+
+<main class="sheet">
+
+<section>
+  <h2>Getting around</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c">HOME</span></dt>
+    <dd>HOME page: TIMBRE, DRIFT, SUB, TREMOLO on KNOB 1&ndash;4. Reverb lives on FX and the FX mixer; every preset comes with it on.</dd>
+    <dt><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>The next or previous page.</dd>
+    <dt><span class="v">tap</span><span class="c">EDIT</span></dt>
+    <dd>OSC: model, shape, sub, noise (shape and noise named for the model). Turn SELECT for NOISE, again for NOISE 2 (type, gust, duck, width).</dd>
+    <dt><span class="v">tap</span><span class="c">ENV</span></dt>
+    <dd>ENVELOPE: attack, release, aftertouch, glide. Turn SELECT for LEAD.</dd>
+    <dt><span class="v">tap</span><span class="c">LFO</span></dt>
+    <dd>LFO: tremolo rate, vibrato (to 40 cents either way, DRIFT its rate), random, width. Turn SELECT for VOICES: spread, cross mod, timbre drift, pan drift (what makes eight voices sound like eight).</dd>
+    <dt><span class="v">tap</span><span class="c">FX</span></dt>
+    <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
+    <dt><span class="v">tap</span><span class="c">ARP</span></dt>
+    <dd>GEN. Turn SELECT for GEN 2, whose knobs are the mode's too &mdash; a knob the mode never reads is empty.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span></dt>
+    <dd>MIX: BED (everything latched), LEAD (what you play over it), OUT (a trim under the MASTER pot). Turn SELECT for FX MIX (ensemble, delay, reverb, shimmer on one screen), then GLOBAL (scale, root, morph, TEMPO &mdash; the arp and a synced delay time both follow it), MIDI and USB.</dd>
+    <dt><span class="v">turn</span><span class="c k">MASTER</span></dt>
+    <dd>Volume: the speaker, the headphones and the USB recording.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Playing</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c w">any key</span></dt>
+    <dd>Start a voice: it swells in and keeps sounding (LATCH on, SEL lit). How hard you strike it is its weight: the level over 18&nbsp;dB, how bright it is, and how fast it arrives (VELOCITY, on by default; off, every key strikes full). A firm press is already a full strike: the keybed counts its hardest 15 % as full.</dd>
+    <dt><span class="v">tap</span><span class="c w">its lit key</span></dt>
+    <dd>Stop that voice; it fades out as you let go, however slowly you pressed. If GEN moved it, its light moved too: tap the key it sounds on.</dd>
+    <dt><span class="v">hold</span><span class="c w">its key</span><span class="p">+</span><span class="v">turn</span><span class="c k">KNOB 1–4</span></dt>
+    <dd>That voice alone: LEVEL (−24 to +6 dB, or MUTE), TONE (its own TIMBRE), TUNE (±50 cents), LOCK (ON: GEN and the arp leave it be). Several keys held: all of them. Saved with the preset.</dd>
+    <dt><span class="v">press harder on</span><span class="c w">a held key</span></dt>
+    <dd>Aftertouch: brighter, with more vibrato (at the LFO's own rate), while you press. The top seven keys have no aftertouch.</dd>
+    <dt><span class="v">tap</span><span class="c">SEL</span></dt>
+    <dd>LATCH off: the voices keep sounding, and each key plays a lead over them while you hold it. Tap again for LATCH on.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c w">keys</span></dt>
+    <dd>Move the chord: each key moves the whole latched chord there, its lowest note to that key. Let go of SEL and the keys play as before.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c">HOME</span></dt>
+    <dd>Stop every voice. SEL held is the chord's button and has no timer: held with nothing touched, it does nothing.</dd>
+    <dt><span class="v">tap</span><span class="c">OCT-</span><span class="c">OCT+</span></dt>
+    <dd>The keys an octave down or up, two each way.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Shaping the sound</h2>
+  <dl>
+    <dt><span class="v">turn</span><span class="c k">KNOB 1</span></dt>
+    <dd>On HOME, TIMBRE: dark to bright.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 2</span></dt>
+    <dd>On HOME, DRIFT: how much each voice wanders.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 3</span></dt>
+    <dd>On HOME, SUB: an octave below, on every model. The same value as SUB on OSC.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 4</span></dt>
+    <dd>On HOME, TREMOLO: each voice slowly fades down and back up.</dd>
+    <dt><span class="v">turn</span><span class="c k">ALGORITHM</span></dt>
+    <dd>The model: ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE (wavetables), FM 4-OP (four-operator FM), SYNC (hard sync), TAPE (a worn tape loop), RESONATOR (a singing bowl); every voice crosses over smoothly. TIMBRE, SHAPE and NOISE are named for what they do on each (CUTOFF, VOWEL, PATCH …).</dd>
+    <dt><span class="v">tap</span><span class="c">EDIT</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>NOISE: wind, rain or crackle under the voices.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>GEN: the voices move</h2>
+  <dl>
+    <dt><span class="v">tap</span><span class="c">PLAY</span></dt>
+    <dd>GEN on or off. PLAY's colour shows the mode. Turning it on opens the GEN page (KNOB 1 the mode, KNOB 2–4 set it; GEN 2 stays if open); turning it off leaves the page be. ARP opens the page any time.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c">PLAY</span></dt>
+    <dd>The next move now (ARP: the next step), and the countdown starts over.</dd>
+    <dt><span class="mode"><span class="dot g"></span> WALK</span></dt>
+    <dd>One voice at a time moves to a nearby note.</dd>
+    <dt><span class="mode"><span class="dot o"></span> SHIFT</span></dt>
+    <dd>The whole chord shifts along the scale, one voice after another. RETURN is how hard home pulls.</dd>
+    <dt><span class="mode"><span class="dot o"></span> RANDOM</span></dt>
+    <dd>Several move at once, each its own way.</dd>
+    <dt><span class="mode"><span class="dot r"></span> ARP</span></dt>
+    <dd>An arpeggio through the voices' notes, the first step of each bar accented. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar).</dd>
+    <dt><span class="mode"><span class="dot o"></span> PROG</span></dt>
+    <dd>The chord is led through a progression over the scale you set, one or two voices at a time while the rest hold (nothing is frozen &mdash; LOCK a voice yourself if you want a pedal under it): ROUND, UNDERTOW (sinks), SLOW RISE (climbs), TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES on KNOB 4. On GEN 2, ROAM develops it: 0 plays it as written, up redraws about one chord in seven and moves the key centre.</dd>
+    <dt><span class="mode"><span class="dot o"></span> LOOP</span></dt>
+    <dd>A phrase comes back at the velocities, the rhythm and the note lengths you played it with &mdash; hold a note for a second and it comes back held for a second. Selecting LOOP with nothing recorded says REC THEN PLAY: press REC on this page to record one (LATCH lifts for the take, REC again closes it and it loops at once, at the speed you played it), or just play with LATCH off and your last eight notes are caught on their own. DECAY fades it and at 0 holds it for good, recorded or caught (turned up, a caught phrase dies faster than a recorded one), OCT JUMP throws notes an octave, ROAM on GEN 2 carries each pass to another degree.</dd>
+    <dt><span class="v">turn</span><span class="c k">KNOB 2</span><span class="v">left</span></dt>
+    <dd>RATE down to 0.1 s: below a second GEN plays the chord instead of changing it.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Effects</h2>
+  <dl>
+    <dt><span class="v">hold</span><span class="c">FX</span><span class="p">+</span><span class="v">tap</span><span class="c w">white key 1–4</span></dt>
+    <dd>Ensemble, delay, reverb, shimmer on or off, on any preset. Switched off, the delay and reverb ring out.</dd>
+    <dt><span class="v">hold</span><span class="c">FX</span><span class="p">+</span><span class="v">tap</span><span class="c w">white key 5</span></dt>
+    <dd>The noise layer on or off.</dd>
+    <dt><span class="v">tap</span><span class="c">SEQ</span></dt>
+    <dd>FREEZE: the reverb holds what it has. Tap again to let it go.</dd>
+    <dt><span class="v">tap</span><span class="c">FX</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>DELAY: type, time, feedback, mix — a DLY TIME move takes the repeats out for 12 ms and lands them on the new time, so it no longer swoops (TAPE still slides, inside a tone and a half). DELAY 2: tone, diffusion, wow, gate. REVERB: decay, damping, shimmer (the octave up read twice, one a side, so it is as wide as the hall), reverb.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Presets and saving</h2>
+  <dl>
+    <dt><span class="v">turn</span><span class="c k">PRESETS</span></dt>
+    <dd>Change the sound: the screen lists the presets and a line fills; then it blends in over MORPH (4 s) under your chord. LATCH, GEN and FREEZE stay. PRESETS alone never brings a chord.</dd>
+    <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span></dt>
+    <dd>The preset's chord comes too, in place of yours: the old voices release as the new swell (factory chords stand on C and play in ROOT). SCALE changes to the scale the chord was written in.</dd>
+    <dt><span class="v">hold</span><span class="c">HOME</span><span class="v">1 s</span></dt>
+    <dd>The preset back as saved: its sound, effect switches and GEN values blend back in; your chord keeps playing.</dd>
+    <dt><span class="v">tap</span><span class="c">SAVE</span><span class="p">+</span><span class="v">turn</span><span class="c k">PRESETS</span><span class="p">+</span><span class="v">tap</span><span class="c">SAVE</span></dt>
+    <dd>Save the sound and its chord (each voice's own values too) to U1–U16. HOME cancels.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>MIDI and Bluetooth</h2>
+  <dl>
+    <dt><span class="v">in over</span><span class="c">USB</span><span class="c">TRS</span><span class="c">Bluetooth</span></dt>
+    <dd>Notes (any channel by default), and clock to time GEN.</dd>
+    <dt><span class="v">out over</span><span class="c">USB</span><span class="c">Bluetooth</span></dt>
+    <dd>The keys and GEN's moves. The TRS jack is in only.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span><span class="p">+</span><span class="v">turn</span><span class="c k">ALGORITHM</span><span class="p">+</span><span class="v">tap</span><span class="c">REC</span></dt>
+    <dd>Connect a Bluetooth MIDI keyboard: the MIDI page shows CONNECTED or NOT CONNECTED and lists the devices it finds; ALGORITHM picks one, REC connects it, REC again disconnects. On other pages REC searches first.</dd>
+    <dt><span class="v">hold</span><span class="c">REC</span><span class="v">1 s</span></dt>
+    <dd>Bluetooth on or off.</dd>
+    <dt><span class="v">tap</span><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span></dt>
+    <dd>MIDI: in and out channels, local, velocity (on by default). Turn again for USB: recording and clock out.</dd>
+    <dt><span class="v">send</span><span class="c">a CC</span></dt>
+    <dd>Every knob has one, in and out: 16–19 TIMBRE DRIFT REVERB TREMOLO, 21 SUB, 9 MODEL, 109–113 GEN's MODE RATE CHANCE RANGE RETURN, 15 CHORDS, 51 ROAM, 54 BED, 2 SCALE, 3 ROOT … (the manual has the table). A knob turned sends its CC; a CC in never lights SAVE.</dd>
+    <dt><span class="v">send</span><span class="c">CC 57–63</span></dt>
+    <dd>Switches: 57 LATCH, 58 GEN, 59 FREEZE, 60–63 ensemble, delay, reverb, shimmer (64 up is on); 12 the noise layer. Triggers: 13 the preset as saved, 14 GEN's next move now.</dd>
+    <dt><span class="v">send</span><span class="c">SysEx</span></dt>
+    <dd>F0 7D 44 46 01 64 F7 asks for every user preset; each comes back as a frame you can keep, share, and send back into a U slot. tools/fm1_bank.py dumps and loads a bank.</dd>
+    <dt><span class="v">send</span><span class="c">program 0–31</span></dt>
+    <dd>Load the sound of F1–F16, then U1–U16 (never a chord).</dd>
+    <dt><span class="v">send</span><span class="c">NRPN</span></dt>
+    <dd>A voice's own values, in and out: CC 99 = 1 LEVEL, 2 TONE, 3 TUNE, 4 LOCK; CC 98 = its note; CC 6 = the value.</dd>
+  </dl>
+</section>
+
+<section class="browser">
+  <h2>In the browser</h2>
+  <dl>
+    <dt><span class="v">type</span><span class="c pc">Q</span><span class="p">to</span><span class="c pc">I</span><span class="c pc">A</span><span class="p">to</span><span class="c pc">K</span></dt>
+    <dd>White keys 1–8 and 9–16.</dd>
+    <dt><span class="v">type</span><span class="c pc">1</span><span class="p">to</span><span class="c pc">0</span><span class="c pc">-</span></dt>
+    <dd>The black keys.</dd>
+    <dt><span class="v">type</span><span class="c pc">P</span><span class="c pc">O</span><span class="c pc">Esc</span></dt>
+    <dd>PLAY, REC, HOME.</dd>
+    <dt><span class="v">type</span><span class="c pc">Z</span><span class="c pc">X</span></dt>
+    <dd>OCT- and OCT+.</dd>
+    <dt><span class="v">drag</span><span class="c k">a knob</span></dt>
+    <dd>Up or down to turn it.</dd>
+    <dt><span class="v">shift-click</span><span class="c">a button</span><span class="c w">a key</span></dt>
+    <dd>Keep it held (right-click works too); click it again to let go. That's how to do the hold combos, or hold a chord, with a mouse.</dd>
+    <dt><span class="v">click</span><span class="c">the panel</span></dt>
+    <dd>The typed keys work while the panel has focus. The Keyboard shortcuts box under it turns them off.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Good to know</h2>
+  <ul class="notes">
+    <li>A button always opens the same page, and SELECT steps between pages. GLO opens the two mixer pages first, then the scale and the rest. The four boxes at the bottom of the screen are the four knobs.</li>
+    <li>SEL, PLAY and SEQ are lit while their mode is on: LATCH, GEN, FREEZE.</li>
+    <li>F1–F16 are the factory presets, every model once and every GEN mode on two (press PLAY to hear it); F16 INIT is every value at its start. U1–U16 are yours.</li>
+    <li>Switching on, the name falls into a vortex for three seconds (press anything to skip). Then it is silent: the last preset's sound is ready, and nothing plays until you press a key.</li>
+    <li>Knobs: turned slowly, small steps; turned fast, big ones. A knob with a few values moves one a click. A value glides to where you turn it and a choice fades across, so turning never clicks.</li>
+    <li>Key lights: bright is a voice sounding there (tap to stop it), half is sound going (a voice fading, the held chord while LATCH is off), a glow is the scale.</li>
+    <li>On the screen only sound gives off light. Sun means latched, white your hand (a lead, an open voice), cyan where you are, teal an effect on, orange something to look at.</li>
+    <li>The settings (scale, octave, MIDI, Bluetooth on or off) are stored only when you save a preset. SAVE is lit while a sound or a setting is unsaved.</li>
+    <li>SEL is a button (LATCH) and SELECT is a knob (pages): different controls.</li>
+    <li>The keys send the velocity you struck them at over MIDI, whatever VELOCITY says; that switch only decides whether DEEP FIELD itself listens. A factory preset's chord is struck full, and its balance against the rest of the bank sits in each voice's LEVEL.</li>
+    <li>Update mode: hold REC while you switch on. Hardware calibration (buttons and knobs): hold OCT- and OCT+ while you switch on.</li>
+    <li>Back to the stock firmware: the installer puts M-VAVE's own back.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <p>When in doubt, <a href="../manual/">the manual</a> is right. M-VAVE and FM-1 are trademarks of their owners; DEEP FIELD is not affiliated with M-VAVE.</p>
+</footer>
+</div>
+</body>
+</html>

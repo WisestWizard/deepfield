@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deepfield · an ambient drone machine for the FM-1</title>
+<meta name="description" content="deepfield, an ambient drone machine for the FM-1 for deepfield, a firmware for the M-VAVE FM-1.">
+<style>
+/* paper and ink: warm white paper, ink-blue type, vermilion for what is played, mustard for asides; a shade of the
+   paper for code and callouts (CTL-1's; a firmware may restyle its site) */
+:root {
+  --paper: #fbf8f1; --sheet: #efe9dc; --rule: #ddd4c2; --ink: #1e2b5a; --muted: #5d6585;
+  --hot: #e5482e; --hot-t: #f8d3c9; --cool: #d9a21b; --cool-t: #f5e4b8;
+  --hot-ink: #c23a22;                                 /* the vermilion as text: 4.5:1 on the paper */
+  color-scheme: light;
+}
+body {
+  background: var(--paper); color: var(--ink); margin: 0;
+  font: 400 17px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding-inline: 16px; padding-block: 32px 64px;
+}
+main { max-width: 46rem; margin: 0 auto; }
+.page > .site { max-width: 46rem; margin-inline: auto; }
+main:focus { outline: none; }
+h1, h2, h3 { font-family: inherit; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 2.2rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: .02em; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 3rem 0 .8rem; padding-top: .8rem; border-top: 2px solid var(--ink); }
+h2 .num { color: var(--hot); margin-right: .5em; font-variant-numeric: tabular-nums; }
+h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 .5rem; }
+p, li { max-width: 65ch; }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+li { margin: .2rem 0; }
+li::marker { color: var(--hot); }
+strong { font-weight: 700; }
+a { color: var(--ink); text-decoration-color: var(--hot); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { background: var(--hot-t); }
+:focus-visible { outline: 3px solid var(--hot-ink); outline-offset: 2px; }
+.skip { position: absolute; left: 16px; top: -100px; background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 0 0 6px 6px; z-index: 1; }
+.skip:focus { top: 0; }
+code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .86em; }
+code { background: var(--sheet); padding: .08em .35em; border-radius: 3px; }
+pre { background: var(--sheet); border-radius: 6px; padding: 14px 16px; overflow-x: auto; line-height: 1.45; margin: 0 0 1.2rem; }
+pre code { background: none; padding: 0; font-size: inherit; }
+hr { display: none; }
+.table { overflow-x: auto; margin: 0 0 1.3rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: .45rem .7rem .45rem 0; border-bottom: 1px solid var(--rule); }
+th { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
+td:first-child { white-space: nowrap; }
+.lede { margin-bottom: 1.6rem; }
+.status { background: var(--sheet); border-radius: 6px; padding: 12px 16px; }
+.status p { margin: 0; }
+.site { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.2rem; margin: 0 0 1.6rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+.site .home { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; color: var(--ink); text-decoration: none; }
+.site .home:hover { color: var(--hot-ink); background: none; }
+.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .92rem; }
+.site nav a { color: var(--ink); text-underline-offset: 3px; }
+.site nav a[aria-current] { text-decoration: none; color: var(--hot-ink); }
+a.home { color: inherit; text-decoration: none; }
+a.home:hover { background: none; color: var(--hot-ink); }
+main > a.home { display: inline-block; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }
+.callout { border-left: 4px solid var(--cool); background: var(--cool-t); padding: 10px 16px; margin: 0 0 1.2rem; max-width: 65ch; border-radius: 0 6px 6px 0; }
+.callout p { margin: 0; }
+details { background: var(--sheet); border-radius: 6px; padding: 0 16px; margin: 0 0 1.2rem; }
+details > summary { cursor: pointer; padding: 10px 0; }
+details[open] > summary { margin-bottom: .4rem; }
+details > :last-child { margin-bottom: 1rem; }
+.swatch { display: inline-block; width: .7em; height: .7em; margin-right: .4em; vertical-align: .02em; }
+nav.contents ol { columns: 2 14rem; column-gap: 2rem; padding-left: 1.3rem; }
+.figs { display: flex; flex-wrap: wrap; gap: 20px; margin: .4rem 0 1.6rem; }
+figure { margin: 0; flex: 0 1 auto; }
+figure img { display: block; max-width: 100%; height: auto; }
+figure.shot img { width: 300px; image-rendering: pixelated; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); }
+figure.wide { flex-basis: 100%; }
+figure.wide img { width: 100%; }
+figcaption { color: var(--muted); font-size: .88rem; margin-top: .4rem; max-width: 300px; }
+figure.wide figcaption { max-width: none; }
+nav.contents li { break-inside: avoid; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<style id="phosphor">
+/* PHOSPHOR: DEEP FIELD's site in the unit's own screen. The colours are ui.c's (C_SKY ground, C_TEXT cyan, C_LABEL,
+   C_RULE, C_BRIGHT, C_FX_ON teal, the body hues), the type its Barlow Semi Condensed; a strip of keys with beams
+   rising heads every page. tools/site_theme.py puts this in every page of the built site, after the page's own
+   styles, so it sets each page's colour variables (fm1-base's manual and front page, installer and emulator, and
+   the cheat sheet) whatever the visitor's light or dark setting. */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+:root, :root:not([data-theme]), :root[data-theme], :root:not([data-theme="light"]) {
+  --pf-sky: #000410; --pf-band: #07101f; --pf-card: #0a1628; --pf-rule: #1a2c46; --pf-rule-hi: #2a4466;
+  --pf-text: #cddae8; --pf-label: #96a0af; --pf-cyan: #78d7ff; --pf-bright: #f0f8ff; --pf-teal: #28d2a0;
+  --pf-sun: #ffc460; --pf-magenta: #ff60d0; --pf-violet: #a878ff; --pf-warn: #ff9646;
+  --pf-font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  /* fm1-base's manual and front page */
+  --paper: var(--pf-sky) !important; --sheet: var(--pf-card) !important; --rule: var(--pf-rule) !important;
+  --ink: var(--pf-text) !important; --muted: var(--pf-label) !important; --hot: var(--pf-sun) !important;
+  --hot-t: rgba(40, 210, 160, .16) !important; --hot-ink: var(--pf-teal) !important;
+  --cool: var(--pf-violet) !important; --cool-t: rgba(168, 120, 255, .12) !important;
+  /* the installer */
+  --bg: var(--pf-sky) !important; --fg: var(--pf-text) !important; --dim: var(--pf-label) !important;
+  --accent: var(--pf-teal) !important; --on-accent: var(--pf-sky) !important; --bad: var(--pf-warn) !important;
+  --focus: var(--pf-cyan) !important;
+  /* the emulator and the cheat sheet */
+  --ground: var(--pf-sky) !important; --card: var(--pf-card) !important; --teal: var(--pf-teal) !important;
+  --cap: #0c1a33 !important; --cap-ink: var(--pf-bright) !important; --cap-rule: var(--pf-rule-hi) !important;
+  --key: #e8ecf4 !important; --key-ink: var(--pf-sky) !important;
+  --green: #60ffb0 !important; --orange: var(--pf-sun) !important; --red: #ff5a64 !important;
+  --font: var(--pf-font) !important;
+  color-scheme: dark !important;
+}
+
+html { background: var(--pf-sky); }
+body {
+  font-family: var(--pf-font) !important; font-size: 18px; color: var(--pf-text);
+  background-color: var(--pf-sky) !important;
+  background-image: repeating-linear-gradient(to bottom, rgba(120, 215, 255, .022) 0 1px, transparent 1px 3px) !important;
+  padding-top: 0 !important; overflow-x: clip;
+}
+body::before {                           /* the keys strip with beams rising, as on the unit's BEAMS view; edge to edge
+                                          * whatever the page's own padding */
+  content: ""; display: block; height: 76px; margin: 0 calc(50% - 50vw) 28px;
+  background: var(--pf-band) url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 960 80%22 preserveAspectRatio=%22none%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient id=%22b4%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ffc460%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23ffc460%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ffc460%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b6%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%2340d8ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%2340d8ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%2340d8ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b8%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ff58c8%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23ff58c8%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ff58c8%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b10%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23b070ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23b070ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23b070ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b12%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23a8f060%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%23a8f060%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%23a8f060%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3ClinearGradient id=%22b1%22 x1=%220%22 y1=%221%22 x2=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%234878ff%22 stop-opacity=%22.95%22/%3E%3Cstop offset=%22.7%22 stop-color=%22%234878ff%22 stop-opacity=%22.35%22/%3E%3Cstop offset=%221%22 stop-color=%22%234878ff%22 stop-opacity=%220%22/%3E%3C/linearGradient%3E%0A%3C/defs%3E%0A%3Crect x=%221%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%2261%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%234878ff%22/%3E%0A%3Crect x=%22121%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22181%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22241%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23ffc460%22/%3E%0A%3Crect x=%22301%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22361%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%2340d8ff%22/%3E%0A%3Crect x=%22421%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22481%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23ff58c8%22/%3E%0A%3Crect x=%22541%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22601%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23b070ff%22/%3E%0A%3Crect x=%22661%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22721%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%23a8f060%22/%3E%0A%3Crect x=%22781%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22841%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%22901%22 y=%2264%22 width=%2258%22 height=%2216%22 fill=%22%232c3240%22/%3E%0A%3Crect x=%2243%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22103%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22163%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22283%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22343%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22463%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22523%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22583%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22703%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22763%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22883%22 y=%2264%22 width=%2234%22 height=%2210%22 fill=%22%23121620%22/%3E%0A%3Crect x=%22261.0%22 y=%228%22 width=%2218%22 height=%2254%22 fill=%22url%28%23b4%29%22/%3E%0A%3Crect x=%22261.0%22 y=%228%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22381.0%22 y=%2232%22 width=%2218%22 height=%2230%22 fill=%22url%28%23b6%29%22/%3E%0A%3Crect x=%22381.0%22 y=%2232%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22501.0%22 y=%2216%22 width=%2218%22 height=%2246%22 fill=%22url%28%23b8%29%22/%3E%0A%3Crect x=%22501.0%22 y=%2216%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22621.0%22 y=%2242%22 width=%2218%22 height=%2220%22 fill=%22url%28%23b10%29%22/%3E%0A%3Crect x=%22621.0%22 y=%2242%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%22741.0%22 y=%2224%22 width=%2218%22 height=%2238%22 fill=%22url%28%23b12%29%22/%3E%0A%3Crect x=%22741.0%22 y=%2224%22 width=%2218%22 height=%222%22 fill=%22%23f0f8ff%22 fill-opacity=%22.85%22/%3E%0A%3Crect x=%2281.0%22 y=%2248%22 width=%2218%22 height=%2214%22 fill=%22url%28%23b1%29%22/%3E%0A%3Crect x=%220%22 y=%2262%22 width=%22960%22 height=%221%22 fill=%22%231a2c46%22/%3E%0A%3C/svg%3E%0A") center bottom / 100% 100% no-repeat;
+  border-bottom: 1px solid var(--pf-rule);
+}
+::selection { background: rgba(40, 210, 160, .35); color: var(--pf-bright); }
+
+h1, h2, h3 { color: var(--pf-bright); font-family: var(--pf-font); }
+h1 { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 0 18px rgba(120, 215, 255, .35); }
+h2 { font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border-top-color: var(--pf-rule-hi) !important; }
+h2 .num { color: var(--pf-sun); }
+h3 { font-weight: 600; letter-spacing: .03em; color: var(--pf-cyan); }
+strong { color: var(--pf-bright); }
+em { color: var(--pf-cyan); font-style: normal; }
+a { color: var(--pf-bright); text-decoration-color: var(--pf-teal); }
+a:hover { color: var(--pf-teal); background: none !important; }
+li::marker { color: var(--pf-sun); }
+code { background: var(--pf-card); color: var(--pf-sun); }
+pre { background: var(--pf-card); border: 1px solid var(--pf-rule); }
+pre code { color: var(--pf-text); }
+th { color: var(--pf-cyan) !important; border-bottom-color: var(--pf-rule-hi) !important; letter-spacing: .1em; }
+td { border-bottom-color: var(--pf-rule) !important; }
+tr:hover td { background: rgba(120, 215, 255, .03); }
+.site, main > a.home { border-bottom-color: var(--pf-rule-hi) !important; }
+main > a.home { color: var(--pf-cyan) !important; letter-spacing: .16em; }
+.callout { background: var(--cool-t); border-left-color: var(--pf-violet); }
+details { background: var(--pf-card); border: 1px solid var(--pf-rule); }
+figure.shot img { box-shadow: 0 0 0 1px var(--pf-rule-hi), 0 0 28px rgba(80, 224, 255, .14) !important; }
+figcaption { color: var(--pf-label); }
+
+/* the installer: its buttons as the unit's lit FX switch */
+button { font-family: var(--pf-font); font-weight: 600; letter-spacing: .04em; }
+main > h1 + p, .small { color: var(--pf-label); }
+dialog { border: 1px solid var(--pf-rule-hi); }
+
+/* the emulator's Switch on */
+.start { background: rgba(0, 4, 16, .62) !important; }
+.start button { background: var(--pf-teal) !important; color: var(--pf-sky) !important; }
+
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  body::before { height: 56px; margin-bottom: 20px; }
+}
+
+@media print {                           /* paper, not the screen: dark ink on white, no strip */
+  :root, :root:not([data-theme]), :root[data-theme], :root:not([data-theme="light"]) {
+    --pf-sky: #ffffff; --pf-band: #ffffff; --pf-card: #f3f5f8; --pf-rule: #c8d0da; --pf-rule-hi: #8a96a6;
+    --pf-text: #10161e; --pf-label: #4a5566; --pf-cyan: #0a5a7a; --pf-bright: #000000; --pf-teal: #0a6a52;
+    --pf-sun: #8a5a00; --cap: #ffffff !important; --cap-ink: #10161e !important; --key: #ffffff !important;
+    --key-ink: #10161e !important; color-scheme: light !important;
+  }
+  body { background: #fff !important; }
+  body::before { display: none; }
+  h1 { text-shadow: none; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="page">
+<main id="content" tabindex="-1">
+<a class="home" href="../">deepfield</a>
+<h1>DEEP FIELD</h1>
+<p>DEEP FIELD turns the M-VAVE FM-1 into an ambient drone machine. Each key you press starts a <em>voice</em>: a note that swells in, keeps sounding, slowly breathes and drifts, and fades out when you stop it. How hard you strike the key is its weight — its level, how bright it is, and how fast it arrives. Up to eight play at once. Four knobs shape every voice at the same time, a held key sets one voice apart, GEN moves them to nearby notes, leads them through a chord progression over the scale you set, or runs an arpeggio over them that can learn a phrase you play. Thirteen models range from breathing harmonics to wavetables and FM, and the reverb can freeze and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth; every knob has a CC, and the presets travel as SysEx.</p>
+<h2 id="play-it-in-your-browser">Play it in your browser</h2>
+<p>No FM-1 needed: <a href="emu/">open DEEP FIELD in your browser</a>. Headphones help. Chrome, Edge, Firefox and Safari all work; on a phone, turn it sideways.</p>
+<ol><li>Press Switch on. The preset FIRST LIGHT loads in silence: nothing plays until you play.</li><li>Click a few keys, one at a time, or type them: Q to I and A to K are the white keys, 1 to 0 and the minus key the black ones. Each note swells in and keeps sounding.</li><li>Click a lit key again: that note fades out.</li><li>Drag KNOB 1 to KNOB 4 up or down. They set the brightness, the wander, the octave underneath and the slow rise and fall of every note at once.</li><li>Press PLAY (or the P key): the notes start moving to nearby notes on their own.</li><li>Turn PRESETS to change the preset: its sound blends in over a few seconds under the notes you are playing. Shift-click SEL to hold it while you turn, and the preset brings its own chord in place of yours.</li><li>Hold SEL (shift-click it) and press HOME to stop every note.</li></ol>
+<p>The <a href="cheatsheet/">cheat sheet</a> has every control on one page, and the <a href="manual/">manual</a> has the rest.</p>
+<h2 id="on-the-fm-1">On the FM-1</h2>
+<p>Version 1.8. Installing is at your own risk; the installer can put M-VAVE's own firmware back.</p>
+<ul><li><a href="install/">Install</a>: from Chrome or Edge, with the FM-1 connected by USB.</li><li><a href="cheatsheet/">Cheat sheet</a>: every control on one page, to print or keep open.</li><li><a href="manual/">Manual</a>: the screen, the controls, the presets, MIDI.</li><li><a href="firmware/deepfield-1.8.fwsc">Download deepfield-1.8.fwsc</a>: for the command-line installer. In a copy of DEEP FIELD's source code, run <code>python3 base/tools/fm1_install.py deepfield-1.8.fwsc</code>.</li></ul>
+<p>M-VAVE and FM-1 are trademarks of their owners. DEEP FIELD is not affiliated with M-VAVE.</p>
+</main>
+</div>
+</body>
+</html>
