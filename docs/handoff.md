@@ -68,6 +68,11 @@ published; no version yet.** Two simulator-only probes were added for the checks
 7. F9 CATHEDRAL (now DORIAN) and F11 GAMELAN (now MAJ PENTA) with SEL held: these two move differently than they
    did, since PROG and RANDOM follow the scale. Say if either was better before.
 
+**The hub card's text is rewritten** on Kyle's brief (plainer, and naming the keys' velocity, the voices, motion,
+scales and chords, the effects and the mixer): `fmhub.json`'s `what`, 289 characters, shimmer dropped for room and
+GEN called "motion modes" for a reader who has not seen the panel. The hub reads that file from master every three
+hours, so the card changes only after a push.
+
 **Open:** a note struck by hand outside the scale is still taken from the scale note below when GEN moves it.
 RATE under about 0.3 s leaves under 30 ms between a cascade's voices. If the cascade is wanted wider or tighter,
 it is the 0.3 and the 1.2 in `orbit_apply`.

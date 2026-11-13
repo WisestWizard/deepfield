@@ -1,5 +1,5 @@
 {
-  "what": "An ambient drone machine. Every key starts a voice that swells in, keeps sounding, breathes and drifts, then fades when you let it go. Eight play at once across thirteen models; four knobs shape them all, a held key sets one apart, and the hall can freeze and shimmer.",
+  "what": "A drone synth with velocity-sensitive keys. Press a key and a voice plays until you stop it: eight voices, thirteen sounds. Motion modes move them in your scale: single notes, chords, chord progressions, arpeggios. Chorus, delay and reverb with freeze. A mixer for drone, lead and effects.",
   "author": "Kyle McCann",
   "kinds": ["synth"],
   "play": "https://deepfield.fog.baby/emu/",
