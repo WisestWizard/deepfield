@@ -27,7 +27,7 @@ history up to that day is in this repository, and each firmware's own carries on
 | Path | What |
 | --- | --- |
 | `deepfield/` | the firmware: `fm1.toml` (build settings), `app.c` / `ui.c` / `engine/` / `scenes.c`, `tests/` (simulator scripts), `docs/MANUAL.md`, `site/`, `tools/` |
-| `base/` | fm1-base, a git submodule (felucca-bsp inside it as `base/bsp`) |
+| `base/` | fm1-base, a git submodule (felucca-bsp inside it as `base/bsp`): upstream main plus the MASTER ramp, pinned to the [WisestWizard/fm1-base](https://github.com/WisestWizard/fm1-base) fork until [charlesvestal/fm1-base#50](https://github.com/charlesvestal/fm1-base/pull/50) is merged |
 | `docs/` | `handoff.md` (where the work stands, read this first), the FM-1 research and the platform decision |
 | `firmware.json`, `fmhub.json` | what the firmware catalogues read: RemoteFM1 and M-Flasher the first, The Firmware Hub the second |
 | `build.sh` | runs `base/tools/build.py deepfield` |

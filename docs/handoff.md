@@ -1,6 +1,143 @@
-# Handoff — DEEP FIELD, 2026-11-09
+# Handoff — DEEP FIELD, 2026-11-13
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
+
+## Start here: the click pass folded in with fm1-base main and the MASTER ramp (2026-11-13)
+
+Kyle: "can we fold all the new stuff in and then publish and update all the docs", the new stuff being the side
+session's MASTER ramp; asked where it should live, he picked the fork and an upstream PR, as #44 went.
+
+**fm1-base.** The side session's `master-ramp` (104bea5, on b0976f2) was rebased onto upstream main `c8e0599` as
+**68fdaf8**, pushed to **WisestWizard/fm1-base** `master-ramp`, and opened upstream as
+**charlesvestal/fm1-base#50**. `.gitmodules` points at the fork until #50 is merged; then pin upstream main and
+point it back (base/'s own `origin` stayed upstream, the push went by URL). The fork is alive again for this.
+Upstream had moved 11 commits since b0976f2, all in the pin now. The ones that touch DEEP FIELD:
+
+- `2d2aa16` (felucca-bsp d18879b): USB audio input packets sized by the FM-1's crystal, not by the ring's fill, so
+  a recording the computer resamples to its own clock no longer warbles. Kyle records into Live this way.
+- `c8e0599`: the package can carry a resource region; DEEP FIELD has none ("not built in: a resource region").
+- `b7b25a4`: the SPL in the package's head is ciphered as the flash holds it; `b8e43f7`: fm1_install asks the short
+  identity again after the restart.
+- `a6630fe`/`c9df108` cpu_clock 396, `b69ec41` audio_ahead, `d83b64d` input_hz: options, all off or at the default
+  in DEEP FIELD's fm1.toml (360 MHz, input 10,000 a second).
+
+**The MASTER ramp** (#50): with SPEAKER AUTO and USB audio full, fm1-base put MASTER on the speaker and headphones
+as one gain a 256-frame block, so turning the pot zippered there (block edges up to 0.47 dB, mean 0.12); it now
+slides frame by frame (edges no different from the slope inside a block). The USB recording is before that gain
+and byte-identical.
+
+**Checked:** fm1-base's `tests/run_tests.sh` on 68fdaf8: 123 ok, the ten `emu_*` tests failing only because the
+harness spawns from a URL-encoded cwd (`Mwave%20FM1%20Firmware`); all ten pass from a copy at a path without
+spaces. DEEP FIELD on it: 840 checks pass, **all 16 goldens match unchanged** (the bump changes no render), device
+image 430,552 B (+660 over the click pass), build **BEAB0020**, package 616,003 B, RAM 79,132 B and pool 335,128 B
+unchanged. Manual (MASTER glides), both cheat sheets (a value glides, a choice fades), README (the fork pin) and
+BUDGET (flash row) updated.
+
+**On the unit:** still the click pass on the old base (build 7864699C, flashed this morning). BEAB0020, with the
+ramp and the warble fix, is **not flashed**. **Not released:** the hub still offers 1.7, and master is not pushed.
+
+## Start here: the click pass - turning a knob no longer steps the sound (flashed 2026-11-13)
+
+Kyle: "im getting a lot of clicks and pops still when using encoders - the ascent preset was especially bad ... it
+is ruining recordings consistently". **Built, measured, flashed 2026-11-13 (build 7864699C, on the old base).**
+
+**The unit first.** `fm1_remote.py log` (read only) since the 11-12 flash, Kyle on ASCENT (s12) among others:
+every `cpu` line `x0` (no audio xruns), no `u` field (the USB recording ring never ran dry), no `C` field (the second
+core never gave up). The `late 7` on the `gap` line is TIMER5 (the key scan held over 300 us, at most 329 us), not
+audio. So every sample reached the codec and the cable: **the clicks are in the sound the engine makes when a value
+moves**, which the simulator runs bit for bit.
+
+**The measurement, and why the old ones came back clean.** One A/B pair a detent: render the turn up to detent k-1
+and up to k, subtract, and whiten the difference with a 24th-order predictor fitted on the render before it. A
+smooth change leaves a difference shaped like the signal's own prediction error; a step leaves an impulse. Score =
+the whitened peak over the signal's own error, dB, over the whole time after the detent (so a step that comes out
+of the delay or the hall later is caught). Calibrated on ASCENT: an instant gain step of 0.25 / 0.5 / 1 dB scores
++3.8 / +9.9 / +16; the same moves as a 1-20 ms ramp score -6 to -36. Anything over 0 is a step. Two blind spots,
+both checked another way: a smooth time warp (WOW, DLY TIME, VIBRATO) scores +10 to +15, and noise arriving or
+changing colour reads high because noise is unpredictable. Those are judged by a second test that needs no
+reference: the turned render's own prediction-error crest in the 20 ms after the detent, less the untouched one's
+(blind to warps and level changes, sees a jump). Both, and the spike scan for stepped controls, are scratch tools
+(`clk2.py`, `crest2.py`, `spikes.py`); the harness drives the simulator with `param N V` lines.
+
+**What was wrong: almost every value reached the sound as a step.** The engine reads the knobs once a 256-sample
+block, and the voices hold what they read through each 32-sample tick. Only a voice's level was ever ramped. So a
+detent (up to 8 in 127, and the unit hands the UI two or more detents in one read on a fast spin) landed between one
+sample and the next on:
+
+| where | what stepped | HEAD, worst | now |
+| --- | --- | --- | --- |
+| every model | SUB's sine, the pan gains (WIDTH, SPREAD, SWAY), NOISE, the timbre (TIMBRE, SHAPE) | SUB flick +30.5, SPREAD +20.5, SWAY +21.8, WIDTH +18.8, TIMBRE +18.4 (ASCENT) | all under -1 |
+| ADDITIVE | its eight harmonics, held flat a tick | TIMBRE flick +53 (INIT), +47 (FIRST LIGHT) | crest +0.5 / -0.1 |
+| the delay | the wow offset restarted each block from the new WOW at the old phase: every head jumped | +24.5 every fast detent, crest +9.8 | crest +2.0 |
+| the delay | the send, FDBK, DIFFUSION, GATE's make-up: a block's constants, the step came out a delay time later | DLY MIX flick +17.0, DIFFUSION +17.8 | -3.3, +4.7 |
+| the hall | the send (a step out of the pre-delay), out_g and the shimmer feed sliding once a block (a third of the way at each edge), the loop gains likewise | REVERB +9.4, FREEZE 36 spikes to +21.8 | -17.1, none |
+| the noise layer | its level, WIDTH, BANDPASS's blend, COLOR's filters | | per sample now |
+| a held key + knob | the voice's own TONE (8 % of MASS a fast detent) and LEVEL (3 dB) | TONE +9.0 | -15.2 |
+| ENSEMBLE | `ens_dry_s` started at 0 at boot, so the first time the ensemble ran with sound playing it took the whole bus away and brought it back over 15 ms | +30.4 | none |
+| delay TYPE | the line emptied for the new type, then filled at full: its first echo began as a step a delay time later (it also hit PRESET changes that switch TYPE) | +17.2 | none |
+| FM 4-OP's PATCH | the dip across a patch change, 6 ms out and 12 back, still ticked on a loud chord | crest +7.6 | crest 0.0 |
+
+**What changed** (`engine/drone.c`, `engine/fx.c`):
+
+1. **`blk_slide` / `g_tick`**: the voices read the block's settings tick by tick from eight copies (in the pool,
+   both cores read them), the continuous ones sliding over 20 ms (`SLIDE_K`): MASS, DRIFT, SHAPE, SUB, AIR,
+   AFTERTOUCH, TREMOLO, VIBRATO, RANDOM, WIDTH, LEAD, BED, SPREAD, CROSS, TWALK, SWAY. Rates are not slid. **FM 4-OP's
+   patch and FM's ratio table read SHAPE as set** (`g_blk.shape`): sliding, they would visit the patches between
+   (it showed as RAIN CLOCK's low band 1.2 dB off before that).
+2. **`voice_gains`**: in all thirteen models the pan gains and SUB move sample by sample from where the last tick
+   left them, beside the level's own ramp; ADDITIVE's eight harmonics the same (`amp_s`).
+3. **A voice's own TONE and LEVEL slide** (`tone_s`, `gain_s`, 20 ms).
+4. **The delay**: the wow and flutter start each block where the last ended (`dly_wob_a/f`); send, FDBK,
+   DIFFUSION and GATE's make-up slide per sample over 10 ms; `dly_clear` fades the input into the empty line.
+5. **The hall**: send per sample (10 ms), out_g and the shimmer feed per sample (12 ms), the line gains and damping
+   every 32 samples; the shimmer runs on until its feed has faded.
+6. **The noise layer**: level, WIDTH, BANDPASS's blend and COLOR's two filters per sample (10 ms).
+7. **ENSEMBLE**: the dry gain starts and rests at 1.
+8. **FM 4-OP's patch dip** is 15 ms out and 25 back.
+
+**Measured after**, every panel knob on all 16 presets, a fast spin (8 a detent, 22 ms apart), a slow turn (1 %,
+60 ms apart) and a flick (40 at once), HEAD against this build, the knobs this score reads fairly (not the pitch
+and time movers, not the noise layer): **491 detents of 11,040 over +10 at HEAD, 66 now**. The worst at HEAD were
+the two ADDITIVE presets, INIT 111 and FIRST LIGHT 114 detents over +10; ASCENT 21. The 66 fall in 28 knob-and-turn
+cases, and every one went to the crest test: all under +3 there but WAVETABLE's POSITION on a fast spin (STARLIGHT,
++4.1, was +11.1). Most are SHAPE where SHAPE changes the waveform itself (SYNC's RATIO, FM's RATIO, FM 4-OP's
+PATCH), which the A/B score reads as a step whatever the transition. On the same test at HEAD: FIRST LIGHT's SPREAD
+flick +19.4 (now +0.2), STARLIGHT's POSITION flick +11.4 (+1.4), FIRST LIGHT's DECAY flick +5.8 (+2.8). The stepped controls through the real encoders (ALGO one step, PRESET one and three steps, SEL + PRESET,
+TYPE one and three steps, ENSEMBLE OFF to CHOR I to CHOR II to ENSEMBLE, PLAY, FREEZE) show no spike on the
+reference-free scan. Sanitizer build clean but the known `fastmath.h:58`, 840 checks and the 16 renders.
+
+**Not changed, on purpose:** DLY TIME's glide (no jump on the crest test either build; the A/B number is the bend
+Kyle asked to keep inside a tone and a half). ALGO: one step crosses cleanly; with every voice sounding and none
+free, a voice still restarts with its designed 17 ms dip. Noise COLOR reads +6 on a flick on both builds: the
+noise turning from brown to white faster than its own predictor follows, not a step.
+
+**Found, not fixed - fm1-base:** with SPEAKER on AUTO (the default) the platform puts MASTER on the speaker and
+headphones once a render chunk (`base/device/uac_mix.h`, `o[i] * g`), so turning the MASTER pot steps that output.
+A USB recording is not affected (it is taken before that gain, and its own MASTER law goes through the engine's
+per-sample `gain_now`). The fix is a per-sample ramp of `g` there, upstream.
+
+**Cost:** no difference measurable on the host (eight FM 4-OP voices, 60 s: 0.51-0.52 s against 0.52-0.56).
+Device image 429,892 B (+3,600), build 7864699C, RAM .data+.bss 79,132 B of 98,304, pool 335,128 B of 344,064
+(8.7 KB spare: the eight tick copies are about 1 KB). **On the unit:** flashed 2026-11-13 on Kyle's "flash it" with
+`fm1_install.py deepfield/build/deepfield.fwsc --yes` (fast install, restarted clean): `log` reads no crash, BT
+advertising, `cpu 5% b0 ADDITIVE s0 x0` idle on F1 FIRST LIGHT. **The device CPU under load is still not read**: it
+shows in the `cpu` lines once Kyle plays (read `log` afterwards, never drive it). 840 checks pass; all 16 goldens re-recorded: every render's RMS within 0.03 dB of HEAD and every octave band
+within 0.1 dB, except SHEPARD's top band (ASCENT 0.8, DESCENT 0.2 dB), which is its endless glide standing at
+another point of its cycle (the glide's position integrates SHAPE, which now slides as a preset lands). Manual
+(turning the knobs) and BUDGET updated.
+
+**To check on the unit** (after a flash, recording over USB into Live as usual):
+
+1. Hold SEL and turn PRESETS to **F13 ASCENT**. On HOME turn **SUB** (knob 3) fast both ways, then **CENTER**
+   (knob 1). No ticks.
+2. Press **FX**, turn SELECT twice to **DELAY 2** and spin **WOW** (knob 3) both ways: the echoes bend, no ticks.
+3. Turn SELECT back one to **DELAY** and step **TYPE** (knob 1) one click: the echoes fade out, and the new type's
+   first echo, about 0.7 s later, comes in without a tick.
+4. Turn SELECT back one to **ENSEMBLE** and turn knob 1 from OFF to CHOR I: the first time since power-on too, no
+   dropout.
+5. With the reverb up, press **SEQ** (FREEZE) on and off: no tick.
+6. Turn PRESETS to **F1 FIRST LIGHT** (the worst before) and flick **HARMONICS** and, on OSC, **ODD/EVEN** fast.
+7. Listen back to the recording for each step.
 
 ## Start here: 1.7 is released - SHIFT moves as a cascade and lands by weight; a chord brings its scale (2026-11-12)
 

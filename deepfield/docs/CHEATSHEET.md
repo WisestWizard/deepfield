@@ -42,7 +42,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | SELECT | The page before or after (HOME, OSC, NOISE, NOISE 2, ENVELOPE, LEAD, LFO, VOICES, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, GEN, GEN 2, GLOBAL, MIDI, USB) |
 | PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too, and SCALE changes to the chord's own) |
 | ALGO | Model (the algorithm): ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC, TAPE, RESONATOR (each voice crosses over in 0.8 s) |
-| KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click |
+| KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click. A value glides there over 10-20 ms and a choice fades across, so turning never clicks |
 | MASTER | Volume: the speaker, the headphones and the USB recording (USB LEVEL trims the recording under it) |
 
 ## Pages (KNOB 1 · 2 · 3 · 4)

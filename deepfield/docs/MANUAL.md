@@ -246,7 +246,8 @@ it on.
 MASTER is the volume of everything the FM-1 sends out: the speaker, the headphones and the USB recording. It is
 gentle at the bottom so headphones stay usable: a third of the way up is about 19 dB under full, halfway about
 12 dB under, three quarters about 5 dB under. At full, the loudest playing still stops about 3 dB short of the top
-of the output, so nothing clips.
+of the output, so nothing clips. Turning it glides the volume rather than stepping it, on the speaker and
+headphones as on the recording, so the pot never zippers.
 
 ---
 
@@ -264,7 +265,10 @@ within 40 ms of the last - it moves in big steps instead, 16 clicks end to end, 
 wrist. A knob that shows a time or a frequency (ATTACK, RELEASE, GLIDE, a free DLY TIME, SUPERSAW's and VOID's
 TIMBRE) covers too wide a range for every value it can show to have a click of its own, so those still move in
 small steps of their own; TEMPO moves one BPM a click. A knob with only a few values (RANGE, VOICES, TRANSPOSE,
-the delay's note lengths, FM 4-OP's patches) moves one value a click at any speed.
+the delay's note lengths, FM 4-OP's patches) moves one value a click at any speed. However big the step, the sound
+never jumps with it: a level, a tone or an effect's amount glides to where you turned it over 10 to 20 ms (from a
+MIDI CC too), and a choice - a delay TYPE, a patch, a model - fades across, so turning a knob makes no click of its
+own.
 
 A few names are on two pages (ATTACK and RELEASE on ENVELOPE and LEAD, RATE on NOISE and GEN, GATE on DELAY 2 and
 ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turning.

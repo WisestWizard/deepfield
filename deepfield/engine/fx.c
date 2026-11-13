@@ -89,10 +89,23 @@ static float rv_dampc_s, rv_g_s[8], shim_dg_s;   /* the damping and the eight li
 static float rv_outg_s, rv_shimg_s;      /* the hall's output gain and the shimmer's send, sliding. out_g scales
                                           * the whole tail, which holds seconds of sound, so recomputing it per
                                           * block stepped everything already ringing - the loudest unsmoothed gain
-                                          * in the engine, and worst in the middle of DECAY where the presets sit */
+                                          * in the engine, and worst in the middle of DECAY where the presets sit.
+                                          * Both slide sample by sample: sliding once a block still moved a third
+                                          * of the way at each block's edge */
+static float rv_send_s;                  /* REVERB's send, sliding sample by sample over 10 ms: a step in it came out
+                                          * of the pre-delay as a step in the whole wet */
 static float dly_wa_s, dly_wfl_s;        /* the wander the heads are really using: WOW lands here over 20 ms. It
                                           * used to be recomputed from the knob each block, so a detent moved every
                                           * head's distance between one block and the next - a click while turning */
+static float dly_wob_a, dly_wob_f;       /* where the wow and the flutter had the heads at the end of the last block.
+                                          * Each block used to start from its new reach at the old phase, so a WOW
+                                          * that had moved since jumped every head by the difference in one sample:
+                                          * 24 dB over the signal's own grain on each fast detent (ASCENT, measured).
+                                          * A block starts where the last one ended */
+static float dly_send_s, dly_fb_s, dly_diff_s, dly_mk_s;   /* the send, the feedback, DIFFUSION's coefficient and
+                                          * GATE's make-up, sliding sample by sample over 10 ms. Each was the
+                                          * block's constant, so a turn stepped the input or the loop at a block's
+                                          * edge, and the step came out of the line a delay time later as a click */
 static float dly_dn1, dly_dn2, dly_ol, dly_or, dly_ul, dly_ur;   /* down to the half rate, and back up */
 static float dly_fade = 1.0f, chop_ph, chop_g = 1.0f, sh_ph, rev_ph, gr_left;
 static float dly_wet = 1.0f, dly_time_prev = -1.0f;   /* DLY TIME: the wet path's own fade, and the time it was
@@ -261,8 +274,15 @@ void fx_init(void *arena)
     ens_tail = dly_tail = rev_tail = 0;
     dly_live = rv_live = 0;
     ens_ph1 = ens_ph2 = wow_ph = flut_ph = rv_mod_ph = 0.0f;
-    ens_wet_s = ens_dry_s = 0.0f;
+    ens_wet_s = 0.0f;
+    ens_dry_s = 1.0f;                    /* at rest the bus passes whole: the first time the ensemble ran with sound
+                                          * playing, a dry gain started at 0 took the whole bus away and brought it
+                                          * back over 15 ms (28 dB over the signal's own grain, measured) */
     dly_wa_s = dly_wfl_s = 0.0f;
+    dly_wob_a = dly_wob_f = 0.0f;
+    dly_send_s = dly_fb_s = dly_diff_s = 0.0f;
+    dly_mk_s = 1.0f;
+    rv_send_s = 0.0f;
     rv_outg_s = rv_shimg_s = 0.0f;
     rv_dampc_s = -1.0f;
     shim_dg_s = 0.0f;
@@ -342,6 +362,8 @@ static void dly_clear(void)              /* a new TYPE: the buffer, the smearing
     dly_pos_l = dly_pos_r = dly_pos_w = 0;
     sh_ph = rev_ph = gr_left = 0.0f;
     dub_lp = dub_bp = 0.0f;
+    dly_send_s = 0.0f;                   /* the input fades into the empty line: written in at once, the first echo
+                                          * of the new TYPE began as a step a delay time later */
 }
 static inline float gr_rand(void)        /* 0..1 */
 {
@@ -446,6 +468,8 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             ens_l[ens_pos] = ens_r[ens_pos] = 0.0f;
             ens_pos = (ens_pos + 1u) & (ENS_LEN - 1u);
         }
+        ens_wet_s = 0.0f;                /* the gains as the bus passes at rest */
+        ens_dry_s = 1.0f;
         pk_ens = 0.0f;
     }
     /* the delay: mono in (through CHOP's gate), down to the half rate, its TYPE's heads at a wandering distance,
@@ -512,7 +536,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                   chop_mk = 1.0f / fm_sqrtf(duty),   /* the slices as loud on average as the whole: louder each */
                   sh_inc = (ty == DT_RISE ? 1.0f : 0.5f) / (float)DLY_SHIFT_G, up = ty == DT_RISE ? 1.0f : -1.0f;
                                          /* the feedback as a square root: repeats from the first turn, 0.95 at full */
-            float wa0, wa1, wf0, wf1, dwa, dwf;
+            float wa0, wa1, wf0, wf1, dwa, dwf, ks = 1.0f - fm_expf(-1.0f / (0.010f * FSH));
             float dub_fc = 180.0f * fm_exp2f(col * 4.3f),   /* DUB: TONE puts the loop's filter at 180 Hz to 3.5 kHz,
                                                              * ringing hardest when it sits low */
                   dub_f = fm_clampf(2.0f * fm_sin_turns(dub_fc * (0.5f / FSH)), 0.02f, 0.8f),
@@ -533,9 +557,9 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             if (per < 32.0f)
                 per = 32.0f;
             chop_inc = 1.0f / per;
-            wa0 = wa * 0.5f * (1.0f + fm_sin_turns(wow_ph));   /* wow and flutter: the ends of the block, a line
-                                                                 * between; one-sided, so a head never reads ahead */
-            wf0 = wfl * 0.5f * (1.0f + fm_sin_turns(flut_ph));
+            wa0 = dly_wob_a;             /* wow and flutter: from where the last block left the heads to this one's
+                                          * end, a line between; one-sided, so a head never reads ahead */
+            wf0 = dly_wob_f;
             wow_ph += 0.35f * (float)n / FS;
             if (wow_ph >= 1.0f)
                 wow_ph -= 1.0f;
@@ -546,12 +570,18 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             wf1 = wfl * 0.5f * (1.0f + fm_sin_turns(flut_ph));
             dwa = (wa1 - wa0) / (float)h;
             dwf = (wf1 - wf0) / (float)h;
+            dly_wob_a = wa1;
+            dly_wob_f = wf1;
             for (i = 0; i < n; i += 2u) {
                 float in, outl, outr, c, m, x0, x1, wob, fbc;
-                x0 = (l[i] + r[i]) * 0.5f * send;           /* two one-poles at 7 kHz, then every other sample */
+                dly_send_s += (send - dly_send_s) * ks;
+                dly_fb_s += (fb - dly_fb_s) * ks;
+                dly_diff_s += (g - dly_diff_s) * ks;
+                dly_mk_s += (chop_mk - dly_mk_s) * ks;
+                x0 = (l[i] + r[i]) * 0.5f * dly_send_s;     /* two one-poles at 7 kHz, then every other sample */
                 dly_dn1 += (x0 - dly_dn1) * 0.63f;
                 dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
-                x1 = (l[i + 1u] + r[i + 1u]) * 0.5f * send;
+                x1 = (l[i + 1u] + r[i + 1u]) * 0.5f * dly_send_s;
                 dly_dn1 += (x1 - dly_dn1) * 0.63f;
                 dly_dn2 += (dly_dn1 - dly_dn2) * 0.63f;
                 chop_ph += chop_inc;                        /* CHOP: the input let in for the first part of each
@@ -559,7 +589,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                 if (chop_ph >= 1.0f)
                     chop_ph -= 1.0f;
                 chop_g += ((chop_ph < duty ? 1.0f : 0.0f) - chop_g) * 0.02f;
-                in = dly_dn2 * chop_g * chop_mk;
+                in = dly_dn2 * chop_g * dly_mk_s;
                 if (dly_retime) {                          /* out, land, back: a jump nobody hears */
                     dly_wet -= DLY_WET_DN;
                     if (dly_wet <= 0.0f) {
@@ -582,7 +612,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                             dly_wet = 1.0f;
                     }
                 }
-                fbc = fb * dly_wet;
+                fbc = dly_fb_s * dly_wet;
                 wa0 += dwa;
                 wf0 += dwf;
                 wob = wa0 + wf0;
@@ -604,10 +634,10 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                         if (sh_ph >= 1.0f)
                             sh_ph -= 1.0f;
                     }
-                    c = dly_leg(0, in + outr * fbc, g, lpc, hpa, drive);   /* the left leg: the input, and the right's
+                    c = dly_leg(0, in + outr * fbc, dly_diff_s, lpc, hpa, drive);   /* the left leg: the input, and the right's
                                                                            * repeat back */
                     dly_put(dly, dly_pos_l, c, &live);
-                    c = dly_leg(1, outl * fbc, g, lpc, hpa, drive);        /* the right leg: the left's repeat crossing */
+                    c = dly_leg(1, outl * fbc, dly_diff_s, lpc, hpa, drive);        /* the right leg: the left's repeat crossing */
                     dly_put(dly + DLY_LEN_L, dly_pos_r, c, &live);
                     dly_pos_l = dly_pos_l + 1u == DLY_LEN_L ? 0u : dly_pos_l + 1u;
                     dly_pos_r = dly_pos_r + 1u == DLY_LEN_R ? 0u : dly_pos_r + 1u;
@@ -615,7 +645,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                 }
                 case DT_TAPE: {
                     float o = dly_tap(dly, DLY_LEN, dly_pos_w, dly_read + wob, &live);
-                    c = dly_leg(0, in + o * fbc, g, lpc, hpa, drive);
+                    c = dly_leg(0, in + o * fbc, dly_diff_s, lpc, hpa, drive);
                     outl = outr = o;
                     break;
                 }
@@ -628,7 +658,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                     dub_lp += dub_f * dub_bp;               /* a state-variable low-pass inside the loop */
                     hp = h - dub_lp - dub_q * dub_bp;
                     dub_bp += dub_f * hp;
-                    c = dly_leg(0, in + dub_lp * fbc, g, lpc, hpa, drive);
+                    c = dly_leg(0, in + dub_lp * fbc, dly_diff_s, lpc, hpa, drive);
                     outl = 0.9f * dub_lp + 0.2f * w;
                     outr = 0.2f * dub_lp + 0.9f * w;
                     break;
@@ -649,7 +679,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                         rev_ph -= 1.0f;
                         rev_lr = !rev_lr;               /* each swell from the other side */
                     }
-                    c = dly_leg(0, in + s1 * fbc, g, lpc, hpa, drive);
+                    c = dly_leg(0, in + s1 * fbc, dly_diff_s, lpc, hpa, drive);
                     outl = rev_lr ? 0.8f * s1 : 0.45f * s1;
                     outr = rev_lr ? 0.45f * s1 : 0.8f * s1;
                     break;
@@ -700,7 +730,7 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
                         if (gv->pos >= gv->len)
                             gv->on = 0;
                     }
-                    c = dly_leg(0, in + sum * fbc * 0.45f, g, lpc, hpa, drive);   /* less back in: pieces an octave
+                    c = dly_leg(0, in + sum * fbc * 0.45f, dly_diff_s, lpc, hpa, drive);   /* less back in: pieces an octave
                                                                                      * up would climb */
                     break;
                 }
@@ -771,6 +801,8 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
             flut_ph += 6.3f * (float)n / FS;
             if (flut_ph >= 1.0f)
                 flut_ph -= 1.0f;
+            dly_wob_a = wa * 0.5f * (1.0f + fm_sin_turns(wow_ph));
+            dly_wob_f = wfl * 0.5f * (1.0f + fm_sin_turns(flut_ph));
             pk_dly = 0.0f;
             dly_live = 0;
         }
@@ -811,44 +843,57 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
             dampc = 1.0f;
             send = 0.0f;
         }
-        {                                /* the damping and the line gains are inside the loop, so a step in either
-                                          * does not just change what comes out - it changes the decay of everything
-                                          * already ringing. Both slide over about 12 ms */
-            float ks = 1.0f - fm_expf(-(float)n / (0.012f * FS));
-            if (rv_dampc_s < 0.0f)
-                rv_dampc_s = dampc;
-            else
-                rv_dampc_s += (dampc - rv_dampc_s) * ks;
-            dampc = rv_dampc_s;
-            gm = 0.0f;
-            for (k = 0; k < 8u; k++) {
-                if (rv_g_s[k] < 0.0f)
-                    rv_g_s[k] = g[k];
-                else
-                    rv_g_s[k] += (g[k] - rv_g_s[k]) * ks;
-                g[k] = rv_g_s[k];
-                gm += g[k] * 0.125f;   /* out_g follows the gains actually in use, not the ones asked for */
-            }
+        /* the damping and the line gains are inside the loop, so a step in either does not just change what comes
+         * out - it changes the decay of everything already ringing; out_g scales the whole tail, the shimmer feeds
+         * the loop and the send feeds the lot. All slide over about 12 ms (the send 10): the gains in the loop every
+         * 32 samples, the rest every sample. Sliding once a block still moved them a third of the way at each
+         * block's edge */
+        float g_t[8], dampc_t = dampc, out_t, shim_t = 0.0f, rsend = rv_send_s, shim_g_s = rv_shimg_s;
+        const float ks32 = 1.0f - fm_expf(-32.0f / (0.012f * FS)), ko = 1.0f - fm_expf(-1.0f / (0.012f * FS)),
+                    kse = 1.0f - fm_expf(-1.0f / (0.010f * FS));
+        if (rv_dampc_s < 0.0f)
+            rv_dampc_s = dampc;
+        for (k = 0; k < 8u; k++) {
+            g_t[k] = g[k];
+            if (rv_g_s[k] < 0.0f)
+                rv_g_s[k] = g[k];
+            g[k] = rv_g_s[k];
         }
-        out_g = 0.8f + 4.0f * (1.0f - gm);   /* the lines' sum: 6 dB under the dry at F1's SPACE, 3 under at full (measured) */
-        {                                /* over about 12 ms, so a detent on DECAY does not step the whole tail */
-            float k = 1.0f - fm_expf(-(float)n / (0.012f * FS));
-            if (rv_outg_s <= 0.0f)
-                rv_outg_s = out_g;
-            else
-                rv_outg_s += (out_g - rv_outg_s) * k;
-            out_g = rv_outg_s;
+        dampc = rv_dampc_s;
+        if (rv_outg_s <= 0.0f) {
+            for (k = 0, gm = 0.0f; k < 8u; k++)
+                gm += g[k] * 0.125f;
+            rv_outg_s = 0.8f + 4.0f * (1.0f - gm);
         }
-        if (shim_on) {                   /* the octave up fed back, less the longer the hall already rings; the loop
-                                          * stays bounded up to the cap (measured: a let-go chord dies away at every
-                                          * size; each side carries one pair, so the energy a side is as it was) */
-            shim_g = p->shimmer * 0.6f * (1.0f - gm);
-            if (shim_g > 0.3f)
-                shim_g = 0.3f;
-        }
+        out_g = rv_outg_s;
         for (i = 0; i < n; i++) {
-            float xl = l[i] * send, xr = r[i] * send, al, ar, v[8], y[8], outl, outr, shl = 0.0f, shr = 0.0f;
-            if (shim_on) {               /* the last output an octave up, a pair of heads a side */
+            float xl, xr, al, ar, v[8], y[8], outl, outr, shl = 0.0f, shr = 0.0f;
+            if (!(i & 31u)) {
+                dampc += (dampc_t - dampc) * ks32;
+                gm = 0.0f;
+                for (k = 0; k < 8u; k++) {
+                    g[k] += (g_t[k] - g[k]) * ks32;
+                    gm += g[k] * 0.125f;   /* out_g follows the gains actually in use, not the ones asked for */
+                }
+                out_t = 0.8f + 4.0f * (1.0f - gm);   /* the lines' sum: 6 dB under the dry at F1's SPACE, 3 under
+                                                      * at full (measured) */
+                if (shim_on) {           /* the octave up fed back, less the longer the hall already rings; the
+                                          * loop stays bounded up to the cap (measured: a let-go chord dies away at
+                                          * every size; each side carries one pair, so the energy a side is as it
+                                          * was) */
+                    shim_t = p->shimmer * 0.6f * (1.0f - gm);
+                    if (shim_t > 0.3f)
+                        shim_t = 0.3f;
+                }
+            }
+            rsend += (send - rsend) * kse;
+            out_g += (out_t - out_g) * ko;
+            shim_g_s += (shim_t - shim_g_s) * ko;
+            shim_g = shim_g_s;
+            xl = l[i] * rsend;
+            xr = r[i] * rsend;
+            if (shim_g > 1e-5f) {        /* the last output an octave up, a pair of heads a side, until its feed
+                                          * has faded */
                 shl = shim_pair(1.0f, shim_ph, &shim_lp, shim_lpc) * shim_g;
                 shr = shim_pair(1.0f + SHIM_B, shim_ph + 0.25f, &shim_lp2, shim_lpc) * shim_g;
                 shim_ph += shim_inc;
@@ -919,6 +964,12 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
             outl_b[i] = outl;
             outr_b[i] = outr;
         }
+        rv_dampc_s = dampc;
+        for (k = 0; k < 8u; k++)
+            rv_g_s[k] = g[k];
+        rv_outg_s = out_g;
+        rv_send_s = fm_flush(rsend);
+        rv_shimg_s = fm_flush(shim_g_s);
         for (k = 0; k < 8u; k++)
             rv_lp[k] = fm_flush(rv_lp[k]);
         rv_hp_l = fm_flush(rv_hp_l);
