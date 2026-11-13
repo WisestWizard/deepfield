@@ -2,7 +2,7 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the click pass folded in with fm1-base main and the MASTER ramp (2026-11-13)
+## Start here: 1.8 is released - the click pass, fm1-base main and the MASTER ramp (2026-11-13)
 
 Kyle: "can we fold all the new stuff in and then publish and update all the docs", the new stuff being the side
 session's MASTER ramp; asked where it should live, he picked the fork and an upstream PR, as #44 went.
@@ -34,7 +34,20 @@ unchanged. Manual (MASTER glides), both cheat sheets (a value glides, a choice f
 BUDGET (flash row) updated.
 
 **On the unit:** still the click pass on the old base (build 7864699C, flashed this morning). BEAB0020, with the
-ramp and the warble fix, is **not flashed**. **Not released:** the hub still offers 1.7, and master is not pushed.
+ramp and the warble fix, is **not flashed**.
+
+**1.8 is out**, built and attested by CI from the tag on Kyle's "Release 1.8". master pushed (40105af), a dry run
+of the workflow on it first (run 43485517866, green: the fork-pinned base fetched on Linux, the 840 checks and the
+16 goldens passed), then the tag: run 43485815055 green, every step. `deepfield-1.8.fwsc`, 616,003 B, SHA-256
+`6e02c373a4bdfe91`, identity **FM-1_44010800**, build FEFC8DA5. `gh attestation verify ... --repo
+WisestWizard/deepfield --signer-repo zvenson/fm1-build` exits 0 and names that digest, built from `refs/tags/1.8`,
+commit `40105af64f29`. GitHub's latest release is 1.8; the hub takes it within three hours by itself, **not seen on
+the hub from here**. `fmhub.json` unchanged.
+
+**Still to do:** the unit runs the local 7864699C (the click pass on the old base), neither the site's 1.8 bytes
+(`2977df994d7ffb9d`, the script builds its own) nor the attested release's. Installing 1.8 from the hub once it
+shows there would put the released bytes on the unit and test the hub's install with the new package format
+(`c8e0599`, `b7b25a4`).
 
 **The site is published** as 1.8 on Kyle's "publish": committed 2255f98 first, then `deepfield/tools/publish_site.sh
 1.8` pushed gh-pages (8a317c8) and Pages built it. Checked live at deepfield.fog.baby: the home page links
