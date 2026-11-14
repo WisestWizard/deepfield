@@ -95,3 +95,5 @@ GitHub Pages then drops the custom domain.
 
 MPL-2.0 for this firmware's files (see `docs/platform-decision.md`). fm1-base and felucca-bsp keep their own
 MPL-2.0 files; JieLi's SDK files used by the build are Apache-2.0 and are never committed here.
+
+You can also try DEEP FIELD in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
