@@ -12,7 +12,8 @@ the site's landing page, the root README and the catalogue description (`fm1.tom
 characters; `fmhub.json`'s `what` already had chords, unchanged). The chord keys, the five modes and SHIFT's RATE
 were already in the manual, both cheat sheets and `deepfield/README.md`. Checks on this tree: `basic.txt` 842 ok,
 `chords.txt` 89 ok, all 16 renders match golden, `publish_site.sh 1.9 --local` builds (release identity
-`FM-1_44010900`, package 616,003 B) and the site reads Version 1.9 in the preview. `master` pushed.
+`FM-1_44010900`, package 616,003 B) and the site reads Version 1.9 in the preview. `master` pushed (6665b53), and `release.yml` dry-run on it green (run 43762261392: built, tested, attested, nothing
+released).
 
 **Left, each on Kyle's word:**
 
