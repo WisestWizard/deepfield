@@ -805,9 +805,10 @@ Every save also stores the settings: which preset you are on, the octave, scale,
 MORPH, the MIDI channels, the USB page, and Bluetooth on or off. Nothing is stored until you save: switch off
 without saving and all of it goes back to the last save.
 
-**The factory presets.** Every model appears, every GEN mode is the mode of two presets (press PLAY to hear it),
-and every delay type is on one. Their chords stand on C and play in ROOT, each in the scale it was written in;
-bring a chord in with SEL held to hear the preset as meant.
+**The factory presets.** Every model appears, and every delay type is on one. SHIFT, RANDOM, ARP, PROG and LOOP
+are each the GEN mode of two presets and WALK of the rest (press PLAY to hear it); MELODY, TURN, SWELL, STRUM and
+BASS are on none, so turn MODE to hear them over any preset. Their chords stand on C and play in ROOT, each in the
+scale it was written in; bring a chord in with SEL held to hear the preset as meant.
 
 | Preset | Model | Chord | Scale | GEN | Delay | Sound |
 | --- | --- | --- | --- | --- | --- | --- |

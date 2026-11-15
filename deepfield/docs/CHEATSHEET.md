@@ -114,7 +114,8 @@ amount, a cell per choice, two cells for on/off, hits and rests for EUCLID). TIM
 model (see Models). A voice open: VOICE and its note, its four values.
 
 ## Factory presets
-Every model once, every GEN mode on two, every delay type on one; chords on C, in ROOT; SEL held + PRESETS brings the chord
+Every model at least once, every delay type on one; GEN: SHIFT, RANDOM, ARP, PROG and LOOP on two each, WALK on the
+rest, MELODY, TURN, SWELL, STRUM and BASS on none (turn MODE); chords on C, in ROOT; SEL held + PRESETS brings the chord
 and its scale (MAJOR, but F4 LYDIAN, F5 MIXOLYDIAN, F9 DORIAN, F10 MINOR, F11 MAJ PENTA).
 F1 FIRST LIGHT (ADDITIVE, WALK) · F2 VOID TIDE (SUPERSAW, WALK, wind) · F3 GLASS ORBIT (FM, WALK, OCT UP; made for GEN) ·
 F4 BOWED SKY (BOWED, SHIFT, REVERSE) · F5 PULSAR (SYNC, ARP 5/8, gated PING PONG) · F6 NEBULA (ADDITIVE cluster, RANDOM,
