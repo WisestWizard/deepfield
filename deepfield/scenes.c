@@ -195,12 +195,13 @@ static void factory_build(void)
                                            {P_ORB_PERIOD, 71}, {P_ORB_CHANCE, 90}, {P_SPREAD, 50}, {P_TWALK, 30},
                                            {P_SWAY, 40}, END};
     static const uint8_t GLASS_ORBIT_N[] = {48, 55, 60, 67, 0};
-    /* F4 BOWED SKY: BOWED, a Lydian voicing, wide; SHIFT moves the whole chord; REVERSE echoes breathe in. */
+    /* F4 BOWED SKY: BOWED, a Lydian voicing, wide; SHIFT moves the whole chord, a voice every 2 s; REVERSE echoes
+     * breathe in. */
     static const change_t BOWED_SKY[] = {{P_MODEL, M_STRING}, {P_MASS, 55}, {P_DRIFT, 40}, {P_SPACE, 65}, {P_TIDE, 30},
                                          {P_AIR, 40}, {P_SUB, 25}, {P_SWELL, 30}, {P_FADE, 85}, {P_WOBBLE, 30},
                                          {P_WIDTH, 90}, {P_REV_SIZE, 80}, {P_ENS, ENS_CHORUS2}, {P_ENS_MIX, 35},
                                          {P_DLY_TYPE, DT_REVERSE}, {P_DLY_MIX, 40}, {P_DLY_TIME, 85}, {P_DLY_FDBK, 40},
-                                         {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 55}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 87},
+                                         {P_DLY_DIFF, 30}, {P_DLY_COLOUR, 55}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 60},
                                          {P_ORB_CHANCE, 80}, {P_ORB_DIST, 50}, {P_GRAVITY, 40}, {P_TWALK, 30}, END};
     static const uint8_t BOWED_SKY_N[] = {48, 55, 66, 71, 0};
     /* F5 PULSAR: SYNC at X2.0 with ring mod, a 7sus4 stack, fast tremolo, dry; ARP 5/8 at 120 BPM over it, a
@@ -287,12 +288,13 @@ static void factory_build(void)
                                            {P_ORB_MODE, OM_WANDER}, {P_ORB_PERIOD, 73}, {P_ORB_CHANCE, 90},
                                            {P_SPREAD, 60}, {P_TWALK, 30}, {P_SWAY, 35}, END};
     static const uint8_t BRONZE_BOWL_N[] = {48, 55, 62, 69, 0};
-    /* F13 ASCENT: SHEPARD rising over an octave-fifth; SHIFT every 10 s; OCT UP echoes climb with it. */
+    /* F13 ASCENT: SHEPARD rising over an octave-fifth; SHIFT a voice every 3.3 s, the chord in about 10; OCT UP
+     * echoes climb with it. */
     static const change_t ASCENT[] = {{P_MODEL, M_SHEPARD}, {P_MASS, 50}, {P_DRIFT, 30}, {P_SPACE, 65}, {P_TIDE, 20},
                                       {P_SHAPE, 72}, {P_SUB, 20}, {P_AIR, 15}, {P_SWELL, 40}, {P_FADE, 85},
                                       {P_WOBBLE, 10}, {P_WIDTH, 80}, {P_REV_SIZE, 85}, {P_REV_DAMP, 40},
                                       {P_DLY_TYPE, DT_RISE}, {P_DLY_MIX, 35}, {P_DLY_TIME, 90}, {P_DLY_FDBK, 45},
-                                      {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 70}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 91},
+                                      {P_DLY_DIFF, 20}, {P_DLY_COLOUR, 70}, {P_ORB_MODE, OM_CHORD}, {P_ORB_PERIOD, 69},
                                       {P_ORB_CHANCE, 70}, {P_ORB_DIST, 40}, {P_GRAVITY, 30}, {P_SPREAD, 40},
                                       {P_TWALK, 25}, {P_SWAY, 50}, END};
     static const uint8_t ASCENT_N[] = {48, 55, 60, 0};

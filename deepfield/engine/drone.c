@@ -66,9 +66,14 @@ typedef struct {
     float gl_s, gr_s, sub_s;             /* the pan gains and SUB's level at the end of the last tick (voice_gains) */
     float tone_s, gain_s;                /* its own TONE (as MASS) and LEVEL (as a gain) as heard, sliding over 20 ms:
                                           * a fast detent is 8 % of MASS or 3 dB, which a tick took at once */
-    float amp_s[8];                      /* ADDITIVE: the harmonics' levels at the end of the last tick, so the next
-                                          * moves to its own sample by sample (TIMBRE tilts all eight at once) */
-    uint8_t line_pad[12];                /* to a whole number of cache lines (voice_on_lines) */
+    float amp_s[8];                      /* ADDITIVE (BELL the first four): the harmonics' levels at the end of the
+                                          * last tick, so the next moves to its own sample by sample (TIMBRE tilts
+                                          * them all at once) */
+    float pos_s, pos2_s, wk_s;           /* WAVETABLE: where in the sweep the last tick ended (both copies) and its
+                                          * level, so the next reads its way there sample by sample (-1: not yet) */
+    float lvl_u, lvl_y;                  /* its level as heard: the ticks' straight line through two one-poles
+                                          * (LVL_K), the first's state and the second's */
+    uint8_t line_pad[24];                /* to a whole number of cache lines (voice_on_lines) */
 } voice_t;
 typedef char voice_on_lines[(sizeof(voice_t) % 32u) == 0u ? 1 : -1];
 
@@ -87,6 +92,13 @@ static blk_t g_blk PLAT_POOL;
  * NOISE, the pan and WIDTH, the timbre - took the whole of it between one sample and the next: a click on each
  * detent, louder the further it went (SUB on ASCENT 30 dB over the signal's own grain on a flick, measured). */
 #define NTICK ((MAXBLOCK + DR_CTL - 1u) / DR_CTL)
+#define LVL_K 0.022412f                  /* a sample's step of each of two 1 ms one-poles on a voice's level (1 -
+                                          * e^(-1 / 0.001 FS)), after the ticks' straight line: the line's
+                                          * corners, at the start and the top of an attack, were a tick on a fast
+                                          * ATTACK (a lead at 1 ms read +14 on the crest test, at 1.8 ms +10,
+                                          * RAIN CLOCK's arp +6; now +2.7, +3.6 and +3.1). One 0.5 ms pole took
+                                          * the 1 ms lead to +6.5 only. The cost: the fastest ATTACK rises in
+                                          * about 3.5 ms, and every note starts about 2 ms later */
 #define SLIDE_K 0.035618f                /* a tick's step of a 20 ms slide: 1 - e^(-CTL / (0.020 FS)) */
 static blk_t g_tick[NTICK] PLAT_POOL;
 static blk_t g_slide;
@@ -112,6 +124,9 @@ static uint8_t pend_to[NV];              /* ORBIT: a body's destination note, 0 
  * stopped or not, so the chord is never left half moved. */
 static uint8_t stag_to[NV];              /* the note a body is waiting to leave for, 0 none */
 static uint32_t stag_left[NV], stag_age[NV];   /* how long it waits, and the strike it belongs to */
+static uint32_t stag_gap, stag_follow;   /* SHIFT's cascade: samples from one voice's move to the next (RATE), and
+                                          * how many follow the first */
+static uint32_t orbit_stay, orbit_clk_stay;   /* the wait after a cascade's last voice: what the pill fills over */
 static int32_t shift_last;               /* SHIFT's last move in degrees: straight back is the unlikely one */
 static uint32_t shift_debt, shift_pass;  /* moves since the chord was home; and the landing chosen is rougher than
                                           * the chord struck, so it is passed through rather than rested on */
@@ -331,6 +346,7 @@ static void voice_osc_init(voice_t *v, uint32_t model)
     v->dxfade = 1.0f;
     v->dxv = 0xFFFFFFFFu;
     v->mip_s = 0;
+    v->pos_s = -1.0f;
     v->dc2x = v->dc2y = 0.0f;
     for (i = 0; i < 6u; i++)
         v->fs[i] = 0.0f;
@@ -349,9 +365,10 @@ static void voice_osc_init(voice_t *v, uint32_t model)
     }
 }
 
+static void voice_sound(voice_t *v, uint32_t note, float vel);
 static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch, uint32_t midi)
 {
-    uint32_t i, steal = v->restart == 2u;   /* stolen: it fades a moment first (voice_tick's restart), then starts */
+    uint32_t steal = v->restart == 2u;   /* stolen: it fades a moment first (voice_tick's restart), then starts */
     v->on = 1;
     v->fading = 0;
     if (!steal)
@@ -361,30 +378,40 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->sustained = 0;
     v->midi = (uint8_t)midi;
     v->lead = v->held = 0;
-    v->mboost = 0.0f;
     v->ed_lvl = v->ed_tone = v->ed_tune = 0;
     v->pinned = 0;
     v->ed_gain = 1.0f;
-    v->tone_s = 0.0f;
-    v->gain_s = 1.0f;
     v->xf = 0.0f;
     v->xf_out = 0;
     v->home = (uint8_t)note;
-    v->target = v->pitch = (float)note;
-    if (!steal)
-        v->env = 0.0f;
-    v->vel = vel_gain(vel);
     v->vel_raw = (uint8_t)(vel ? vel & 127u : 1u);
-    v->vtouch = (float)v->vel_raw * (1.0f / 127.0f) - 1.0f;
-    v->press = 0.0f;
     press[note & 127u] = 0;              /* a strike starts from no pressure: aftertouch sent for this note before
                                           * (a key leaned on, or a computer's poly pressure) used to stay behind and
                                           * colour the next voice struck here, with nothing to clear it */
-    v->walk = 0.0f;
-    if (!steal)
-        v->lvl_s = 0.0f;
     v->age = ++age_ctr;
-    v->rng = 0x9E3779B9u ^ (note * 2654435761u) ^ age_ctr;
+    newest_note = (int32_t)note;
+    if (steal)                           /* the old note fades out as it was, pitch, pan, harmonics and level, and
+                                          * voice_tick gives it this one's once it is silent: taking them at once
+                                          * moved a note still sounding by up to an octave and emptied ADDITIVE's
+                                          * harmonics in a tick, a click at every ninth note */
+        return;
+    v->env = 0.0f;
+    v->lvl_s = v->lvl_y = v->lvl_u = 0.0f;
+    voice_sound(v, note, vel_gain(vel));
+    voice_osc_init(v, dr_scene.p[P_MODEL] < M_COUNT ? dr_scene.p[P_MODEL] : 0u);
+}
+static void voice_sound(voice_t *v, uint32_t note, float vel)   /* a strike's sound, from the note on */
+{
+    uint32_t i;
+    v->mboost = 0.0f;
+    v->tone_s = 0.0f;
+    v->gain_s = 1.0f;
+    v->target = v->pitch = (float)note;
+    v->vel = vel;
+    v->vtouch = (float)v->vel_raw * (1.0f / 127.0f) - 1.0f;
+    v->press = 0.0f;
+    v->walk = 0.0f;
+    v->rng = 0x9E3779B9u ^ (note * 2654435761u) ^ v->age;
     v->sp_det = frand(&v->rng);          /* SPREAD: its own small differences, fixed for its life */
     v->sp_mass = frand(&v->rng);
     v->sp_tide = 1.0f + 0.25f * frand(&v->rng);
@@ -404,9 +431,6 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
         v->pan = fm_clampf(pan, -1.0f, 1.0f);
         v->pan_live = v->pan;
     }
-    if (!steal)
-        voice_osc_init(v, dr_scene.p[P_MODEL] < M_COUNT ? dr_scene.p[P_MODEL] : 0u);
-    newest_note = (int32_t)note;
 }
 
 static voice_t *find_body(uint32_t note, int fading_too)   /* a body handing over is never the key's: its twin is */
@@ -578,9 +602,11 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
                 echo_n++;
             echo_vel = 1.0f;
         }
-        v->mboost = 0.15f;
-        v->target = v->pitch = (float)note + g_blk.lift;
-        v->walk = 0.0f;
+        if (!v->restart) {               /* stolen: voice_tick strikes it so once the old note is out */
+            v->mboost = 0.15f;
+            v->target = v->pitch = (float)note + g_blk.lift;
+            v->walk = 0.0f;
+        }
     } else {
         v = find_lead(note);
         if (!v)
@@ -806,7 +832,7 @@ void dr_panic(void)                      /* CC 120, and the platform before a ba
             note_out(vc[i].lead ? vc[i].home : (uint32_t)(vc[i].target + 0.5f), 0, 0);
         vc[i].on = 0;
         vc[i].held = vc[i].latched = vc[i].sustained = 0;
-        vc[i].env = vc[i].lvl_s = 0.0f;
+        vc[i].env = vc[i].lvl_s = vc[i].lvl_y = vc[i].lvl_u = 0.0f;
     }
     q_tail = q_head;                     /* the queue dropped: one store of the render's own word */
 }
@@ -860,9 +886,22 @@ float dr_orbit_next(void)
         return arp_step ? ((float)((arp_count + len - 1u) % len) + 1.0f - (float)arp_left / (float)arp_step) / (float)len
                         : 0.0f;
     }
-    if (clk_ext)
-        return orbit_clk_per ? 1.0f - (float)orbit_clk_left / (float)orbit_clk_per : 0.0f;
-    return orbit_per ? 1.0f - (float)orbit_left / (float)orbit_per : 0.0f;
+    {                                    /* SHIFT's cascade on its way: toward its next voice */
+        uint32_t i, nx = 0xFFFFFFFFu;
+        for (i = 0; i < NV; i++)
+            if (stag_to[i] && stag_left[i] < nx)
+                nx = stag_left[i];
+        if (nx != 0xFFFFFFFFu && stag_gap)
+            return fm_clampf(1.0f - (float)nx / (float)stag_gap, 0.0f, 1.0f);
+    }
+    if (clk_ext) {
+        uint32_t st = orbit_clk_stay && orbit_clk_stay < orbit_clk_per ? orbit_clk_stay : orbit_clk_per;
+        return st ? fm_clampf(1.0f - (float)orbit_clk_left / (float)st, 0.0f, 1.0f) : 0.0f;
+    }
+    {
+        uint32_t st = orbit_stay && orbit_stay < orbit_per ? orbit_stay : orbit_per;
+        return st ? fm_clampf(1.0f - (float)orbit_left / (float)st, 0.0f, 1.0f) : 0.0f;
+    }
 }
 int dr_orbit_on(void) { return (int)orbit_on; }
 void dr_freeze(int on) { frozen = on != 0; }
@@ -1002,7 +1041,7 @@ static void twin(voice_t *v, voice_t *t, uint32_t model)   /* body v hands over 
     float k = xf_secs > 0.05f ? (float)CTL / (xf_secs * FS) : 1.0f;
     *t = *v;                             /* its note, glide, age, its own values, its breathing's phases */
     voice_osc_init(t, model);
-    t->env = t->lvl_s = 0.0f;
+    t->env = t->lvl_s = t->lvl_y = t->lvl_u = 0.0f;
     t->xf = k;
     t->xf_out = 0;
     t->restart = t->quick = 0;
@@ -1111,9 +1150,18 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
     uint32_t h;
     /* the envelope */
     if (v->restart) {
-        v->env *= 0.82f;                 /* a quick fade, then the new model from silence */
-        if (v->env < 0.01f) {
+        v->env *= 0.82f;                 /* a quick fade, then the new model from silence: 54 dB down, 23 ms, since
+                                          * the level as heard lags the envelope (LVL_K) and at 40 dB the new
+                                          * note's start still landed on the old one (+7.9 on a FIRST LIGHT steal) */
+        if (v->env < 0.002f) {
             uint32_t was_fading = v->fading;
+            if (v->restart == 2u) {      /* stolen: the new note's sound only now (voice_strike) */
+                voice_sound(v, v->home, vel_gain(v->vel_raw));
+                if (v->lead) {
+                    v->mboost = 0.15f;
+                    v->target = v->pitch = (float)v->home + b->lift;
+                }
+            }
             voice_osc_init(v, b->model);
             v->env = 0.0f;
             v->restart = 0;
@@ -1256,13 +1304,15 @@ static inline void voice_gains(voice_t *v, const blk_t *b, float sub_k, uint32_t
 
 static void render_solar(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
-    float inc = f / FS, sinc = inc * 0.5f, ph = v->ph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float inc = f / FS, sinc = inc * 0.5f, ph = v->ph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float sub, dsub, a0 = v->amp_s[0], a1 = v->amp_s[1], a2 = v->amp_s[2], a3 = v->amp_s[3], a4 = v->amp_s[4],
           a5 = v->amp_s[5], a6 = v->amp_s[6], a7 = v->amp_s[7], im = 1.0f / (float)m;
     float d0 = (v->amp[0] - a0) * im, d1 = (v->amp[1] - a1) * im, d2 = (v->amp[2] - a2) * im, d3 = (v->amp[3] - a3) * im,
           d4 = (v->amp[4] - a4) * im, d5 = (v->amp[5] - a5) * im, d6 = (v->amp[6] - a6) * im, d7 = (v->amp[7] - a7) * im;
     float gl, gr, dgl, dgr;
     uint32_t i;
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < 8u; i++)
         v->amp_s[i] = v->amp[i];
@@ -1289,16 +1339,20 @@ static void render_solar(voice_t *v, const blk_t *b, float f, float lvl, uint32_
           + a6 * sintab[(uint32_t)(p * 7.0f) & SIN_MASK] + a7 * sintab[(uint32_t)(p * 8.0f) & SIN_MASK]
           + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
     v->ph = ph;
     v->sub_ph = sph;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* the corner a voice really filters at. TIMBRE reaches these models through an exponential - 320 Hz to 13 kHz over
@@ -1318,7 +1372,7 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
 {
     float det = (0.3f + b->drift) * (0.04f + b->shape * 0.45f), inc0 = f / FS,
           inc1 = inc0 * fm_exp2f(det * (1.0f / 12.0f)), inc2 = inc0 * fm_exp2f(-det * 0.7f * (1.0f / 12.0f)),
-          c0 = 0.25f / inc0, c1 = 0.25f / inc1, c2 = 0.25f / inc2, l = v->lvl_s, dl = (lvl - l) / (float)m;
+          c0 = 0.25f / inc0, c1 = 0.25f / inc1, c2 = 0.25f / inc2, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float mass = vmass(v, b), fc = dr_hz((uint32_t)(mass * 127.0f)), a;
     float p0 = v->ph3[0], p1 = v->ph3[1], p2 = v->ph3[2], z0 = v->z[0], z1 = v->z[1], z2 = v->z[2];
     float lp1 = v->lp1, lp2 = v->lp2, sph = v->sub_ph, sinc = inc0 * 0.5f, sub, dsub;
@@ -1330,6 +1384,8 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     a = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (a > 0.95f)
         a = 0.95f;
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.6f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float x, sq, s;
@@ -1361,10 +1417,12 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         lp1 += (s - lp1) * a;
         lp2 += (lp1 - lp2) * a;
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s = lp2 * l;
+        s = lp2 * y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1378,6 +1436,8 @@ static void render_void(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->lp2 = fm_flush(lp2);
     v->sub_ph = sph;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
@@ -1387,7 +1447,7 @@ static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_
                                           * SHAPE as set: sliding, it would pass through the ratios between */
           det = (0.3f + b->drift) * 0.012f, inc2 = inc * (1.0f + det), sinc = inc * 0.5f;
     float idx = mass * 4.0f * (1.0f - b->drift * 0.45f * (0.5f + 0.5f * tsin(v->breath_ph))) * 0.159155f;
-    float ph = v->ph, ph2 = v->ph2, mph = v->mph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m,
+    float ph = v->ph, ph2 = v->ph2, mph = v->mph, sph = v->sub_ph, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u,
           sub, dsub;
     float gl, gr, dgl, dgr;
     uint32_t i;
@@ -1395,6 +1455,8 @@ static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         minc = 0.45f;
     v->z[0] += (idx - v->z[0]) * 0.2f;
     idx = v->z[0];
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float mod, s;
@@ -1415,10 +1477,12 @@ static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_
           + 0.6f * sintab[(uint32_t)((ph2 + mod * 0.7f + 8.0f) * (float)SIN_N) & SIN_MASK];
         s = s * 0.6f + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1427,6 +1491,8 @@ static void render_glass(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     v->mph = mph;
     v->sub_ph = sph;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
@@ -1434,7 +1500,7 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
     int16_t *ln = lines + (v - vc) * LINE_LEN;
     float mass = vmass(v, b);
     float len = FS / f, damp = 0.06f + mass * 0.8f, inc = f / FS, ph = v->ph, sl = v->sl, l = v->lvl_s,
-          dl = (lvl - l) / (float)m, air = 0.3f * (0.1f + b->air), bow = 0.05f * (1.0f - b->air * 0.6f),
+          dl = (lvl - l) / (float)m, y, u, air = 0.3f * (0.1f + b->air), bow = 0.05f * (1.0f - b->air * 0.6f),
           dcx = v->dc_x, dcy = v->dc_y, sph = v->sub_ph, sinc = inc * 0.5f, sub, dsub;
     float gl, gr, dgl, dgr;
     uint32_t i, pos = v->lpos, rng = v->rng;
@@ -1442,9 +1508,11 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
         len = (float)(LINE_LEN - 4u);
     if (len < 4.0f)
         len = 4.0f;
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.4f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
-        float rp = (float)pos - len, y, w, s, n;
+        float rp = (float)pos - len, rd, w, s, n;
         uint32_t i0, i1;
         int32_t ri;
         if (rp < 0.0f)
@@ -1452,8 +1520,8 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
         ri = (int32_t)rp;
         i0 = (uint32_t)ri & LINE_MASK;
         i1 = (i0 + 1u) & LINE_MASK;
-        y = ((float)ln[i0] + ((float)ln[i1] - (float)ln[i0]) * (rp - (float)ri)) * (1.0f / 32767.0f);
-        sl += (y - sl) * damp;
+        rd = ((float)ln[i0] + ((float)ln[i1] - (float)ln[i0]) * (rp - (float)ri)) * (1.0f / 32767.0f);
+        sl += (rd - sl) * damp;
         rng = rng * 1664525u + 1013904223u;
         n = (float)(int32_t)rng * (1.0f / 2147483648.0f);
         ph += inc;
@@ -1473,10 +1541,12 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
         dcy = s;
         s = s * 1.1f + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1488,12 +1558,14 @@ static void render_string(voice_t *v, const blk_t *b, float f, float lvl, uint32
     v->lpos = pos;
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_choir(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
     float mass = vmass(v, b), F[3], G[3], a1[3], a2[3], a3[3], k = 0.14f;
-    float inc = f / FS, p0 = v->ph3[0], z0 = v->z[0], c0 = 0.25f / inc, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float inc = f / FS, p0 = v->ph3[0], z0 = v->z[0], c0 = 0.25f / inc, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float air = b->air * 0.5f, sph = v->sub_ph, sinc = inc * 0.5f, sub, dsub;
     float gl, gr, dgl, dgr;
     uint32_t i, j, rng = v->rng;
@@ -1504,6 +1576,8 @@ static void render_choir(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         a2[j] = g * a1[j];
         a3[j] = g * a2[j];
     }
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float x, sq, s = 0.0f, n;
@@ -1529,10 +1603,12 @@ static void render_choir(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         }
         s = s * k * 8.0f + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* level-matched by render */
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1543,12 +1619,14 @@ static void render_choir(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     v->sub_ph = sph;
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
     float mass = vmass(v, b), inc[4], a[4], tilt = 2.5f - 2.3f * mass;
-    float ph[4], sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float ph[4], sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float air = b->air * 0.12f, lp = v->lp1, gl,
           gr, dgl, dgr;
     uint32_t i, h, rng = v->rng;
@@ -1566,6 +1644,19 @@ static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         if (fh > 18000.0f)
             a[h] = inc[h] = 0.0f;        /* silent, and its phase stands still (it would never wrap) */
     }
+    {                                    /* each partial from its level at the end of the last tick to this one's,
+                                          * sample by sample, as SOLAR's harmonics (amp_s, the same slots): held for
+                                          * the tick, TIMBRE falling from full moved the top partial 33 dB in 28
+                                          * steps, a click (+7.5 on the crest test) */
+        float im = 1.0f / (float)m, da[4];
+        for (h = 0; h < 4u; h++) {
+            float t = a[h];
+            a[h] = v->amp_s[h];
+            da[h] = (t - a[h]) * im;
+            v->amp_s[h] = t;
+        }
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float s = 0.0f, n;
@@ -1573,6 +1664,7 @@ static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
             ph[h] += inc[h];
             if (ph[h] >= 1.0f)
                 ph[h] -= 1.0f;
+            a[h] += da[h];
             s += a[h] * sintab[(uint32_t)(ph[h] * (float)SIN_N) & SIN_MASK];
         }
         rng = rng * 1664525u + 1013904223u;
@@ -1584,12 +1676,15 @@ static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
             sph -= 1.0f;
         s += sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
+    }
     }
     v->ph = ph[0];
     v->ph2 = ph[1];
@@ -1599,13 +1694,15 @@ static void render_bell(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->lp1 = fm_flush(lp);
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_shepard(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
 {
     float mass = vmass(v, b), d = (b->shape - 0.5f) * 2.0f;
     float rate = (d < 0.0f ? -1.0f : 1.0f) * 0.35f * d * d * (float)m / FS;   /* octaves this block, falling or rising */
-    float inc[6], a[6], ph[6], l = v->lvl_s, dl = (lvl - l) / (float)m, sum = 0.0f, air = b->air * 0.1f, lp = v->lp1;
+    float inc[6], a[6], ph[6], l = v->lvl_s, dl = (lvl - l) / (float)m, y, u, sum = 0.0f, air = b->air * 0.1f, lp = v->lp1;
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub;
     float gl, gr, dgl, dgr;
     uint32_t i, k, rng = v->rng;
@@ -1629,6 +1726,8 @@ static void render_shepard(voice_t *v, const blk_t *b, float f, float lvl, uint3
         sum += a[k];
     }
     sum = sum > 0.05f ? 1.2f / sum : 0.0f;   /* level-matched by render */
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.4f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float s = 0.0f, n;
@@ -1647,10 +1746,12 @@ static void render_shepard(voice_t *v, const blk_t *b, float f, float lvl, uint3
             sph -= 1.0f;
         s += sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1664,6 +1765,8 @@ static void render_shepard(voice_t *v, const blk_t *b, float f, float lvl, uint3
     v->lp1 = fm_flush(lp);
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m, float *ml, float *mr)
@@ -1671,7 +1774,7 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float mass = vmass(v, b), fc = dr_hz((uint32_t)(mass * 127.0f)), c;
     float drive = (0.15f + b->shape * 2.2f) * (1.0f - b->drift * 0.3f * (0.5f + 0.5f * tsin(v->breath_ph)));
     float inc = f / FS, ph = v->ph, sph = v->sub_ph, sinc = inc * 0.5f, sub, dsub, lp = v->lp1,
-          l = v->lvl_s, dl = (lvl - l) / (float)m, air = b->air * 0.3f;
+          l = v->lvl_s, dl = (lvl - l) / (float)m, y, u, air = b->air * 0.3f;
     float gl, gr, dgl, dgr;
     uint32_t i, rng = v->rng;
     if (fc < f * 1.5f)
@@ -1680,6 +1783,8 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     c = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (c > 0.95f)
         c = 0.95f;
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float x, s, n;
@@ -1696,10 +1801,12 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         lp += (s - lp) * c;
         s = lp * 0.8f + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1708,6 +1815,8 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->lp1 = fm_flush(lp);
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* SCAN: Pocket Poly's three wavetables (ANALOG, VOX, GLASS) as one sweep of 48 frames under SHAPE, each body's
@@ -1715,6 +1824,10 @@ static void render_fold(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
  * detuned at another place, SUB the sine */
 const char *const DR_SCAN_NAME[3] = {"ANALOG", "VOX", "GLASS"};
 #define SCAN_FR (DF_WT_TABLES * DF_WT_FRAMES)
+#define SCAN_GLIDE_K 0.009026f           /* a tick's step of an 80 ms glide through the sweep (1 - e^(-CTL / 0.080 FS)):
+                                          * the frames are different waves, three tables of sixteen, and the block's
+                                          * 20 ms slide took a jump of SHAPE across all 48 in a few ms, a zip that
+                                          * read +8.5 on the crest test (+1.4 at 80 ms, +0.6 at 150) */
 static inline const int16_t *scan_frame(uint32_t g, uint32_t mip)   /* frame g (0..47) of the sweep */
 {
     uint32_t t = g / DF_WT_FRAMES;
@@ -1732,7 +1845,7 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
                                          * note: 3 to 192 times it, the same brightness all along the keys */
     float inc = f / FS * (float)DF_WT_LEN, inc2 = inc * (1.0f + (0.3f + b->drift) * 0.004f), ph = v->ph, ph2 = v->ph2;
     float air = b->air * 0.8f, sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, lp = v->lp1,
-          l = v->lvl_s, dl = (lvl - l) / (float)m, k = 1.0f / 32768.0f;
+          l = v->lvl_s, dl = (lvl - l) / (float)m, y, u, k = 1.0f / 32768.0f;
     float gl, gr, dgl, dgr;
     const int16_t *a0, *a1, *c0, *c1;
     uint32_t i, g0, g2, mip = 0;
@@ -1752,6 +1865,8 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         v->hb[0] -= 1.0f;
     pos = b->shape * (float)(SCAN_FR - 1u) + b->drift * 5.0f * tsin(v->hb[0]) + v->twalk * b->twalk_depth * 8.0f;
     pos = fm_clampf(pos, 0.0f, (float)(SCAN_FR - 1u) - 0.001f);
+    if (v->pos_s >= 0.0f)
+        pos = v->pos_s + (pos - v->pos_s) * SCAN_GLIDE_K;
     g0 = (uint32_t)pos;
     fr = pos - (float)g0;
     {                                    /* AIR's copy: another place in the sweep. It used to flip from pos + 7 to
@@ -1782,7 +1897,70 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     c = 1.0f - fm_expf(-6.2831853f * fc / FS);
     if (c > 0.95f)
         c = 0.95f;
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
+    {                                    /* SHAPE moving: from where the last tick left the sweep to this one's, a
+                                          * sample at a time. Held for the tick, a fast turn crossed two frames in
+                                          * one sample every 0.7 ms (a 127 to 0 jump measured +8.5 on the crest
+                                          * test); still, the one read below as it always was */
+        float p0 = v->pos_s < 0.0f ? pos : v->pos_s, q0 = v->pos_s < 0.0f ? pos2 : v->pos2_s,
+              k0 = v->pos_s < 0.0f ? k : v->wk_s;
+        v->pos_s = pos;
+        v->pos2_s = pos2;
+        v->wk_s = k;
+        if (fm_fabsf(pos - p0) > 1e-4f || fm_fabsf(pos2 - q0) > 1e-4f) {
+            float im = 1.0f / (float)m, dp = (pos - p0) * im, dq = (pos2 - q0) * im, dk = (k - k0) * im,
+                  pp = p0, qq = q0, kk = k0;
+            uint32_t ga = 0xFFFFFFFFu, gc = 0xFFFFFFFFu;
+            for (i = 0; i < m; i++) {
+                float s;
+                uint32_t g;
+                pp += dp;
+                kk += dk;
+                g = (uint32_t)pp;
+                if (g != ga) {
+                    ga = g;
+                    a0 = scan_frame(g, mip);
+                    a1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mip);
+                }
+                ph += inc;
+                if (ph >= (float)DF_WT_LEN)
+                    ph -= (float)DF_WT_LEN;
+                s = scan_read(a0, a1, pp - (float)g, ph);
+                if (air > 0.01f) {
+                    qq += dq;
+                    g = (uint32_t)qq;
+                    if (g != gc) {
+                        gc = g;
+                        c0 = scan_frame(g, mip);
+                        c1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mip);
+                    }
+                    ph2 += inc2;
+                    if (ph2 >= (float)DF_WT_LEN)
+                        ph2 -= (float)DF_WT_LEN;
+                    s += scan_read(c0, c1, qq - (float)g, ph2) * air;
+                } else {
+                    qq += dq;
+                }
+                lp += (s * kk - lp) * c;
+                sph += sinc;
+                if (sph >= 1.0f)
+                    sph -= 1.0f;
+                s = lp + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
+                l += dl;
+                u += (l - u) * LVL_K;
+                y += (u - y) * LVL_K;
+                sub += dsub;
+                gl += dgl;
+                gr += dgr;
+                s *= y;
+                ml[i] += s * gl;
+                mr[i] += s * gr;
+            }
+            m = 0;
+        }
+    }
     for (i = 0; i < m; i++) {
         float s;
         ph += inc;
@@ -1801,10 +1979,12 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
             sph -= 1.0f;
         s = lp + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* level-matched by render */
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -1813,6 +1993,8 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->sub_ph = sph;
     v->lp1 = fm_flush(lp);
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* DX: four-operator FM after Pocket Poly's six (fm.c), SHAPE picking one of eight voices made to sustain. Each
@@ -1890,7 +2072,7 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
                                          * turns of phase: MASS squared keeps the lower half clean, DRIFT breathes it.
                                          * Each modulator takes its share by its own level and envelope, so a voice
                                          * keeps its balance while FM AMOUNT sweeps the whole set */
-    float sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, l = v->lvl_s, dl = (lvl - l) / (float)m;
+    float sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float fd, fd1, dfd, dcx = v->dc_x, dcy = v->dc_y, d2x = v->dc2x, d2y = v->dc2y;
     float gl, gr, dgl, dgr;
     fbv = fm_clampf((float)dv->fb + b->air * 4.0f, 0.0f, 7.0f) * (1.0f / 7.0f);
@@ -1962,6 +2144,8 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
     }
     dfd = (fd1 - fd) / (float)m;         /* a sample at a time, like the level: a dip in steps of a tick would be
                                           * the very thing it is there to stop */
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {            /* each algorithm straight through: a modulator is always a higher operator */
         float s, o0, o1, o2, o3;
@@ -2014,11 +2198,13 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
         s = d2y + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];   /* the sub is a clean sine and goes in
                                           * after the blocker, so the lowest notes keep it */
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
         fd += dfd;
-        s *= l * fd;
+        s *= y * fd;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -2037,6 +2223,8 @@ static void render_dx(voice_t *v, const blk_t *b, float f, float lvl, uint32_t m
     v->z[1] = fm_flush(fb2);
     v->sub_ph = sph;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* TEAR: a saw hard-synced to the note, SHAPE its ratio (1 to 8 times the note), DRIFT breathing it, so the formant
@@ -2053,7 +2241,7 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
           drive = 0.9f + mass * 0.8f, keep = (1.0f + 0.48f * b->shape) * fm_exp2f((2.55f - 5.15f * mass) * 0.1661f),
           pm = v->ph, ps = v->ph2, sph = v->sub_ph, prev = v->sl, lp1 = v->lp1,
           lp2 = v->lp2, dcx = v->dc_x, dcy = v->dc_y, d2x = v->dc2x, d2y = v->dc2y,
-          l = v->lvl_s, dl = (lvl - l) / (float)m;
+          l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float gl, gr, dgl, dgr;
     float incs;
     uint32_t i;
@@ -2065,6 +2253,8 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     sinc = inc * 0.5f;
     fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * (fc > 16000.0f ? 16000.0f : fc) / FS);
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float cur, out, x, ring;
@@ -2112,10 +2302,12 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         d2x = x;
         x = d2y + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        x *= l;
+        x *= y;
         ml[i] += x * gl;
         mr[i] += x * gr;
     }
@@ -2130,6 +2322,8 @@ static void render_tear(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->dc2x = fm_flush(d2x);
     v->dc2y = fm_flush(d2y);
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* TAPE: a loop worn thin. SHAPE the source on the tape (a soft organ of three sines to a saw), MASS the tape's
@@ -2142,7 +2336,7 @@ static void render_tape(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     float mass = vmass(v, b), wear = 0.15f + b->drift, cents, k, inc, c0, fc, c, dip;
     float ph = v->ph, z0 = v->z[0], lp1 = v->lp1, lp2 = v->lp2, hiss = v->fs[0], sph = v->sub_ph, sub, dsub,
           sinc = f / FS * 0.5f, air = b->air * 0.09f, organ = (1.0f - b->shape) * 0.68f, saw = b->shape, l = v->lvl_s,
-          dl = (lvl - l) / (float)m;
+          dl = (lvl - l) / (float)m, y, u;
     float gl, gr, dgl, dgr;
     uint32_t i, rng = v->rng;
     v->hb[0] += (0.35f + 0.04f * (float)(v - vc)) * (float)m / FS;   /* wow, each body at its own rate */
@@ -2172,6 +2366,8 @@ static void render_tape(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     fc = voice_fc(v, fc, m);
     c = 1.0f - fm_expf(-6.2831853f * (fc > 16000.0f ? 16000.0f : fc) / FS);
     k = TAPE_GAIN * (1.0f - dip);
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float x, sq, s, p, n;
@@ -2195,10 +2391,12 @@ static void render_tape(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
             sph -= 1.0f;
         s = lp2 * k + (n - hiss) * air + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -2210,6 +2408,8 @@ static void render_tape(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
     v->sub_ph = sph;
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 /* RESONATOR: noise played into five resonances tuned over the note, like a bowl or a glass kept singing: SHAPE the
@@ -2234,7 +2434,7 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
                                 &v->ph3[2], &v->z[0]};
     float dcx = v->dc_x, dcy = v->dc_y;
     float sph = v->sub_ph, sinc = f / FS * 0.5f, sub, dsub, scrape = b->air * 0.12f, ex = v->lp1,
-          l = v->lvl_s, dl = (lvl - l) / (float)m;
+          l = v->lvl_s, dl = (lvl - l) / (float)m, y, u;
     float gl, gr, dgl, dgr;
     uint32_t i, j, t0 = (uint32_t)pos, rng = v->rng;
     for (j = 0; j < RES_MODES; j++) {
@@ -2262,6 +2462,8 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         for (j = 0; j < RES_MODES; j++)
             ga[j] *= p;
     }
+    y = v->lvl_y;
+    u = v->lvl_u;
     voice_gains(v, b, 0.5f, m, &gl, &gr, &dgl, &dgr, &sub, &dsub);
     for (i = 0; i < m; i++) {
         float n, s = 0.0f;
@@ -2283,10 +2485,12 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
         dcx = s;
         s = dcy + sub * sintab[(uint32_t)(sph * (float)SIN_N) & SIN_MASK];
         l += dl;
+        u += (l - u) * LVL_K;
+        y += (u - y) * LVL_K;
         sub += dsub;
         gl += dgl;
         gr += dgr;
-        s *= l;
+        s *= y;
         ml[i] += s * gl;
         mr[i] += s * gr;
     }
@@ -2300,6 +2504,8 @@ static void render_reson(voice_t *v, const blk_t *b, float f, float lvl, uint32_
     v->sub_ph = sph;
     v->rng = rng;
     v->lvl_s = lvl;
+    v->lvl_y = y;
+    v->lvl_u = u;
 }
 
 static void blk_slide(const blk_t *b, uint32_t n)   /* g_tick from the block's g_blk, before the second core starts */
@@ -3081,10 +3287,34 @@ static void body_move(uint32_t i, int32_t nxt)   /* a body to its new note: repo
 #endif
 }
 static float orbit_period_s(void);
+static uint32_t orbit_clocks(void);
+static uint32_t shift_step(void)         /* RATE in samples: the time from one SHIFT voice's move to the next */
+{
+    if (clk_ext)
+        return orbit_clocks() * (clk_period ? clk_period : (uint32_t)(FS / 48.0f));
+    return (uint32_t)(orbit_period_s() * FS);
+}
+static uint32_t stag_rem(void)           /* how long until the cascade's last waiting voice moves (0: none waits) */
+{
+    uint32_t i, r = 0;
+    for (i = 0; i < NV; i++)
+        if (stag_to[i] && stag_left[i] > r)
+            r = stag_left[i];
+    return r;
+}
 static void orbit_apply(void)            /* the countdown ends: the planned moves, if the bodies are still there */
 {
     uint32_t i, k, n = 0, shift = dr_orbit_mode() == OM_CHORD, ord[NV];
     int32_t net = 0, dest[NV];
+    for (i = 0; i < NV; i++)             /* a cascade still on its way (SEL + PLAY, or PLAY again, brings a move
+                                          * early): its voices land first, so none takes two steps in one move */
+        if (stag_to[i]) {
+            voice_t *v = &vc[i];
+            int32_t nxt = (int32_t)stag_to[i];
+            stag_to[i] = 0;
+            if (v->on && !v->fading && v->latched && !v->restart && !v->pinned && v->age == stag_age[i])
+                body_move(i, nxt);
+        }
     for (i = 0; i < NV; i++) {
         voice_t *v = &vc[i];
         int32_t nxt = (int32_t)pend_to[i];
@@ -3104,13 +3334,16 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
             ord[k] = ord[k - 1u];
         ord[k] = i;
     }
-    if (n) {                             /* SHIFT: the voice at the leading edge goes now and the rest follow it
-                                          * across three tenths of the period, never more than 1.2 s apart. The
+    stag_follow = 0;
+    if (n) {                             /* SHIFT: the voice at the leading edge goes now and the rest follow it a
+                                          * RATE apart, so RATE is what is heard: one note moving at a time. They
+                                          * used to follow across three tenths of RATE, which was five notes in
+                                          * 1.2 s at RATE 4 s, and the knob read as four times too fast (Kyle). The
                                           * top goes first on the way up and the bottom on the way down, so no
                                           * voice lands on a note the next one has not left yet */
-        float per = clk_ext ? (float)orbit_per : orbit_period_s() * FS, gap = n > 1u ? 0.3f * per / (float)(n - 1u) : 0.0f;
-        if (gap > 1.2f * FS)
-            gap = 1.2f * FS;
+        uint32_t gap = shift_step();
+        stag_gap = gap;
+        stag_follow = n - 1u;
         for (k = 0; k < n; k++) {
             i = net > 0 ? ord[n - 1u - k] : ord[k];
             if (!k) {
@@ -3118,7 +3351,7 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
                 body_move(i, dest[i]);
             } else {
                 stag_to[i] = (uint8_t)dest[i];
-                stag_left[i] = (uint32_t)(gap * (float)k);
+                stag_left[i] = gap * k;
                 stag_age[i] = vc[i].age;
             }
         }
@@ -3314,6 +3547,13 @@ static void orbit_now(void)              /* SEL + PLAY: the move coming comes no
         orbit_plan();
     }
     orbit_apply();
+    if (clk_ext) {
+        orbit_clk_stay = orbit_clk_per;
+        orbit_clk_left = orbit_clk_per = orbit_clk_stay + stag_follow * orbit_clocks();
+    } else {
+        orbit_stay = orbit_per;
+        orbit_left = orbit_per = orbit_stay + stag_follow * stag_gap;
+    }
     orbit_plan();
 }
 static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memory dropped, its lead let go */
@@ -3395,9 +3635,10 @@ void dr_clock(int port)
             orbit_clk_left--;
         if (!orbit_clk_left) {
             orbit_apply();
-            orbit_clk_left = orbit_clk_per = orbit_clocks();
-            if (mode == OM_CHORD && shift_pass && orbit_clk_per >= 12u)   /* a rough landing: half the stay */
-                orbit_clk_left = orbit_clk_per = orbit_clk_per / 2u;
+            orbit_clk_stay = orbit_clocks();
+            if (mode == OM_CHORD && shift_pass && orbit_clk_stay >= 12u)   /* a rough landing: half the stay */
+                orbit_clk_stay /= 2u;
+            orbit_clk_left = orbit_clk_per = orbit_clk_stay + stag_follow * orbit_clocks();
             orbit_per = orbit_clk_per * (clk_period ? clk_period : (uint32_t)(FS / 48.0f));   /* the period in samples
                                                                                            * too: ECHO's phrase and
                                                                                            * PULSE's roll spread over it */
@@ -3527,16 +3768,30 @@ static void orbit_tick(uint32_t n)
         arp_tick(n);
         return;
     }
-    if (orbit_reper) {                   /* EVERY turned: a countdown longer than the new period is cut to it */
+    if (orbit_reper) {                   /* EVERY turned: a countdown longer than the new period is cut to it, and
+                                          * a SHIFT cascade on its way closes up to the new RATE */
+        uint32_t st = shift_step(), rem, i;
         orbit_reper = 0;
+        if (stag_gap > st && stag_rem()) {
+            float r = (float)st / (float)stag_gap;
+            for (i = 0; i < NV; i++)
+                if (stag_to[i])
+                    stag_left[i] = (uint32_t)((float)stag_left[i] * r);
+        }
+        stag_gap = st;
+        rem = stag_rem();
         if (clk_ext) {
-            uint32_t c = orbit_clocks();
-            if (orbit_clk_left > c)
-                orbit_clk_left = orbit_clk_per = c;
+            uint32_t c = orbit_clocks(), rc = rem / (clk_period ? clk_period : (uint32_t)(FS / 48.0f));
+            if (orbit_clk_left > c + rc) {
+                orbit_clk_left = orbit_clk_per = c + rc;
+                orbit_clk_stay = c;
+            }
         } else {
             uint32_t s = (uint32_t)(orbit_period_s() * FS);
-            if (orbit_left > s)
-                orbit_left = orbit_per = s;
+            if (orbit_left > s + rem) {
+                orbit_left = orbit_per = s + rem;
+                orbit_stay = s;
+            }
         }
     }
     if (clk_ext)                         /* the clock counts the period (dr_clock) */
@@ -3553,7 +3808,9 @@ static void orbit_tick(uint32_t n)
             per *= 0.5f;
         if (mode == OM_ECHO && per < 1.0f)   /* the phrase needs its second, after the spread too */
             per = 1.0f;
-        orbit_left = orbit_per = (uint32_t)(per * FS);
+        orbit_stay = (uint32_t)(per * FS);
+        orbit_left = orbit_per = orbit_stay + stag_follow * stag_gap;   /* SHIFT: the next chord a stay after the
+                                          * cascade's last voice */
     }
     orbit_plan();
 }
@@ -3576,20 +3833,33 @@ static struct {
     float cs1[NZ_BANDS], cs2[NZ_BANDS];  /* the chord bands' states */
     uint8_t cs_v[NZ_BANDS];              /* which body each band is tuned to, 0xFF none: the state belongs to the
                                           * body, not to the slot */
-    float amp_s, width_s, band1_s, bpg_s, cb_s, c_s, hpk_s;   /* the level, WIDTH, the band's blend and COLOR's
-                                          * filters as heard, sliding sample by sample over 10 ms: they were the
-                                          * block's constants, so a turn of LEVEL, WIDTH, BANDPASS or COLOR (or the
-                                          * swell itself) stepped the whole layer at a block's edge */
+    float amp_s, width_s, band1_s, bpg_s, cb_s, col_s;   /* the level, WIDTH, the band's blend and COLOR as
+                                          * heard, sliding sample by sample over 10 ms: they were the block's
+                                          * constants, so a turn of LEVEL, WIDTH, BANDPASS or COLOR (or the swell
+                                          * itself) stepped the whole layer at a block's edge */
 } nz = {0x1234567u, 0x89ABCDEu, 0.0f, 0.3f, 0.0f, 0.0f, 60.0f, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 60.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0u, 0.0f, 0.0f, {0, 0, 0, 0}, {0, 0, 0, 0}, {0xFF, 0xFF, 0xFF, 0xFF}, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.01f, 0.0035f};
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0u, 0.0f, 0.0f, {0, 0, 0, 0}, {0, 0, 0, 0}, {0xFF, 0xFF, 0xFF, 0xFF}, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 static float nz_gust_amt;                /* what GUST does to the level now, 0..1, for the screen */
 static uint32_t nz_gusts;
 
+static inline float nz_lp_k(float colour) { return 0.01f + 0.99f * colour * colour * colour; }   /* brown at 0, white at full */
+static inline float nz_hp_k(float colour)   /* the high-pass: 25 Hz for brown (rumble), 40 above */
+{
+    return 0.0035f + 0.0022f * fm_clampf(colour * 4.0f, 0.0f, 1.0f);
+}
+static inline float nz_lift(float colour)   /* brown is quieter by nature and to the ear: lifted so every colour is
+                                             * heard about alike (measured: within 4 dB above 400 Hz across COLOUR) */
+{
+    static const float LIFT_DB[5] = {20.0f, 18.0f, 10.0f, 4.0f, 0.0f};
+    float cp = colour * 4.0f;
+    uint32_t ci = cp >= 4.0f ? 3u : (uint32_t)cp;
+    return fm_exp2f((LIFT_DB[ci] + (LIFT_DB[ci + 1u] - LIFT_DB[ci]) * (cp - (float)ci)) * (1.0f / 6.02f));
+}
 static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
 {
     float target = p01(P_NZ_LEVEL), colour = p01(P_NZ_COLOUR), wind = p01(P_NZ_WIND), band = p01(P_NZ_BAND);
     float tex = p01(P_NZ_TEXTURE), gust = p01(P_NZ_GUST), duck = p01(P_NZ_DUCK), width = p01(P_NZ_WIDTH);
-    float tide, prs = 0.0f, want, f, g, k, a1, a2, a3, c, amp, bp_g, band1, cb, hpk, hiss, imp_p, imp_g, bdec;
+    float tide, prs = 0.0f, want, f, g, k, a1, a2, a3, c, amp, bp_g, band1, cb, hpk, lg, hiss, imp_p, imp_g, bdec;
     float ca1[NZ_BANDS], ca2[NZ_BANDS], ca3[NZ_BANDS], cg[NZ_BANDS], bl = 0.0f;
     uint32_t i, j, cn = 0;
     target *= fm_sqrtf(target);          /* LEVEL as heard: a bed at 30 sits 19 dB under full (measured) */
@@ -3715,16 +3985,10 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
         for (j = 0; j < cn; j++)
             cg[j] = sum > 0.001f ? cg[j] / sum * fm_sqrtf(kk) * 3.2f : 0.0f;   /* the breath at the bed's RMS (measured) */
     }
-    c = 0.01f + 0.99f * colour * colour * colour;   /* the colour: brown at 0, white at full */
-    hpk = 0.0035f + 0.0022f * fm_clampf(colour * 4.0f, 0.0f, 1.0f);   /* the high-pass: 25 Hz for brown (rumble), 40 above */
-    {                                    /* brown is quieter by nature and to the ear: lifted so every colour is
-                                          * heard about alike (measured: within 4 dB above 400 Hz across COLOUR) */
-        static const float LIFT_DB[5] = {20.0f, 18.0f, 10.0f, 4.0f, 0.0f};
-        float cp = colour * 4.0f;
-        uint32_t ci = cp >= 4.0f ? 3u : (uint32_t)cp;
-        float lift = LIFT_DB[ci] + (LIFT_DB[ci + 1u] - LIFT_DB[ci]) * (cp - (float)ci);
-        amp = nz.env * tide * (1.0f + 0.5f * nz.press) * 2.0f * fm_exp2f(lift * (1.0f / 6.02f));   /* Kyle: full was too loud, 30 % off */
-    }
+    c = nz_lp_k(colour);
+    hpk = nz_hp_k(colour);
+    lg = nz_lift(colour);
+    amp = nz.env * tide * (1.0f + 0.5f * nz.press) * 2.0f;   /* Kyle: full was too loud, 30 % off */
     amp *= (1.0f - gust) + gust * (0.12f + 0.88f * nz.gust);   /* GUST: the bed drops between gusts, up to 18 dB */
     amp *= (1.0f - duck * 0.75f * nz.duck) * BED_GAIN;
     nz.level = nz.env * tide * ((1.0f - gust) + gust * (0.12f + 0.88f * nz.gust)) * (1.0f - duck * 0.75f * nz.duck);
@@ -3738,8 +4002,12 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
     if (imp_g > 100.0f)
         imp_g = 100.0f;
     {
-    float as = nz.amp_s, ws = nz.width_s, b1 = nz.band1_s, bg = nz.bpg_s, cbs = nz.cb_s, cs = nz.c_s, hs = nz.hpk_s;
+    float as = nz.amp_s, ws = nz.width_s, b1 = nz.band1_s, bg = nz.bpg_s, cbs = nz.cb_s, col = nz.col_s,
+          cs = c, hs = hpk, gs = lg;
     const float kn = 1.0f - fm_expf(-1.0f / (0.010f * FS));
+    uint32_t col_moving = fm_fabsf(colour - col) > 1e-5f;   /* COLOR's filters and its level for brown move as one:
+                                          * slid apart, a jump to brown took the +20 dB well before the filter
+                                          * had darkened, a burst of loud hiss (+6.4 on the crest test) */
     for (i = 0; i < n; i++) {
         float xl, xr, v1, v2, v3, yl, yr, m;
         as += (amp - as) * kn;
@@ -3747,8 +4015,12 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
         b1 += (band1 - b1) * kn;
         bg += (bp_g - bg) * kn;
         cbs += (cb - cbs) * kn;
-        cs += (c - cs) * kn;
-        hs += (hpk - hs) * kn;
+        if (col_moving) {
+            col += (colour - col) * kn;
+            cs = nz_lp_k(col);
+            hs = nz_hp_k(col);
+            gs = nz_lift(col);
+        }
         if (hiss >= 1.0f) {
             xl = frand(&nz.rng_l);
             xr = frand(&nz.rng_r);
@@ -3805,16 +4077,15 @@ static void noise_render(const blk_t *b, uint32_t n, float *l, float *r)
             yr = yr * (1.0f - cbs) + cr * cbs;
         }
         m = (yl + yr) * 0.5f;
-        l[i] += (m + (yl - m) * ws) * as;
-        r[i] += (m + (yr - m) * ws) * as;
+        l[i] += (m + (yl - m) * ws) * as * gs;
+        r[i] += (m + (yr - m) * ws) * as * gs;
     }
     nz.amp_s = fm_flush(as);
     nz.width_s = ws;
     nz.band1_s = b1;
     nz.bpg_s = bg;
     nz.cb_s = fm_flush(cbs);
-    nz.c_s = cs;
-    nz.hpk_s = hs;
+    nz.col_s = fm_fabsf(colour - col) > 1e-5f ? col : colour;
     }
     nz.s1l = fm_flush(nz.s1l);
     nz.s2l = fm_flush(nz.s2l);

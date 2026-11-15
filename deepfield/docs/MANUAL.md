@@ -156,7 +156,8 @@ touches are held back. Switch VELOCITY off and every key strikes full, so chords
 MIDI notes always use their own velocity, whatever the switch says.
 
 If you start a ninth voice, one fades out quickly to make room: a voice that is already fading if there is one, or
-else the oldest.
+else the oldest. It fades out as it was, at its own note and place, and the new note comes in once it is gone, about
+25 ms later.
 
 **LATCH** (SEL, lit while on; on by default): a voice keeps sounding after you let go of its key. Tap the key it
 sounds on to stop it (after GEN moves a voice, its new, lit key): it fades out over RELEASE seconds from when you let
@@ -192,7 +193,7 @@ with the voice when GEN or SEL moves it, and are saved with the preset. Over MID
 were latched keep sounding: the *held chord*. The keys now play **leads** over it. A lead is a note in the preset's
 own sound that plays while you hold its key and fades when you let go. Leads never latch, and GEN never moves
 them. A key whose note is already latched plays a lead on top of its voice, as an accent. Up to four leads play at
-once; a fifth replaces the oldest. On the screen a lead is a thin white beam, and its key is white on the keys
+once; a fifth replaces the oldest, which fades out as it was before the new one starts. On the screen a lead is a thin white beam, and its key is white on the keys
 strip. Tap SEL again to go back to LATCH.
 
 MIDI notes work the same way: with LATCH on, a MIDI note plays a voice that sounds until its note off (it never
@@ -200,7 +201,8 @@ latches); with LATCH off, it plays a lead.
 
 The LEAD page (ENV, then SELECT) shapes the leads: ATTACK (1 ms to 2 s), RELEASE (30 ms to 7.7 s), TRANSPOSE (up to two
 octaves higher, in semitones) and LEVEL (the default, 59%, sits about 2 dB over a voice, so a lead stands out over the held chord;
-50% matches a voice; 100% is 9 dB louder).
+50% matches a voice; 100% is 9 dB louder). Every note's start and end are rounded off by a couple of milliseconds, so
+even the shortest ATTACK starts without a tick: at 1 ms a lead is at full in about 3.5 ms.
 
 ![LATCH off: two leads as thin white beams over the held chord's beams, their keys white on the keys strip](img/screen-leads.png "Leads over the held chord")
 
@@ -267,8 +269,8 @@ TIMBRE) covers too wide a range for every value it can show to have a click of i
 small steps of their own; TEMPO moves one BPM a click. A knob with only a few values (RANGE, VOICES, TRANSPOSE,
 the delay's note lengths, FM 4-OP's patches) moves one value a click at any speed. However big the step, the sound
 never jumps with it: a level, a tone or an effect's amount glides to where you turned it over 10 to 20 ms (from a
-MIDI CC too), and a choice - a delay TYPE, a patch, a model - fades across, so turning a knob makes no click of its
-own.
+MIDI CC too; WAVETABLE's place in its sweep over 80 ms, since its frames are different waves), and a choice - a
+delay TYPE, a patch, a model - fades across, so turning a knob makes no click of its own.
 
 A few names are on two pages (ATTACK and RELEASE on ENVELOPE and LEAD, RATE on NOISE and GEN, GATE on DELAY 2 and
 ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turning.
@@ -413,7 +415,7 @@ and PLAY's colour shows it:
 | Mode | PLAY | KNOB 2, 3, 4 | What happens |
 | --- | --- | --- | --- |
 | WALK | green | RATE, CHANCE, RANGE | Every RATE seconds (give or take a quarter), with a CHANCE, one voice moves to a nearby note in the scale, up to RANGE scale steps away. It never moves onto a note another voice is playing. |
-| SHIFT | orange | RATE, CHANCE, RANGE | The whole chord shifts to a related one: every voice goes the same number of scale steps, up to RANGE, one voice after another rather than all at once (below). |
+| SHIFT | orange | RATE, CHANCE, RANGE | The whole chord shifts to a related one: every voice goes the same number of scale steps, up to RANGE, one voice after another, a RATE apart (below). |
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
 | PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time while the rest hold. ROAM (GEN 2) sets how far the generator may develop it. |
@@ -445,7 +447,7 @@ altogether. A locked voice (section 4) is never moved.
 
 **RATE** runs from 0.1 s to 60 s, shown in tenths of a second below ten. Under a second GEN stops changing the
 chord and starts playing it: at half a second WALK and RANDOM make a slow melody inside the chord, and with GLIDE
-longer than RATE the voices never land, a swarm. SHIFT that fast rolls each chord in like a strum. Under half a second the screen
+longer than RATE the voices never land, a swarm. SHIFT that fast runs each chord in like a slow strum. Under half a second the screen
 stops showing where the moves go (they would only flicker). LOOP never runs faster than once a second: its phrase
 needs the time.
 
@@ -466,11 +468,16 @@ of them at any time (section 11).
 **SHIFT moves the chord one voice at a time.** Every voice ends up the same number of scale steps away, but they
 do not leave together. The voice at the leading edge goes when the countdown ends - the top voice on the way up,
 the bottom one on the way down, so no voice lands on a note the next has not left yet - and the rest follow one
-after another across the next three tenths of RATE, never more than 1.2 s apart. Some notes are always held while
-one moves, and that is what lets the ear hear a chord changing: in earlier versions every voice left in the same
-instant, and a chord sliding as one is heard as the whole instrument being bent. Stop GEN in the middle of a move
-and the move still finishes, so the chord is never left half moved. Each voice's line and ghost stay on the screen
-until its own turn comes.
+after another, **a RATE apart**, so RATE is how often you hear a note move: at 4 s with five voices, one moves every
+4 s and the whole chord has shifted after 20 s, and the next chord starts a RATE after its last voice (give or take
+a quarter, as in WALK). Until 1.8 the rest followed across three tenths of RATE, and at 4 s that was five notes in
+1.2 s, the knob heard as four times too fast. Some notes are always held while one moves, and that is what lets
+the ear hear a chord changing: a chord sliding as one is heard as the whole instrument being bent. The pill fills
+toward the next voice while a move is on its way. Stop GEN in the middle of a move and the move still finishes, so
+the chord is never left half moved; SEL + PLAY lands the voices still waiting at once and starts the next move.
+Each voice's line and ghost stay on the screen until its own turn comes. A SHIFT preset you saved on 1.8 or before
+keeps its RATE, so it now moves a voice where it used to move the chord: divide RATE by its voices to keep its old
+pace (the two factory ones are: BOWED SKY at 2 s, ASCENT at 3.3 s).
 
 **Where SHIFT lands is weighed.** It used to be an even draw, which rested on every chord of the scale equally
 often, the diminished one included. Now:
@@ -804,7 +811,7 @@ puts a one-preset file in a slot of your choice, `show` lists what a file holds.
 the same.
 
 **Recording over USB.** Plugged into a computer, the FM-1 is also a USB audio input called DEEP FIELD FM-1
-(stereo, 44.1 kHz). SPEAKER on the USB page (GLO, then SELECT twice) decides what the speaker and headphones do
+(stereo, 44.1 kHz). SPEAKER on the USB page (GLO, then SELECT four times) decides what the speaker and headphones do
 while you record:
 
 - **AUTO** (the default): when a program on the computer starts using the input (an armed track in Live, a

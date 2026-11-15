@@ -2853,8 +2853,9 @@ wait 100
 # change against a chord sliding as one is heard as the instrument bent, not as a new chord. Three Fs two octaves
 # apart: no landing can be rougher than the chord struck, so nothing is passed through, and the chord is whole
 # only while it spans 24. CHANCE 0, so nothing is planned behind the move and only the cascade is counted; CC 14
-# brings the move at once whatever CHANCE says. RATE 127 is 60 s, where the gap is its 1.2 s ceiling. The top
-# goes first on the way up and the bottom on the way down, so until the last voice has gone the chord is wider.
+# brings the move at once whatever CHANCE says. The voices follow a RATE apart (RATE 46, 1.02 s): it was three
+# tenths of RATE, and at 4 s five voices moved in 1.2 s, the knob heard as four times too fast. The top goes first
+# on the way up and the bottom on the way down, so until the last voice has gone the chord is wider.
 reboot
 wait 2500
 midi B0 39 7F
@@ -2865,7 +2866,7 @@ expect latchmode 1
 expect scale 1
 expect bodies 0
 param 36 1
-param 24 127
+param 24 46
 param 25 0
 param 37 127
 param 27 0
@@ -2912,12 +2913,13 @@ expect span 24
 expect latch 3
 # at the end of its octave the chord turns round as one. A voice used to be sent back to its key from there, a
 # leap of up to an octave, and the voices of a chord could reach the end on different moves and split. A minute
-# at RATE 0.1 s is some six hundred moves with nothing pulling home: three scale steps are a tritone at most
+# at RATE 0.1 s, a voice a RATE, is some six hundred moves with nothing pulling home: three scale steps are a
+# tritone at most
 param 24 0
 param 25 127
 tap PLAY
 wait 60000
-expect moves >900
+expect moves >450
 expect leap <7
 expect leap >2
 tap PLAY

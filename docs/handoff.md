@@ -2,6 +2,154 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: SHIFT's RATE is the time between voice moves (flashed 2026-11-13)
+
+Kyle, on F9 CATHEDRAL with GEN in SHIFT: "the rate control seems to not work correctly - it seems much faster than
+the set rate value". The unit's screen read RATE 4.0 S, CHANCE 55 %, RANGE 3 STEPS, five voices, no MIDI clock.
+
+**What it was** (measured in the simulator on those settings): the countdown kept time - with CHANCE 55 % a move
+came every 8 s on average, 6-10 s at RATE 8, matching RATE at 15 and 33 s too, turning RATE and switching modes
+mid-run included - but SHIFT's cascade (1.7) sent the rest of the chord after the first voice across three tenths
+of RATE, at most 1.2 s apart: five voices at 4 s moved 0.3 s apart, five notes in 1.2 s and then a pause. What is
+heard is the notes, so the knob read as about thirteen times too fast. Kyle picked "time per voice move" over
+spreading the voices evenly across one RATE.
+
+**What changed** (`engine/drone.c`): the voices after the first now follow a RATE apart (`shift_step`, RATE in
+samples or, under MIDI clock, in clocks), and the next chord comes a stay (RATE, give or take a quarter; half on a
+rough landing, as before) after the last voice. Under the clock the countdown adds the cascade in clocks. Turning
+RATE down while a cascade is on its way closes it up to the new RATE. SEL + PLAY, or PLAY again, lands any voice
+still waiting before the next move starts (without it a waiting voice could take two steps in one: a 10-semitone
+leap in the check below). The pill fills toward the next voice while a cascade is on its way, then over the stay.
+F4 BOWED SKY and F13 ASCENT keep their written pace: RATE 87 -> 60 (2.06 s, four voices) and 91 -> 69 (3.25 s,
+three), the same number of note moves a minute (52 and 28 in two minutes, against about 48 and 25 before), now
+evenly spaced.
+
+**Measured**: Kyle's settings: a note every 3.95 s median (3.15 to 12.65: the stay's jitter, rough landings and
+CHANCE). CATHEDRAL at RATE 8 s: 8.00 s median. Under MIDI clock at 119 BPM, RATE 4 s (8 beats): 4.03 s median.
+**Checks**: 840 pass; the cascade check now runs at RATE 46 (1.02 s, the same waits), and the minute at RATE 0.1 s
+expects over 450 moves where it was 900 (a voice a RATE). Goldens unchanged (the renders run with GEN off). Device
+image 434,888 B, build 8E0B9A09, RAM 79,516 B. Manual (the SHIFT row, the cascade paragraph, a preset saved on 1.8
+or before now moves a voice where it moved the chord) and both cheat sheets updated. Not committed.
+
+**On the unit:** flashed 2026-11-13 on Kyle's "Flash it" (fast install over 7FE7BC62), build 8E0B9A09, dev identity
+`FM-1_4400`; it carries the second click sweep too. `screen` reads FIRST LIGHT on HOME, VOICES 0, CPU 6 %; the log
+`no crash recorded`, BT advertising, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`, `lock 00000002`. Not heard yet.
+
+**To check on the unit**: F9 CATHEDRAL, GEN MODE SHIFT, RATE 4.0 s: one note moves every 4 s or so. F4 BOWED SKY
+and F13 ASCENT: a voice every 2 and 3.3 s, about the pace they had.
+
+## Start here: the second click sweep - playing, GEN, MIDI and settings off the presets (flashed 2026-11-13)
+
+Kyle, after hearing no clicks on 1.8: "my suspicion is there are still some issues lurking on different settings -
+have we checked everything?" The click pass had measured knob turns on the sixteen factory presets with nothing
+played and GEN off, and nothing else. This sweep measured the rest. **Built, measured, flashed; not committed.**
+
+**How it was measured** (all in the host simulator, tools in the session's scratchpad: `evt.py`, `genevt.py`,
+`evtscore.py`, `batch1.py`..`batch3.py`, `cmp2.py`, beside the click pass's `clk2.py` and `crest2.py`):
+
+- **An event, one A/B pair**: render with events 1..k-1 and with 1..k, so the difference is event k alone (a key,
+  a MIDI message, a button, a CC jump). **A GEN move, one A/B pair**: a probe polls the move counter (`moves`,
+  `arpsteps`, `leads` for LOOP) every 5 ms; render k stops GEN halfway between move k and k+1, so renders k-1 and k
+  differ by move k alone (a control pair checks the stop itself is silent).
+- **Three readings**: the click pass's whitened A/B difference (s1, how big a change is); the render's own
+  prediction-error crest just after the event less the untouched render's (how impulsive); and that crest less the
+  same render's 250 ms later (so a sound spiky by nature - a hard-sync saw, crackle - is not read as a click).
+  Calibrated on leads: a 1 ms attack reads +14 crest, 4 ms +2 to +3, a glide or a smooth move around 0. **A click**:
+  crest +5 over the untouched render and +3 over itself, or s1 over +10 with both crests over +3.
+
+**What was covered**: 4,028 events over 931 scenarios on all sixteen presets (all 13 models) - lead attacks and
+releases at four ATTACK and two RELEASE values, the ninth body and the fifth lead taking a voice, a fading body
+struck again, SEL + key, SEL + HOME, CC 123, OCT, LATCH, sustain, pitch bend (sweeps and jumps), channel pressure,
+SCALE and ROOT, program changes, GLIDE 0, TRANSPOSE on a held lead, every effect switch and FREEZE, MODEL, ENSEMBLE
+and delay TYPE steps, NRPN LEVEL, TONE and TUNE, and full-range jumps of 35 CCs; 264 GEN moves (WALK, SHIFT, RANDOM,
+PROG, each also at GLIDE 0, ARP and LOOP on five presets); and 250 knob jobs: the seven delay TYPEs each against all
+seven delay knobs, the reverb's three with and without FREEZE, the lead's four with a lead held.
+
+**Found and fixed** (`engine/drone.c`):
+
+1. **A stolen voice moved before it faded.** The ninth body or the fifth lead took the oldest voice's pitch, pan,
+   velocity, TONE, LEVEL and (ADDITIVE) harmonics at once, then faded it for 17 ms: a note still sounding jumped up
+   to an octave, and ADDITIVE's harmonics emptied in one tick. Now the old note fades out as it was and the new
+   one's sound is set once it is silent (`voice_strike` split into the strike and `voice_sound`, the rest in
+   `voice_tick`'s restart). Lead steal on FIRST LIGHT +14.9 -> -1.7, GAMELAN +11.9 -> +0.2, bodies on FIRST LIGHT
+   +9.1 -> -1.4, DESCENT +9.7 -> +0.1.
+2. **WAVETABLE raced through its sweep.** Its frames are different waves (three tables of sixteen) and SHAPE's 20 ms
+   slide crossed all 48 in a few ms on a jump, a zip (+8.5). Its position now glides over 80 ms (40 ms read +4.8,
+   150 ms +0.6) and is read sample by sample while it moves (a fast knob turn +4.5 -> -0.1 with it). The click
+   pass's one leftover, WAVETABLE POSITION fast +4.1, is gone with it.
+3. **BELL held its partials for a tick**, the fault ADDITIVE had before the click pass: TIMBRE falling from full moved
+   the top partial 33 dB in 28 steps (+7.5). Each partial now moves sample by sample (ADDITIVE's `amp_s` slots).
+4. **Noise COLOR's level and filter slid apart**: a jump to brown took its +20 dB lift before the filter darkened, a
+   burst of loud hiss (+6.4 on most presets). COLOR itself now slides and drives the low-pass, the high-pass and
+   the lift together, sample by sample while it moves.
+5. **A fast ATTACK started with a tick** (on Kyle's "Round them"): the level ran as a straight line between ticks,
+   and its corners at the start and the top of an attack clicked - a lead at 1 ms +14.1, at 1.8 ms +10.2, RAIN
+   CLOCK's arp +6.2. Every voice's level now runs through two 1 ms one-poles sample by sample (`LVL_K`, `lvl_u` and
+   `lvl_y`): +2.7, +3.6 and +3.1. One 0.5 ms pole took the 1 ms lead to +6.5 only. The cost: the fastest ATTACK
+   is at full in about 3.5 ms, and every note starts about 2 ms later. Because the level heard now trails the
+   envelope, a stolen voice switched to its new note while still too loud (+7.9 on a FIRST LIGHT steal): the
+   restart fade now goes to 54 dB down instead of 40 (17 ms -> 23 ms), and no steal reads over +3.9.
+
+**Tried and taken back**: ramping SYNC's ring, drive and level through a tick, and deriving the noise band's width
+from its sliding blend, each for a reading (+5.7 PULSAR NOISE to 0, +9.2 DEEP VOID BANDPASS to 0) that the third
+reading showed to be the new sound's own spikiness; neither change moved any number. And for the onsets: FM 4-OP's
+operator levels ramped through a tick, and FORMANT's level put ahead of its formant filters: within 0.4 either way.
+
+**Results**: events **64 clicks on 1.8 -> 9**; GEN moves **3 -> 0**; the click pass's knob sweep rerun (1,920 jobs,
+19,200 detents) 171 -> 169 detents over +10, the rest as in the click pass time warps under +3 on the crest test;
+STARLIGHT's SHAPE detents +10..+18 -> -23..+1.5; the eight jobs and five detents whose whitened reading rose (by 3 to
+17, the level's 2 ms lag moving the difference) read +0.5 or under on the crest test, as on 1.8. Clean throughout: GEN's moves at any GLIDE, LOOP, transposes, SEL + HOME, OCT, LATCH, bend, pressure,
+sustain, SCALE and ROOT (no change to sounding voices), program changes, the steps, the switches, FREEZE, NRPN edits,
+every delay TYPE against every delay knob (crest under +4: time warps), the reverb with FREEZE.
+
+**The nine left**, none over +5.2 on the crest test: CATHEDRAL's lead onset at ATTACK 5 and 30 (+5.2, +5.0) is the
+hall's early reflections of it (reverb off: +3.7, and under the render itself); RAIN CLOCK's second lead at ATTACK 0
+to 5 (+4.1, +4.2: FM 4-OP's operators coming in at their own rate); STARLIGHT at ATTACK 5 +3.3; and, under a 1 dB
+step's +4, noise COLOR to brown on RAIN CLOCK +3.7 (was +6.7) and ENS MIX to half on ASCENT +3.4. A bug of this
+pass caught on the way: BOWED's loop had its own `y`, which shadowed the level's, and BOWED SKY's render came out
++7.7 dB; renamed, `-Wshadow` shows nothing new.
+
+**Checks**: 840 pass; goldens re-recorded, every render within 0.03 dB of 1.8 in level and bands (STARLIGHT -0.01 dB
+RMS, the glide smoothing DRIFT's wander a little; the rest rounding and the 2 ms); sanitizer build clean on the 840
+and on a steal, WAVETABLE, BELL and COLOR script (the known `fastmath.h:58` only); no warnings. Device image 433,368 B
+(+2,816 over 1.8), build 7FE7BC62, RAM 79,484 B (each voice 32 B more), pool 335,128 B. CPU, eight voices for 61 s
+in the simulator built without vector code (`-fno-vectorize -fno-slp-vectorize`, nearer the unit's plain FPU),
+against 1.8: ADDITIVE +2 %, BOWED +2 %, FM 4-OP -1 %, WAVETABLE +6 % (its sweep read sample by sample), BELL +2 %.
+The ordinary host build had read ADDITIVE and WAVETABLE +17 %: its compiler loses vector code to the one-poles,
+which the unit has none of. So the rounding costs a point or two; gating it to moving levels was asked for on that
++17 % and is not done, since it would win back that point or two for a branch in every voice's inner loop. Manual (the ninth voice and the fifth lead fade out as they
+were, 25 ms; WAVETABLE's 80 ms; the rounded start, 3.5 ms at the shortest ATTACK) and BUDGET updated.
+
+**On the unit:** flashed 2026-11-13 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
+over the released 1.8 (fast install), build 7FE7BC62, dev identity `FM-1_4400`. `screen` reads FIRST LIGHT on HOME,
+VOICES 0, CPU 5 %; the log reads `no crash recorded`, BT advertising, `cpu 5% b0 ADDITIVE s0 x0`, `late 00000000`,
+`lock 00000002`. The unit now runs local bytes again, not the released 1.8.
+
+**Heard 2026-11-13.** Kyle played every test step: **"no clicks"**. The log afterwards (read only): every `cpu` line
+`x0`, no `u`, no `C`, `no crash recorded`, `late 00000000`, `lock 00000006`. The load, `bN` the bodies (leads and
+the arp's notes on top): **RAIN CLOCK (FM 4-OP) b8 66 %** and 58 %, b6 56 % (its arp, the DUB echo and the rain all
+running; the screen read 56 % at six voices), FIRST LIGHT b8 58 % and 45 %, b6 36-42 % (leads played over it in the
+steps), STARLIGHT b8 50 %, GAMELAN b8 48 %, ASCENT b8 43 %. **66 % is the highest this firmware has read** (1.8's
+test pass 47 %, the 11-03 full load 57 %), under the 70 % rule with no xrun; how much of it is the rounding the unit
+cannot say on its own; the scalar simulator puts the rounding at a point or two, FM 4-OP at -1 %, so the 66 % is
+RAIN CLOCK's own load: eight FM 4-OP bodies, up to four arp notes, the DUB echo and the rain.
+
+**To check on the unit** (recording into Live):
+
+1. **F1 FIRST LIGHT**, LATCH on: tap six unlit keys one at a time. The sixth makes a ninth voice and one fades to
+   make room: no tick at any of them.
+2. Tap **SEL** to play leads. Press and hold five keys one after another: the fifth replaces the first without a
+   tick. Tap SEL to go back to LATCH.
+3. **F8 STARLIGHT**: press **EDIT** (OSC) and spin **SHAPE** (knob 2) end to end fast: it sweeps, no zip.
+4. **F11 GAMELAN**: on HOME turn **TIMBRE** (knob 1) from full to nothing quickly: no click.
+5. Any preset with the noise on: **EDIT**, SELECT to **NOISE**, turn **COLOR** (knob 2) from full to brown fast: it
+   darkens with no burst.
+6. **F1 FIRST LIGHT**, leads (SEL): **ENV**, SELECT to **LEAD**, ATTACK (knob 1) all the way down. Play short notes:
+   they start at once, with no tick.
+7. **F10 RAIN CLOCK** (its GEN is the arp): press **PLAY** if it is not lit red. The arp's notes start clean.
+8. Listen back for each step, and read the unit's `cpu` lines afterwards (FIRST LIGHT and STARLIGHT at eight
+   voices are the ones the rounding costs most).
+
 ## Start here: 1.8 is released - the click pass, fm1-base main and the MASTER ramp (2026-11-13)
 
 Kyle: "can we fold all the new stuff in and then publish and update all the docs", the new stuff being the side
@@ -47,9 +195,16 @@ the hub from here**. `fmhub.json` unchanged.
 checked against the attestation's (`6e02c373a4bdfe91`), installed with `fm1_install.py <it> --yes` over the local
 7864699C (fast install). `done: the FM-1 runs FM-1_44010800`, so the package's new format (`c8e0599` resource entry,
 `b7b25a4` ciphered SPL head) installs from fm1_install. `screen` reads FIRST LIGHT on HOME, VOICES 0, CPU 6 %; the
-log reads `no crash recorded`, BT advertising, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`. **Not heard yet**, and
-the CPU under load is not read: the test steps in the next section are the listening pass. Still untested: an
+log reads `no crash recorded`, BT advertising, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`. Still untested: an
 install from the hub itself.
+
+**Heard 2026-11-13.** Kyle played every test step (the next section's seven, and MASTER on the speaker with USB
+connected), recording into Live: **"did not hear clicks or pops"**. The log afterwards (read only): `cpu 9% b4
+SUPERSAW s1`, `47% b4 SHEPARD s12` (ASCENT, the peak, with the delay, the ensemble and the reverb up from the
+steps), `38% b3 SHEPARD s12`, `40% b6 ADDITIVE s0`, `36% b3`, `35% b0` (FIRST LIGHT, the effects still ringing),
+every line `x0` with no `u` and no `C` field (no audio xrun, the USB recording never ran dry, the second core never
+gave up); `no crash recorded`; `gap 00000138 late 00000001` (TIMER5, the key scan held 312 us once, not audio);
+`lock 00000007` (2 on a clean boot; not looked into). The header showed no U count.
 
 **The site is published** as 1.8 on Kyle's "publish": committed 2255f98 first, then `deepfield/tools/publish_site.sh
 1.8` pushed gh-pages (8a317c8) and Pages built it. Checked live at deepfield.fog.baby: the home page links
