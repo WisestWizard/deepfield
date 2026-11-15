@@ -204,6 +204,9 @@ static uint32_t turn_age[NV];
 static int32_t turn_dir = 1, turn_net;   /* climbing or falling, and how many moves from home it stands */
 static uint8_t swell_up[NV];             /* SWELL: how many turns each voice has been up, so the longest up goes down */
 static uint32_t gen_mode_was = 0xFFu;    /* the mode the last tick ran: a change puts every voice's level back */
+static uint32_t gen_hold;                /* samples a mode turned to waits before it acts: MODE turned from WANDER to
+                                          * BASS passes nine modes on the way, and each one played - ARP struck a
+                                          * note at full velocity, STRUM strummed - before the knob had come to rest */
 /* MELODY: the top voice's line, as scale steps from its key and how many RATEs each note stands. A phrase is a
  * turn of the motif and four are a section: the theme, the theme turned home, a fresh phrase, the theme varied */
 static int8_t mel_o[8], mel_a[8];        /* the phrase playing, and the theme */
@@ -715,14 +718,16 @@ static void latch_hold(void)             /* SEL: latch what the keys hold, or le
 
 static void queue_put(uint32_t note, uint32_t vel, uint32_t on, uint32_t kind)   /* main loop -> render */
 {
-    uint32_t h = q_head, nx = (h + 1u) % NQ;
-    if (nx == q_tail)
-        return;
-    q[h].note = (uint8_t)note;
-    q[h].vel = (uint8_t)vel;
-    q[h].on = (uint8_t)on;
-    q[h].kind = (uint8_t)kind;
-    q_head = nx;
+    uint32_t lk = plat_lock(), h = q_head, nx = (h + 1u) % NQ;   /* locked: CC 123 puts from the render too, and
+                                          * landing inside the main loop's put it took the same slot */
+    if (nx != q_tail) {
+        q[h].note = (uint8_t)note;
+        q[h].vel = (uint8_t)vel;
+        q[h].on = (uint8_t)on;
+        q[h].kind = (uint8_t)kind;
+        q_head = nx;
+    }
+    plat_unlock(lk);
 }
 void dr_note(uint32_t note, uint32_t vel, int on) { queue_put(note, vel, on != 0, 0); }
 void dr_latch_hold(void) { queue_put(0, 0, 0, 1); }
@@ -1184,6 +1189,8 @@ void dr_panic(void)                      /* CC 120, and the platform before a ba
 }
 void dr_scale(uint32_t mask12, uint32_t root)
 {
+    uint32_t lk = plat_lock();           /* whole: CYCLE planning in a block rendered part way divided by a count
+                                          * of scale notes that was still zero */
     scale_mask = (mask12 & 0xFFFu) ? mask12 & 0xFFFu : 0xFFFu;
     scale_root = root % 12u;
     {                                    /* the scale's notes in order, and the two degrees a progression must not
@@ -1208,14 +1215,20 @@ void dr_scale(uint32_t mask12, uint32_t root)
                     sc_dom = 4u;
             }
     }
+    plat_unlock(lk);
 }
 static void orbit_reset(void);
 void dr_orbit(int on)
 {
-    uint32_t was = orbit_on;
+    uint32_t was = orbit_on, lk = plat_lock();   /* whole: the reset lets the runner's note go as the machine's
+                                          * (lead_machine), and a key landing in a block rendered meanwhile was taken
+                                          * for the machine's too, so its key up never found it */
     orbit_on = on != 0;
     orbit_left = orbit_per = 0;
     orbit_reset();
+    gen_mode_was = dr_orbit_mode();      /* PLAY starts whatever MODE says at once: only a turn while it runs waits */
+    gen_hold = 0;
+    plat_unlock(lk);
     if (clk_out && !clk_ext && rt_out && runner_mode(dr_orbit_mode()) && was != orbit_on) {   /* the runner's start and stop */
         rt_out(orbit_on ? 0xFAu : 0xFCu);
         clk_acc = 0.0f;
@@ -1298,8 +1311,11 @@ void dr_overload(void)                   /* the render ran over 90 % of its time
 /* ------------------------------------------------------------------ the scene --- */
 void dr_param(uint32_t id, uint32_t v)
 {
+    uint32_t lk;
     if (id >= P_COUNT)
         return;
+    lk = plat_lock();                    /* the main loop's writes land whole: a block rendered between the model
+                                          * and its crossfade's request restarted every body instead */
     dr_scene.p[id] = (uint8_t)(v & 127u);
     pcur[id] = pstart[id] = ptarget[id] = (float)(v & 127u) * (1.0f / 127.0f);
     if (id == P_ORB_PERIOD)
@@ -1309,10 +1325,13 @@ void dr_param(uint32_t id, uint32_t v)
         xf_kind = 1;
         xf_seq++;
     }
+    plat_unlock(lk);
 }
 void dr_load(const scene_t *s, float seconds, int chord)
 {
-    uint32_t i, model_was = dr_scene.p[P_MODEL];
+    uint32_t i, model_was = dr_scene.p[P_MODEL], lk = plat_lock();   /* whole, as dr_param: a block rendered
+                                          * part way saw the new model before its crossfade, or a morph still running
+                                          * applied to the new targets */
     dr_scene = *s;
     if (s->p[P_MODEL] != model_was) {    /* the bodies cross into it over the morph; at once: they restart */
         xf_req_s = seconds;
@@ -1332,6 +1351,7 @@ void dr_load(const scene_t *s, float seconds, int chord)
         for (i = 0; i < P_COUNT; i++)
             pcur[i] = ptarget[i];
     }
+    plat_unlock(lk);
     if (!chord)
         return;
     load_pending = 0;                    /* down while the copy is torn, up once it has landed */
@@ -4417,7 +4437,9 @@ void dr_clock(int port)
     }
     clk_last = clk_now;
     clk_ext = 1;
-    if (orbit_on && runner_mode(mode)) {
+    if (orbit_on && gen_hold) {
+        ;                                /* MODE still turning: nothing steps */
+    } else if (orbit_on && runner_mode(mode)) {
         if (clk_count % arp_div_clk() == 0u)
             arp_due = 1;
     } else if (orbit_on) {
@@ -4499,7 +4521,7 @@ void dr_loop_rec(int on)
 {                                        /* REC: the take starts empty and the notes played go in with their own
                                           * timing. Closing it leaves the phrase to loop; LOOP's own capture keeps
                                           * working as before, so playing more notes still starts a new phrase. */
-    uint32_t i;
+    uint32_t i, lk = plat_lock();
     if (on) {
         echo_n = echo_w = 0;
         for (i = 0; i < 8u; i++)
@@ -4531,6 +4553,7 @@ void dr_loop_rec(int on)
             dr_scene.p[P_ORB_PERIOD] = (uint8_t)q;
         }
     }
+    plat_unlock(lk);
 }
 int dr_loop_recording(void) { return (int)loop_rec; }
 int dr_loop_have(void) { return (int)loop_have; }
@@ -4549,12 +4572,16 @@ static void orbit_tick(uint32_t n)
         clk_src = -1;
     }
     stag_tick(n);                        /* before the switch is read: a cascade begun is finished */
-    if (!orbit_on)
-        return;
     mode = dr_orbit_mode();
+    if (!orbit_on) {                     /* stopped: PLAY starts whatever MODE says at once (orbit_reset) */
+        gen_mode_was = mode;
+        gen_hold = 0;
+        return;
+    }
     if (mode != gen_mode_was) {          /* MODE turned while GEN runs: what the last mode had in hand is put back -
                                           * a voice SWELL or TURN had down, a note STRUM or LOOP was holding */
         uint32_t i;
+        gen_hold = gen_mode_was == 0xFFu ? 0u : (uint32_t)(0.35f * FS);
         gen_mode_was = mode;
         arp_release();                   /* ARP's or BASS's note: its gate only runs down inside the runner */
         arp_gate_left = 0;
@@ -4571,6 +4598,10 @@ static void orbit_tick(uint32_t n)
         }
     }
     turn_tick();
+    if (gen_hold) {
+        gen_hold = gen_hold > n ? gen_hold - n : 0u;
+        return;
+    }
     if (mode == OM_ECHO || mode == OM_STRUM)
         echo_tick(n);
     if (runner_mode(mode)) {

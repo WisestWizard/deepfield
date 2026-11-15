@@ -449,7 +449,8 @@ PLAY pill fills up toward the next move and flashes when it comes. The pill is n
 WALK, PLAY SHIFT, PLAY RANDOM and so on.
 
 Pick the mode with KNOB 1 (MODE) on the GEN page: press ARP. KNOB 2 to KNOB 4 change with the mode,
-and PLAY's colour shows it:
+and PLAY's colour shows it. Turned while GEN runs, MODE lets go of what the mode before was doing at once, and the
+mode the knob comes to rest on starts a third of a second later, so the modes passed on the way play nothing:
 
 | Mode | PLAY | KNOB 2, 3, 4 | What happens |
 | --- | --- | --- | --- |

@@ -1,8 +1,85 @@
-# Handoff — DEEP FIELD, 2026-11-14
+# Handoff — DEEP FIELD, 2026-11-15
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the deep dive on the new modes (2026-11-14, flashed, not heard, not committed)
+## Start here: the settings debug pass (2026-11-15, flashed, not heard, committed, not pushed)
+
+**Next session, on Kyle's word** ("I'll have you update all docs etc and push on the next session"):
+
+1. Ask what he heard on 3F557FF3: MODE turned while GEN runs, ENSEMBLE on, DECAY and FREEZE, and whether any
+   noise on a setting change is left (which setting, which mode).
+2. Bring the rest of the docs up to date: `deepfield/docs/CHEATSHEET.md`, `deepfield/README.md`, the site
+   (`deepfield/tools/publish_site.sh`, version bump from 1.8), and the chord keys and five modes there if they are
+   not in yet. The manual has MODE's rest; nothing else of this pass changes what a player does.
+3. Push `master`. The hub listing (`fmhub.json`, a version tag) only if he wants a release.
+4. With the unit on USB, read the log for ` C<n>` (the second core given up) and `late`.
+
+Kyle: "do a full debug and stress test - with all of the new things I am still getting some unwanted noises when
+changing settings - before you start go out to the internet and read up on common fm1 issues". He did not say which
+settings. The unit was not on USB during the work, so nothing in the findings was read from it. Device build
+3F557FF3, image 448,808 B, **flashed 2026-11-15 on Kyle's "Flash it"** (fast install over D1282956; the installer
+finished and the unit restarted). Not heard. Its log after the restart: `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`,
+`lock 0000000D` (the longest the new locks held interrupts off: 13 us).
+
+**What other FM-1 firmwares' trackers report, and whether it applies here** (SLOOP, Clipper, Felucca, Melodee,
+ChoralRoot, X0X, fm1-base):
+
+- An effect or filter skipped while silent that starts or stops with a step (Clipper #44, Felucca 1.0.5.2's ROOM):
+  **applies**, the ensemble below.
+- A level moved in steps every 0.7 ms, heard as a tone under the sound (SLOOP 2.6): **applies**, the hall below.
+- A voice change that stalls the audio (SLOOP #83), a save to flash on a setting change: does not apply. Nothing is
+  written to flash until SAVE, and model changes cross-fade inside the render.
+- The second core misreading a job or running late (X0X #21, ChoralRoot #9, SLOOP 2.7.1): `cpu2_fallback` is on, and
+  the log line carries ` C<n>` when it has given up. One thing found by reading: when it gives up mid-block the
+  hall's output for that block is zeros (`drone.c`, after `plat_cpu2_wait`), a tick in the reverb. Left as found;
+  check the log for ` C` if Kyle hears a single tick with a heavy patch.
+- The mix cut to whole samples badly, a buzz under fading notes (SLOOP 2.8, Melodee #100): does not apply at this
+  layer, the render hands fm1-base 24-bit samples.
+- Fast knob turns lost or doubled (Felucca #126), a pop at power-on (ChoralRoot 0.33), TRRS headphones (SLOOP #68),
+  the newer RAM-only units (fm1-base #36): the platform's or the hardware's, nothing in this firmware.
+
+**Found and fixed, each measured before and after** (the score is the whitened A/B difference's peak in dB over the
+untouched render's own error; an instant 0.5 dB level step reads 10):
+
+- **MODE turned while GEN runs played every mode it passed.** From WANDER to BASS is nine modes on the way; ARP
+  struck a note at 127 that rang on through the rest (`tests/chords.txt`, the last block: 3 checks fail on ecc6a0b).
+  Now a turn lets go of what the last mode held at once and the mode the knob rests on starts 0.35 s later
+  (`gen_hold` in `orbit_tick`; PLAY still starts at once). A preset that changes MODE while GEN runs waits the same.
+- **ENSEMBLE switched on ticked** (the knob from OFF, its FX key, CC 60, a preset with it on): 30.7 to -3.1. Its
+  line was emptied while it rested, so the heads met the first sample written 3.5 ms after it came on. The line now
+  goes on taking the bus (`fx_pre`).
+- **The reverb's DECAY, and FREEZE, buzzed for 12 ms**: DECAY 0 to 64, 22.8 to -1.1; FREEZE on, 16.0 to -8.6. The
+  eight lines' gains slid in steps every 32 samples and they are the output's taps too. They slide every sample now
+  (`fx_hall`). Every preset's render moved by -68 dB against the signal, so the goldens were re-recorded.
+- **Six races between the main loop and the render**, found by reading (the simulator cannot interleave them, so
+  none is reproduced): a MODEL change seen before its cross-fade's request restarted every voice; a preset loaded
+  during a morph applied the old morph to the new targets for a block; `dr_scale` left the scale's note count at
+  zero for a moment and CYCLE divides by it; PLAY off let go of the runner's note as "the machine's" while a key
+  landing in that block was tagged the same, so its key up never found it; CC 123 put to the queue from the render
+  inside the main loop's own put; REC's take reset. `dr_param`, `dr_load`, `dr_scale`, `dr_orbit`, `queue_put` and
+  `dr_loop_rec` now run under `plat_lock`. All are windows of microseconds: real, rare, and not what Kyle hears
+  every time.
+
+**What was swept** (simulator, A/B renders): every one of the 63 values jumped and stepped in eight contexts (the
+preset's chord, a chord held on the chord keys, MELODY, TURN, SWELL, STRUM, BASS and ARP running) on FIRST LIGHT,
+VOID TIDE, STARLIGHT and GAMELAN, 19,800 changes; every list value to its neighbours; 107 switches, CCs, buttons,
+preset changes and MASTER moves and all 110 MODE pairs on two presets, 3,032 events; a fast spin and a slow turn
+of every knob in five contexts on two presets, 1,080 turns of up to 16 detents. Flagged cases were rendered again
+and checked for a burst above 5 kHz against the untouched render, which separates a click from a legitimate
+change of pitch or brightness (the first measure over-reads those). On the fixed build what is left: CC 120's
+cut (silence at once, by design); the noise layer's BANDPASS jumped from 127 to 64 in one step on VOID TIDE under
+SWELL (a CC or a preset, not a knob: 8 raw a detent reads 3.7); TYPE's crackle, which is clicks by nature.
+No GEN value retriggers or cuts a note when turned (23 values, 6 modes, 3 moments each).
+
+**Stress**: 160 random sequences of 140 actions, each followed six times in ten by one to six random setting
+changes (any value, the FX and FREEZE switches, knob and SELECT turns, page buttons, HOME held, MASTER, volume),
+no stuck note, no clipping; 60 more and both test scripts under the address and undefined-behaviour sanitizers,
+only the known `fastmath.h:58` shift. `tests/basic.txt` 842, `tests/chords.txt` 89 (9 new).
+
+**Not found**: anything that explains a noise on every setting change other than the four above. If it is still
+there after the flash, the setting and the mode it happens in are what is needed, or a recording over USB.
+
+## The deep dive on the new modes (2026-11-14, flashed and committed as ecc6a0b, not heard)
 
 Kyle: "do a deep dive and debug to see what you can find with the new voices and motion types". The unit was not
 on USB during the work, so nothing here was read from it.

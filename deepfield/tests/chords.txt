@@ -256,7 +256,7 @@ param 36 9
 param 24 30
 param 25 40
 midi B0 3A 7F
-wait 650
+wait 1000
 expect leads 4
 expect lead60 1
 midi B0 3A 00
@@ -295,6 +295,59 @@ expect lead72 1
 expect lead76 1
 expect lead79 1
 key 20 up
+midi B0 3A 00
+wait 3000
+expect leads 0
+
+# MODE turned while GEN runs passes every mode between: none of them plays on the way (ARP used to strike a note at
+# full velocity, STRUM to strum), the mode the knob rests on starts 0.35 s later, and PLAY still starts at once
+midi B0 7B 00
+wait 300
+midi B0 31 38
+midi B0 39 7F
+wait 50
+key 7 down 100
+wait 100
+key 7 up
+wait 200
+param 36 0
+param 24 100
+midi B0 3A 7F
+wait 2000
+expect leads 0
+param 36 1
+wait 80
+param 36 2
+wait 80
+param 36 3
+wait 80
+expect leads 0
+param 36 4
+wait 80
+param 36 5
+wait 80
+param 36 6
+wait 80
+param 36 7
+wait 80
+expect quiet 0
+param 36 8
+wait 80
+expect quiet 0
+param 36 9
+wait 80
+expect leads 0
+param 36 10
+wait 80
+expect leads 0
+wait 600
+expect leads >0
+midi B0 3A 00
+wait 400
+param 36 3
+midi B0 3A 7F
+wait 120
+expect leads >0
 midi B0 3A 00
 wait 3000
 expect leads 0

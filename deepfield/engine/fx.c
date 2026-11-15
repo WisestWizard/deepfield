@@ -457,15 +457,17 @@ void fx_pre(float *l, float *r, uint32_t n, const fx_params_t *p)   /* the ensem
         bus_pk = pk_ens;
     } else {
         float inc1 = 0.513f / FS, inc2 = 0.863f / FS;
-        for (i = 0; i < n; i++) {        /* at rest or off: its LFOs keep time, sample by sample, and the line empties
-                                          * (switched on again, it does not replay what passed when it went off) */
+        for (i = 0; i < n; i++) {        /* at rest or off: its LFOs keep time, sample by sample, and the line goes
+                                          * on taking the bus. Emptied instead, the heads met the first sample written
+                                          * 3.5 ms after the ensemble came on: the wet started mid-wave, a tick */
             ens_ph1 += inc1;
             if (ens_ph1 >= 1.0f)
                 ens_ph1 -= 1.0f;
             ens_ph2 += inc2;
             if (ens_ph2 >= 1.0f)
                 ens_ph2 -= 1.0f;
-            ens_l[ens_pos] = ens_r[ens_pos] = 0.0f;
+            ens_l[ens_pos] = l[i];
+            ens_r[ens_pos] = r[i];
             ens_pos = (ens_pos + 1u) & (ENS_LEN - 1u);
         }
         ens_wet_s = 0.0f;                /* the gains as the bus passes at rest */
@@ -848,7 +850,7 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
          * the loop and the send feeds the lot. All slide over about 12 ms (the send 10): the gains in the loop every
          * 32 samples, the rest every sample. Sliding once a block still moved them a third of the way at each
          * block's edge */
-        float g_t[8], dampc_t = dampc, out_t, shim_t = 0.0f, rsend = rv_send_s, shim_g_s = rv_shimg_s;
+        float g_t[8], dg[8] = {0}, ddamp = 0.0f, dampc_t = dampc, out_t, shim_t = 0.0f, rsend = rv_send_s, shim_g_s = rv_shimg_s;
         const float ks32 = 1.0f - fm_expf(-32.0f / (0.012f * FS)), ko = 1.0f - fm_expf(-1.0f / (0.012f * FS)),
                     kse = 1.0f - fm_expf(-1.0f / (0.010f * FS));
         if (rv_dampc_s < 0.0f)
@@ -868,11 +870,13 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
         out_g = rv_outg_s;
         for (i = 0; i < n; i++) {
             float xl, xr, al, ar, v[8], y[8], outl, outr, shl = 0.0f, shr = 0.0f;
-            if (!(i & 31u)) {
-                dampc += (dampc_t - dampc) * ks32;
+            if (!(i & 31u)) {            /* where the next 32 samples take them, a 32nd a sample: taken in one
+                                          * step the lines' gains moved the output (they are its taps too) every
+                                          * 0.7 ms, a buzz while DECAY turned */
+                ddamp = (dampc_t - dampc) * ks32 * (1.0f / 32.0f);
                 gm = 0.0f;
                 for (k = 0; k < 8u; k++) {
-                    g[k] += (g_t[k] - g[k]) * ks32;
+                    dg[k] = (g_t[k] - g[k]) * ks32 * (1.0f / 32.0f);
                     gm += g[k] * 0.125f;   /* out_g follows the gains actually in use, not the ones asked for */
                 }
                 out_t = 0.8f + 4.0f * (1.0f - gm);   /* the lines' sum: 6 dB under the dry at F1's SPACE, 3 under
@@ -886,6 +890,9 @@ void fx_hall(const float *l, const float *r, float *outl_b, float *outr_b, uint3
                         shim_t = 0.3f;
                 }
             }
+            dampc += ddamp;
+            for (k = 0; k < 8u; k++)
+                g[k] += dg[k];
             rsend += (send - rsend) * kse;
             out_g += (out_t - out_g) * ko;
             shim_g_s += (shim_t - shim_g_s) * ko;
