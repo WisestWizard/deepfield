@@ -48,7 +48,26 @@ enum {
     P_COUNT
 };
 enum { DT_PING, DT_TAPE, DT_DUB, DT_REVERSE, DT_RISE, DT_FALL, DT_GRAINS, DT_COUNT };   /* P_DLY_TYPE, the index */
-enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_COUNT };   /* P_ORB_MODE, the index */
+enum { OM_WANDER, OM_CHORD, OM_SCATTER, OM_ARP, OM_CYCLE, OM_ECHO, OM_MELODY, OM_TURN, OM_SWELL, OM_STRUM, OM_BASS,
+       OM_COUNT };                       /* P_ORB_MODE, the index. The five after ECHO share the others' values, so
+                                          * a scene's layout is as it was: MELODY reads RATE, CHANCE, RANGE and ROAM;
+                                          * TURN RATE, CHANCE, RANGE; SWELL RATE, CHANCE (as its depth) and SCATTER's
+                                          * count; STRUM RATE, CHANCE (as the time between its notes), the arp's
+                                          * order and octaves; BASS the arp's rate, gate, rhythm and step, CYCLE's
+                                          * choice (as its pattern) and ROAM */
+#define DR_BASS_PATS 8u                  /* BASS: P_ORB_PROG, the index */
+extern const char *const DR_BASS_NAME[DR_BASS_PATS];
+float dr_strum_s(uint32_t p);                       /* STRUM: the time from one note to the next, 8 ms .. 1 s */
+/* the keys as chord keys: a key plays the chord SCALE gives its note (CHROMATIC: MAJOR's), in a size and a voicing */
+enum { CH_OFF, CH_FIFTH, CH_TRIAD, CH_SUS, CH_SEVENTH, CH_NINTH, CH_COUNT };
+enum { CV_CLOSE, CV_OPEN, CV_WIDE, CV_COUNT };
+void dr_chord(uint32_t size, uint32_t voicing);
+uint32_t dr_chord_tones(uint32_t note, uint8_t *out);   /* the chord this key plays now, low to high: how many (5 at most) */
+void dr_chord_key(uint32_t note, uint32_t vel);     /* LATCH on (main loop, queued): the latched bodies are led to the
+                                                     * key's chord (the lowest to its root, the rest to their nearest
+                                                     * notes of it), bodies struck for notes nobody is left to take;
+                                                     * none latched: the chord struck; the chord already standing: let go */
+void dr_chord_lead(uint32_t note, uint32_t vel, int on);   /* LATCH off: the chord as leads while the key is held */
 enum { AO_UP, AO_DOWN, AO_UPDOWN, AO_RANDOM, AO_PLAYED, AO_COUNT };   /* P_ARP_ORDER, the index; P_ARP_OCT: 0..2 = 1..3 octaves */
 #define DR_RHYTHMS 8u                    /* P_ARP_RHYTHM, the index: 8/8 5/8 3/8 7/12 5/12 4/9 7/16 5/16 */
 #define DR_DIVS 9u                       /* P_ARP_DIV, the index: 1/16 1/16T 1/8 1/8T 1/8D 1/4 1/4T 1/2 1 BAR */
@@ -191,6 +210,7 @@ typedef struct {
     uint8_t pinned;
 } dr_body_t;
 uint32_t dr_bodies(void);                /* bodies sounding */
+float dr_body_gen(uint32_t i);           /* GEN's hand on body i's level (SWELL, TURN): 1 untouched, 0 silent */
 int dr_body(uint32_t i, dr_body_t *b);   /* body i (0..7): 0 = silent */
 int dr_lead_body(uint32_t i, dr_body_t *b);   /* lead i (0..DR_NL-1): 0 = silent; home its key's note, pitch with LIFT */
 int32_t dr_newest_note(void);            /* the newest body's note, -1 none */

@@ -357,8 +357,11 @@ wait 30
 expect page 18
 spin SELECT 1
 wait 30
-expect page 18
-spin SELECT -3
+expect page 19
+spin SELECT 1
+wait 30
+expect page 19
+spin SELECT -4
 wait 30
 expect page 15
 tap EDIT
@@ -1073,7 +1076,11 @@ expect_out USB 90 43 5C
 out
 wait 17000
 expect echorun 0
-spin K1 1
+# MODE stops at its last value, BASS
+spin K1 9
+wait 30
+expect orbitmode 10
+spin K1 -5
 wait 30
 expect orbitmode 5
 spin K3 40
@@ -2582,7 +2589,8 @@ wait 1000
 expect level60 1000
 tap ARP
 wait 30
-spin K1 20
+spin K1 -20
+spin K1 5
 wait 30
 expect orbitmode 5
 spin K1 -20

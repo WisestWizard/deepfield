@@ -4,7 +4,9 @@
  * scenes, each a store object; the factory scenes built at boot from an INIT scene and a list of changes each.
  * Slots 0..15 are F1..F16, 16..31 are U1..U16. A scene is the whole instrument: every parameter and the bodies
  * that were latched when it was saved. */
-#define SET_MAGIC 0x37464544u            /* "DEF7": the same record, USB LEVEL back at unity - the -6 dB it used to
+#define SET_MAGIC 0x38464544u            /* "DEF8": the same record, the byte that was once the VIEW now the chord
+                                          * keys' size and voicing; a DEF7 record comes up with them off */
+#define SET_MAGIC_V7 0x37464544u         /* "DEF7": the same record, USB LEVEL back at unity - the -6 dB it used to
                                           * default to was a trim nobody chose, and a unit that had ever saved its
                                           * settings kept it however the default moved */
 #define SET_MAGIC_V6 0x36464544u         /* "DEF6": the settings record (the MIX page's OUT trim in the byte DEF5
@@ -22,7 +24,7 @@ typedef struct {
     uint8_t scale;                       /* SC_* */
     uint8_t root;                        /* 0..11, C = 0 */
     uint8_t vel;                         /* 1: a key's velocity is its body's weight; 0: every body the same */
-    uint8_t view;                        /* once the VIEW (MOUTH, ORBITS...): only BEAMS now, kept 0 for the layout */
+    uint8_t chord;                       /* the chord keys: CH_* in the low four bits (0 off), CV_* above them */
     uint8_t morph;                       /* seconds a scene change takes, 0..30 */
     uint8_t midi_in;                     /* 0 omni, 1..16 */
     uint8_t midi_out;                    /* 1..16 */
@@ -89,6 +91,7 @@ static uint32_t scale_mask(uint32_t sc)
     }
 }
 static void scale_apply(void) { dr_scale(scale_mask(set.scale), set.root); }
+static void chord_apply(void) { dr_chord(set.chord & 15u, set.chord >> 4); }
 
 static const char *const MODEL_NAME[M_COUNT] = {"ADDITIVE", "SUPERSAW", "FM", "BOWED", "FORMANT", "BELL", "SHEPARD", "WAVEFOLD",
                                                 "WAVETABLE", "FM 4-OP", "SYNC", "TAPE", "RESONATOR"};
@@ -349,7 +352,7 @@ static void settings_defaults(void)
     set.root = 0;
     set.vel = 1;                         /* how hard a key is struck is its voice's weight: its level, how bright it
                                           * is and how fast it arrives. GLO, SELECT once turns it off */
-    set.view = 0;
+    set.chord = 0;
     set.morph = 4;
     set.midi_in = 0;
     set.midi_out = 1;
@@ -427,16 +430,20 @@ static void project_load(void)
         if (got == (int)sizeof set && set.magic == SET_MAGIC_V6) {   /* DEF6: USB LEVEL to unity once. It defaulted to
                                           * -6 dB, so a unit carrying that was never asked; turn it down again and
                                           * DEF7 keeps it. */
-            set.magic = SET_MAGIC;
+            set.magic = SET_MAGIC_V7;
             set.usb_level = 0;
+        }
+        if (got == (int)sizeof set && set.magic == SET_MAGIC_V7) {   /* DEF7: the chord keys off (the byte held a
+                                          * view an older build may have left there) */
+            set.magic = SET_MAGIC;
+            set.chord = 0;
         }
         if (got != (int)sizeof set || set.magic != SET_MAGIC
             || set.octave < -2 || set.octave > 2 || set.scene >= NSLOTS || set.scale >= SC_COUNT || set.root >= 12u
             || set.vel > 1u || set.morph > 30u || set.midi_in > 16u || set.midi_out < 1u
             || set.midi_out > 16u || set.latch > 1u || set.speaker > SPK_OFF || set.usb_level > 6u || set.clock_out > 1u
-            || set.out_level > 127u)
+            || set.out_level > 127u || (set.chord & 15u) >= CH_COUNT || set.chord >> 4 >= CV_COUNT)
             settings_defaults();
-        set.view = 0;                    /* a view saved by an older build: BEAMS, the one left */
     }
     {
         int got = plat_store_load(OBJ_SCENES, &bank, sizeof bank);

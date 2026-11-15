@@ -2,7 +2,9 @@
 
 Every key strikes a voice that swells in and stays, as hard as you struck it: how hard sets its level over 18 dB,
 how bright it is and how fast it arrives. Eight of them rise as beams over the keys on the screen, breathe,
-drift, and move to neighbouring notes by themselves when GEN runs, or under an arpeggio with Euclidean rhythms. Four
+drift, and move to neighbouring notes by themselves when GEN runs, or under an arpeggio with Euclidean rhythms, a
+generated melody, a strum or a bass line that follows the chord. With CHORD on, one key plays a chord in the scale
+and the chord sounding is led to it voice by voice. Four
 macros (TIMBRE, DRIFT, SUB, TREMOLO) shape every voice at once; a held key and a knob give one voice its own LEVEL, TONE,
 TUNE and a LOCK against GEN; SEL held moves the chord to the keys you touch. Thirteen models (ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, from Pocket Poly WAVETABLE,
 FM 4-OP and SYNC, then TAPE, a worn loop, and RESONATOR, a singing bowl), a noise layer under them or alone, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds

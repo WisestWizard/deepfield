@@ -73,7 +73,14 @@ typedef struct {
                                           * level, so the next reads its way there sample by sample (-1: not yet) */
     float lvl_u, lvl_y;                  /* its level as heard: the ticks' straight line through two one-poles
                                           * (LVL_K), the first's state and the second's */
-    uint8_t line_pad[24];                /* to a whole number of cache lines (voice_on_lines) */
+    float gg, gg_to, gg_k;               /* GEN's own hand on its level (SWELL, TURN): where it is, where it is
+                                          * going, and a tick's step of the way; 1 unless GEN has it down */
+    uint8_t flat;                        /* a lead the machine struck where it stands (BASS): TRANSPOSE not added */
+    uint8_t own;                         /* a lead a chord key struck: that key's slot + 1 (ch_ld), so the key lets
+                                          * go its own notes and not another chord's on the same pitch */
+    uint8_t mip_old;                     /* WAVETABLE: the table copy it is crossing over from (mip_fade) */
+    float mip_fade;                      /* WAVETABLE: how much of that copy is still heard, 1 falling to 0 */
+    uint8_t line_pad[4];                 /* to a whole number of cache lines (voice_on_lines) */
 } voice_t;
 typedef char voice_on_lines[(sizeof(voice_t) % 32u) == 0u ? 1 : -1];
 
@@ -186,6 +193,24 @@ static const int8_t PROG_R[DR_PROGS][DR_PROG_LEN] = {
     { 0, -2,  0,  3,  0, -4, -5,  0,  5,  6,  0, -6, -7, -8,  0},       /* BREATH: each trip further out */
     { 0, -3,  0,  2,  0, -5,  0,  3,  0}};                              /* STONES: it leans, and stands again */
 static uint8_t sc_deg[12], sc_n = 12u, sc_dim = 255u, sc_dom = 255u;
+/* TURN: the chord through its inversions. A voice does not glide the octave (a swoop): it fades, moves while it is
+ * silent and comes back, so the chord thins by one note and fills again a register away */
+static uint8_t turn_to[NV];              /* the note a body moves to once it is silent, 0 none */
+static uint32_t turn_age[NV];
+static int32_t turn_dir = 1, turn_net;   /* climbing or falling, and how many moves from home it stands */
+static uint8_t swell_up[NV];             /* SWELL: how many turns each voice has been up, so the longest up goes down */
+static uint32_t gen_mode_was = 0xFFu;    /* the mode the last tick ran: a change puts every voice's level back */
+/* MELODY: the top voice's line, as scale steps from its key and how many RATEs each note stands. A phrase is a
+ * turn of the motif and four are a section: the theme, the theme turned home, a fresh phrase, the theme varied */
+static int8_t mel_o[8], mel_a[8];        /* the phrase playing, and the theme */
+static uint8_t mel_u[8], mel_n, mel_i, mel_phr, mel_have;
+static int8_t mel_peak;                  /* the theme's peak, in scale steps from the key */
+static uint32_t mel_left;
+static uint32_t strum_flip, bass_i;      /* UP DOWN's stroke; BASS: the step of its pattern */
+static uint8_t lead_flat;                /* the lead being struck is the machine's, at its own pitch (BASS) */
+static int8_t echo_tune[8];              /* STRUM: each note's own TUNE */
+static uint32_t ch_size, ch_voicing;     /* the chord keys' size (CH_*) and voicing (CV_*) */
+static struct { uint8_t key, n; } ch_ld[4];   /* the chord keys held as leads (their notes: voice_t.own) */
 static uint32_t cyc_pos, cyc_left = 1u, cyc_top;   /* cyc_top: a locked voice is the ceiling, not the floor */
 static uint8_t cyc_recent[2], cyc_visit[12];   /* ROAM: the last two degrees, and how long each has had */
 static int32_t cyc_homeoff;              /* the generator's own home, in degrees from the struck chord */
@@ -300,6 +325,7 @@ float dr_hz(uint32_t p) { return 60.0f * fm_exp2f((float)(p & 127u) * (7.6f / 12
 static float glide_s(float p) { return 0.02f * fm_exp2f(p * 8.6f); }                                  /* 0.02 .. 7.8 s */
 float dr_attack_s(uint32_t p) { return 0.001f * fm_exp2f((float)(p & 127u) * (11.0f / 127.0f)); }    /* 1 ms .. 2 s */
 float dr_release_s(uint32_t p) { return 0.03f * fm_exp2f((float)(p & 127u) * (8.0f / 127.0f)); }     /* 30 ms .. 7.7 s */
+static int runner_mode(uint32_t m) { return m == OM_ARP || m == OM_BASS; }   /* the modes that step at TEMPO and DIV */
 static inline float vmass(const voice_t *v, const blk_t *b)   /* a voice's MASS: the force, pressure, a lead's boost,
                                                                * its own TONE, and how hard it was struck */
 {
@@ -308,25 +334,30 @@ static inline float vmass(const voice_t *v, const blk_t *b)   /* a voice's MASS:
 }
 
 /* ------------------------------------------------------------------ the scale --- */
-uint32_t dr_snap(uint32_t note)          /* the scale note at or below */
+static uint32_t snap_m(uint32_t mask, uint32_t note)   /* the note of this scale at or below */
 {
     uint32_t i;
     for (i = 0; i < 12u && note >= i; i++)
-        if (scale_mask >> ((note - i + 12u - scale_root) % 12u) & 1u)
+        if (mask >> ((note - i + 12u - scale_root) % 12u) & 1u)
             return note - i;
     return note;
 }
-static int32_t scale_step(int32_t note, int32_t steps)   /* steps scale degrees from note (itself a scale note) */
+static int32_t step_m(uint32_t mask, int32_t note, int32_t steps)   /* steps degrees of this scale from note */
 {
     int32_t d = steps > 0 ? 1 : -1, n = note;
     while (steps) {
         uint32_t guard = 12u;
         do
             n += d;
-        while (guard-- && !(scale_mask >> (((uint32_t)n + 1200u - scale_root) % 12u) & 1u));
+        while (guard-- && !(mask >> (((uint32_t)n + 1200u - scale_root) % 12u) & 1u));
         steps -= d;
     }
     return n;
+}
+uint32_t dr_snap(uint32_t note) { return snap_m(scale_mask, note); }   /* the scale note at or below */
+static int32_t scale_step(int32_t note, int32_t steps)   /* steps scale degrees from note (itself a scale note) */
+{
+    return step_m(scale_mask, note, steps);
 }
 
 /* ------------------------------------------------------------------ bodies --- */
@@ -346,6 +377,7 @@ static void voice_osc_init(voice_t *v, uint32_t model)
     v->dxfade = 1.0f;
     v->dxv = 0xFFFFFFFFu;
     v->mip_s = 0;
+    v->mip_fade = 0.0f;
     v->pos_s = -1.0f;
     v->dc2x = v->dc2y = 0.0f;
     for (i = 0; i < 6u; i++)
@@ -377,7 +409,7 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->latched = (uint8_t)latch;
     v->sustained = 0;
     v->midi = (uint8_t)midi;
-    v->lead = v->held = 0;
+    v->lead = v->held = v->flat = v->own = 0;
     v->ed_lvl = v->ed_tone = v->ed_tune = 0;
     v->pinned = 0;
     v->ed_gain = 1.0f;
@@ -406,6 +438,7 @@ static void voice_sound(voice_t *v, uint32_t note, float vel)   /* a strike's so
     v->mboost = 0.0f;
     v->tone_s = 0.0f;
     v->gain_s = 1.0f;
+    v->gg = v->gg_to = 1.0f;
     v->target = v->pitch = (float)note;
     v->vel = vel;
     v->vtouch = (float)v->vel_raw * (1.0f / 127.0f) - 1.0f;
@@ -497,6 +530,13 @@ static void note_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t latch,
             v = 0;
         }
         if (v) {                         /* held and struck again (MIDI): keep it, at the new velocity */
+            if (!midi && v->midi) {      /* a key on a note a MIDI keyboard is holding: the key's from now on, so
+                                          * the note on that went out for the key gets its note off when it is
+                                          * let go (it never did: a body MIDI struck sends none) */
+                v->midi = 0;
+                v->latched = (uint8_t)latch;
+                v->sustained = 0;
+            }
             v->vel = vel_gain(vel);
             v->vel_raw = (uint8_t)(vel ? vel & 127u : 1u);
             v->vtouch = (float)v->vel_raw * (1.0f / 127.0f) - 1.0f;
@@ -505,6 +545,9 @@ static void note_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t latch,
         v = find_body(note, 1);
         if (v) {                         /* fading: swell back from where it is, gliding home if ORBIT had moved it */
             v->fading = 0;
+            v->gg_to = 1.0f;             /* SWELL had it down when it was let go: struck again, it is heard */
+            if (v->gg_k < 0.01f)
+                v->gg_k = 0.01f;
             press[note] = 0;             /* a strike, so its pressure starts over (as voice_strike has it) */
             v->target = (float)note;
             v->latched = (uint8_t)latch;
@@ -521,8 +564,10 @@ static void note_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t latch,
         if (!v)
             return;
         if (v->on) {                     /* stolen: it restarts at once, a short fade first; its note off out */
-            if (note_out && v->midi == 0u && !v->fading)
-                note_out((uint32_t)(v->target + 0.5f), 0, 0);
+            if (note_out && v->midi == 0u && !v->fading)   /* stolen a moment ago and not yet struck (a chord
+                                          * of more notes than there are voices): it is known by the note it was
+                                          * about to sound, its target still the one before */
+                note_out(v->restart == 2u ? v->home : (uint32_t)(v->target + 0.5f), 0, 0);
             v->restart = 2;
         }
         voice_strike(v, note, vel, latch, midi);
@@ -588,6 +633,7 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         voice_strike(v, note, vel, 0, midi);
         v->lead = 1;
         v->held = 1;
+        v->flat = lead_flat;
         if (!lead_machine) {             /* a player's note: into LOOP's phrase, which wakes */
             uint32_t gap = echo_n ? (loop_clk - loop_t_last) >> 6 : 0u;
             echo_gap[echo_w] = (uint16_t)(gap > 60000u ? 60000u : gap);
@@ -604,8 +650,11 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         }
         if (!v->restart) {               /* stolen: voice_tick strikes it so once the old note is out */
             v->mboost = 0.15f;
-            v->target = v->pitch = (float)note + g_blk.lift;
+            v->target = v->pitch = (float)note + (v->flat ? 0.0f : g_blk.lift);
             v->walk = 0.0f;
+            if (v->flat)                 /* a bass note sits in the middle: placed by its pitch, as a voice is, the
+                                          * whole line stood hard left (10 dB down on the right, measured) */
+                v->pan = v->pan_live = 0.0f;
         }
     } else {
         v = find_lead(note);
@@ -680,8 +729,15 @@ static void body_set(voice_t *v, uint32_t what, int32_t x)   /* one of a body's 
     case BE_TUNE: v->ed_tune = (int8_t)(x < -50 ? -50 : x > 50 ? 50 : x); break;
     case BE_PIN:
         v->pinned = x != 0;
-        if (v->pinned)
+        if (v->pinned) {
             pend_to[v - vc] = stag_to[v - vc] = 0;   /* a move already planned for it is dropped */
+            if (v->gg_to != 1.0f) {      /* and SWELL's hand on it: a locked voice is out of GEN's reach, and one
+                                          * locked while it was down stayed down */
+                v->gg_to = 1.0f;
+                if (v->gg_k < 0.01f)
+                    v->gg_k = 0.01f;
+            }
+        }
         break;
     default: break;
     }
@@ -739,6 +795,266 @@ static void transpose_to(uint32_t note)  /* every latched body by the same step,
         }
     }
 }
+
+/* ------------------------------------------------------------------ the chord keys --- */
+/* A key plays the chord the scale gives its note: thirds stacked along the scale, so C MAJOR's D is D minor and
+ * its B the diminished one, and nothing can land outside the scale. A key off the scale plays the chord of the
+ * scale note below it. CHROMATIC has no chords of its own and takes MAJOR's on ROOT. A scale of five or six notes
+ * has no thirds to count, so its chords are stacked by distance: the next note at least a minor third up. */
+static int32_t ch_above(uint32_t mask, int32_t n, int32_t semis)   /* the scale's first note at least that far above */
+{
+    int32_t k = n;
+    do
+        k = step_m(mask, k, 1);
+    while (k - n < semis);
+    return k;
+}
+static uint32_t chord_build(uint32_t note, uint32_t size, uint32_t voicing, uint32_t four, uint8_t *out)
+{                                        /* four: no more than four notes (the leads): a ninth drops its fifth */
+    uint32_t mask = scale_mask == 0xFFFu ? 0xAB5u : scale_mask, bits = 0, n = 0, i, j, seven;
+    int32_t t[5], r, third, fifth, sev;
+    for (i = 0; i < 12u; i++)
+        bits += mask >> i & 1u;
+    seven = bits == 7u;
+    r = (int32_t)snap_m(mask, note & 127u);
+    third = seven ? step_m(mask, r, 2) : ch_above(mask, r, 3);
+    fifth = seven ? step_m(mask, r, 4) : ch_above(mask, third, 3);
+    sev = seven ? step_m(mask, r, 6) : ch_above(mask, fifth, 3);
+    t[n++] = r;
+    switch (size) {
+    case CH_FIFTH:
+        t[n++] = fifth;
+        t[n++] = r + 12;
+        break;
+    case CH_SUS: {                       /* the fourth, or the second where the scale's fourth is a tritone */
+        int32_t sus = seven ? step_m(mask, r, 3) : ch_above(mask, r, 5);
+        if (sus - r == 6 || sus >= fifth)
+            sus = seven ? step_m(mask, r, 1) : ch_above(mask, r, 2);
+        t[n++] = sus;
+        t[n++] = fifth;
+        break;
+    }
+    case CH_SEVENTH:
+        t[n++] = third;
+        t[n++] = fifth;
+        t[n++] = sev;
+        break;
+    case CH_NINTH:
+        t[n++] = third;
+        if (!four)
+            t[n++] = fifth;
+        t[n++] = sev;
+        t[n++] = seven ? step_m(mask, r, 8) : ch_above(mask, sev, 3);
+        break;
+    default:
+        t[n++] = third;
+        t[n++] = fifth;
+        break;
+    }
+    if (voicing != CV_CLOSE)             /* OPEN: the note above the root an octave up; WIDE: the root an octave down too */
+        t[1] += 12;
+    if (voicing == CV_WIDE)
+        t[0] -= 12;
+    for (i = 1; i < n; i++) {
+        int32_t x = t[i];
+        for (j = i; j && t[j - 1u] > x; j--)
+            t[j] = t[j - 1u];
+        t[j] = x;
+    }
+    while (t[n - 1u] > 108)
+        for (i = 0; i < n; i++)
+            t[i] -= 12;
+    while (t[0] < 12)
+        for (i = 0; i < n; i++)
+            t[i] += 12;
+    for (i = 0; i < n; i++)
+        out[i] = (uint8_t)t[i];
+    return n;
+}
+void dr_chord(uint32_t size, uint32_t voicing)
+{
+    ch_size = size < CH_COUNT ? size : CH_OFF;
+    ch_voicing = voicing < CV_COUNT ? voicing : CV_CLOSE;
+}
+uint32_t dr_chord_tones(uint32_t note, uint8_t *out)
+{
+    return ch_size ? chord_build(note, ch_size, ch_voicing, 0, out) : 0u;
+}
+static void gen_release(uint32_t i)      /* a body out of GEN's hands: the moves planned for it dropped, its level back */
+{
+    pend_to[i] = stag_to[i] = turn_to[i] = 0;
+    if (vc[i].gg_to != 1.0f) {
+        vc[i].gg_to = 1.0f;
+        if (vc[i].gg_k < 0.01f)
+            vc[i].gg_k = 0.01f;
+    }
+}
+/* LATCH on, a chord key. The chord sounding is led to the key's chord, not struck over it: the lowest voice takes
+ * the root at the key, so the key is the bass you hear; a voice already on a note of the new chord, inside its
+ * voicing, stays; each of the rest takes the nearest note of the chord nobody has yet, gliding there over GLIDE.
+ * Voices to spare double a note an octave up, notes to spare are struck. The chord's new place is its home, so
+ * GEN wanders from there. Nothing latched: the chord is struck as voiced. The key of the chord already standing
+ * lets it go, as a latched note's key does. */
+static void chord_key(uint32_t key, uint32_t vel)
+{
+    uint8_t t[5], add[5];
+    uint32_t n = chord_build(key, ch_size, ch_voicing, 0, t), i, j, k, m = 0, pc = 0, covered, nadd = 0, changed = 0;
+    voice_t *b[NV];
+    int32_t cur[NV], to[NV], lo, hi;
+    for (i = 0; i < n; i++)
+        pc |= 1u << (t[i] % 12u);
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned && !vc[i].xf_out) {
+            voice_t *v = &vc[i];
+            for (j = m++; j && b[j - 1u]->target > v->target; j--)
+                b[j] = b[j - 1u];
+            b[j] = v;
+        }
+    if (!m) {
+        for (i = 0; i < n; i++)
+            if (!find_body(t[i], 0)) {
+                note_event(t[i], vel, 1, 1, 0);
+                if (note_out)
+                    note_out(t[i], vel ? vel : 1u, 1);
+            }
+        return;
+    }
+    for (i = 0; i < m; i++) {
+        cur[i] = (int32_t)(b[i]->target + 0.5f);
+        to[i] = -1;
+    }
+    to[0] = t[0];
+    covered = 1u << (t[0] % 12u);
+    lo = t[0] + 1;
+    hi = t[n - 1u] + 2;
+    for (i = 1; i < m; i++)              /* the common notes hold */
+        if (cur[i] >= lo && cur[i] <= hi && (pc >> (uint32_t)(cur[i] % 12) & 1u)) {
+            for (j = 0; j < i && to[j] != cur[i]; j++)
+                ;
+            if (j == i) {
+                to[i] = cur[i];
+                covered |= 1u << (uint32_t)(cur[i] % 12);
+            }
+        }
+    for (i = 1; i < m; i++) {            /* the rest: the nearest note of the chord nobody has yet (down on a tie) */
+        uint32_t want = pc & ~covered;
+        int32_t d, best = -1, top = want ? hi : hi + 12;
+        if (to[i] >= 0)
+            continue;
+        if (!want)
+            want = pc;
+        for (d = 0; d <= 48 && best < 0; d++)
+            for (k = 0; k < 2u && best < 0; k++) {
+                int32_t c = k ? cur[i] + d : cur[i] - d;
+                if (c < lo || c > top || !(want >> (uint32_t)(c % 12) & 1u))
+                    continue;
+                for (j = 0; j < m && (j == i || to[j] != c); j++)
+                    ;
+                if (j == m)
+                    best = c;
+            }
+        to[i] = best;
+        if (best >= 0)
+            covered |= 1u << (uint32_t)(best % 12);
+    }
+    for (k = 0; k < n; k++) {            /* a note of the chord nobody took: a voice doubling another's gives its
+                                          * place up for it, else a body is struck there */
+        if (covered >> (t[k] % 12u) & 1u)
+            continue;
+        for (i = 1; i < m; i++) {
+            if (to[i] < 0)
+                continue;
+            for (j = 0; j < m && (j == i || to[j] < 0 || (to[j] - to[i]) % 12); j++)
+                ;
+            if (j < m)
+                break;
+        }
+        if (i < m)
+            to[i] = t[k];
+        else
+            add[nadd++] = t[k];
+        covered |= 1u << (t[k] % 12u);
+    }
+    for (i = 0; i < m; i++)
+        changed |= to[i] != cur[i];
+    if (!changed && !nadd) {
+        for (i = 0; i < m; i++)
+            let_go(b[i]);
+        return;
+    }
+    for (i = 0; i < m; i++)              /* every note off before any note on, as TRANSPOSE has it */
+        if (to[i] >= 0 && to[i] != cur[i] && note_out && b[i]->midi == 0u)
+            note_out((uint32_t)cur[i], 0, 0);
+    for (i = 0; i < m; i++) {
+        if (to[i] < 0) {                 /* nowhere left in the chord for it */
+            let_go(b[i]);
+            continue;
+        }
+        gen_release((uint32_t)(b[i] - vc));
+        b[i]->home = (uint8_t)to[i];
+        if (to[i] != cur[i]) {
+            if (note_out && b[i]->midi == 0u)
+                note_out((uint32_t)to[i], b[i]->vel_raw, 1);
+            b[i]->target = (float)to[i];
+        }
+    }
+    for (i = 0; i < nadd; i++)
+        if (!find_body(add[i], 0)) {
+            note_event(add[i], vel, 1, 1, 0);
+            if (note_out)
+                note_out(add[i], vel ? vel : 1u, 1);
+        }
+    turn_net = 0;
+    shift_debt = 0;
+}
+static void chord_lead_off(uint32_t slot)   /* a chord key's own leads let go: by the key that struck them, since
+                                             * two chords held at once share notes and steal each other's leads */
+{
+    uint32_t i;
+    for (i = NV; i < NV_ALL; i++) {
+        voice_t *v = &vc[i];
+        if (!v->on || !v->lead || v->own != slot + 1u)
+            continue;
+        v->own = 0;
+        if (!v->held)
+            continue;
+        v->held = 0;
+        v->sustained = 0;
+        loop_close(v->home, 0);
+        if (note_out && v->midi == 0u)
+            note_out(v->home, 0, 0);
+    }
+    ch_ld[slot].n = 0;
+}
+static void chord_lead(uint32_t key, uint32_t vel, uint32_t on)   /* LATCH off: the chord as leads while its key is held */
+{
+    uint8_t t[5];
+    uint32_t i, s, n;
+    for (s = 0; s < 4u; s++)
+        if (ch_ld[s].n && ch_ld[s].key == key)
+            chord_lead_off(s);
+    if (!on)
+        return;
+    for (s = 0; s < 3u && ch_ld[s].n; s++)
+        ;
+    if (ch_ld[s].n)                      /* a fifth chord key held: the fourth's notes end */
+        chord_lead_off(s);
+    n = chord_build(key, ch_size, ch_voicing, 1, t);
+    ch_ld[s].key = (uint8_t)key;
+    ch_ld[s].n = (uint8_t)n;
+    for (i = 0; i < n; i++) {
+        voice_t *ld;
+        lead_event(t[i], vel, 1, 0);     /* a lead it steals sends its note off first, then this note's on: the
+                                          * other way round, a note both chords hold went out on, then off */
+        if (note_out)
+            note_out(t[i], vel ? vel : 1u, 1);
+        ld = find_lead(t[i]);
+        if (ld)
+            ld->own = (uint8_t)(s + 1u);
+    }
+}
+void dr_chord_key(uint32_t note, uint32_t vel) { queue_put(note, vel, 1, 10); }
+void dr_chord_lead(uint32_t note, uint32_t vel, int on) { queue_put(note, vel, on != 0, 11); }
 static void all_off(void);
 static void orbit_now(void);
 static void drain_queue(void)
@@ -767,6 +1083,10 @@ static void drain_queue(void)
                 let_go(v);
         } else if (q[t].kind == 9u)
             orbit_now();
+        else if (q[t].kind == 10u)
+            chord_key(q[t].note, q[t].vel);
+        else if (q[t].kind == 11u)
+            chord_lead(q[t].note, q[t].vel, q[t].on);
         else
             note_event(q[t].note, q[t].vel, q[t].on, 0, 0);
         q_tail = (t + 1u) % NQ;
@@ -870,7 +1190,7 @@ void dr_orbit(int on)
     orbit_on = on != 0;
     orbit_left = orbit_per = 0;
     orbit_reset();
-    if (clk_out && !clk_ext && rt_out && dr_orbit_mode() == OM_ARP && was != orbit_on) {   /* the runner's start and stop */
+    if (clk_out && !clk_ext && rt_out && runner_mode(dr_orbit_mode()) && was != orbit_on) {   /* the runner's start and stop */
         rt_out(orbit_on ? 0xFAu : 0xFCu);
         clk_acc = 0.0f;
     }
@@ -879,7 +1199,7 @@ float dr_orbit_next(void)
 {
     if (!orbit_on)
         return 0.0f;
-    if (dr_orbit_mode() == OM_ARP) {     /* through the RHYTHM's pattern */
+    if (runner_mode(dr_orbit_mode())) {  /* through the RHYTHM's pattern */
         uint32_t len = RHY[arp_rhythm()][1];
         if (clk_ext)
             return (float)(clk_count % (len * arp_div_clk())) / (float)(len * arp_div_clk());
@@ -1052,6 +1372,11 @@ static void twin(voice_t *v, voice_t *t, uint32_t model)   /* body v hands over 
     stag_left[t - vc] = stag_left[v - vc];
     stag_age[t - vc] = stag_age[v - vc];
     stag_to[v - vc] = 0;
+    turn_to[t - vc] = turn_to[v - vc];   /* TURN's move of it too, and SWELL's count: the twin was copied with
+                                          * GEN's hand on its level, and left behind it would never come back up */
+    turn_age[t - vc] = turn_age[v - vc];
+    turn_to[v - vc] = 0;
+    swell_up[t - vc] = swell_up[v - vc];
     v->xf = -(v->env > 0.001f ? v->env : 0.001f) * k;   /* from where it is to silence in the same time */
     v->xf_out = 1;
     v->fading = 1;                       /* out of ORBIT's and the arp's reach; its note goes on in the twin */
@@ -1159,7 +1484,9 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
                 voice_sound(v, v->home, vel_gain(v->vel_raw));
                 if (v->lead) {
                     v->mboost = 0.15f;
-                    v->target = v->pitch = (float)v->home + b->lift;
+                    v->target = v->pitch = (float)v->home + (v->flat ? 0.0f : b->lift);
+                    if (v->flat)
+                        v->pan = v->pan_live = 0.0f;
                 }
             }
             voice_osc_init(v, b->model);
@@ -1248,8 +1575,12 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
         v->tide_ph -= 1.0f;
     v->spark = 0.5f + 0.5f * tsin(v->tide_ph);
     tide = v->lead ? 1.0f : 1.0f - b->tide_depth * v->spark;   /* a lead does not breathe */
+    if (v->gg != v->gg_to) {             /* GEN's fade of this voice, an exponential toward where it is sent */
+        float dg = v->gg_to - v->gg;
+        v->gg = fm_fabsf(dg) < 1e-4f ? v->gg_to : v->gg + dg * v->gg_k;
+    }
     lvl = v->env * (v->xf != 0.0f ? 2.0f - v->env : 1.0f)    /* a hand-over: equal power, the pair 0.5 dB up midway */
-        * v->vel * tide * (v->lead ? b->lead_level : v->gain_s * BED_GAIN * b->bed_level);
+        * v->vel * tide * (v->lead ? b->lead_level : v->gain_s * BED_GAIN * b->bed_level * v->gg);
     *lvl_out = lvl;
     v->breath_ph += b->breath_inc;
     if (v->breath_ph >= 1.0f)
@@ -1290,7 +1621,8 @@ static inline void voice_gains(voice_t *v, const blk_t *b, float sub_k, uint32_t
                                float *dgr, float *sub, float *dsub)
 {
     float im = 1.0f / (float)m, p = (v->pan_live * b->width + 1.0f) * 0.125f, tl = tsin(0.25f - p), tr = tsin(p),
-          ts = b->sub * sub_k;
+          ts = v->flat ? 0.0f : b->sub * sub_k;   /* BASS: no SUB an octave under a bass note (32 to 61 Hz, which
+                                                   * no speaker here moves and every one spends its travel on) */
     *gl = v->gl_s;
     *gr = v->gr_s;
     *sub = v->sub_s;
@@ -1855,11 +2187,22 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
                                           * of different harmonic content every tick, at the vibrato's rate. It
                                           * rises at the threshold and falls only six percent under it: a glide
                                           * still crosses, a wobble does not */
-    while (mip < DF_WT_MIPS - 1u && (float)(64u >> mip) * f > 19000.0f)
-        mip++;
-    while (mip > 0u && (float)(64u >> (mip - 1u)) * f < 19000.0f * 0.94f)
-        mip--;
-    v->mip_s = mip;
+    if (v->mip_fade <= 0.0f) {           /* (not while crossing between two: the next change waits its 9 ms) */
+        uint32_t was = mip;
+        while (mip < DF_WT_MIPS - 1u && (float)(64u >> mip) * f > 19000.0f)
+            mip++;
+        while (mip > 0u && (float)(64u >> (mip - 1u)) * f < 19000.0f * 0.94f)
+            mip--;
+        if (mip != was && v->pos_s >= 0.0f) {   /* a glide crossing a threshold: the two copies cross over 12 ticks.
+                                          * Switched between one tick and the next, the top half of the harmonics
+                                          * came or went in a sample - a tick at every octave of a far glide, which
+                                          * a chord key or SEL + key makes (STARLIGHT: +7.5 on the crest test, +3.0
+                                          * with one copy held throughout) */
+            v->mip_old = (uint8_t)was;
+            v->mip_fade = 1.0f;
+        }
+        v->mip_s = mip;
+    }
     v->hb[0] += b->hinc * (0.5f + 0.13f * (float)(v - vc));   /* its own wander through the frames */
     if (v->hb[0] >= 1.0f)
         v->hb[0] -= 1.0f;
@@ -1909,10 +2252,14 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
         v->pos_s = pos;
         v->pos2_s = pos2;
         v->wk_s = k;
-        if (fm_fabsf(pos - p0) > 1e-4f || fm_fabsf(pos2 - q0) > 1e-4f) {
+        if (fm_fabsf(pos - p0) > 1e-4f || fm_fabsf(pos2 - q0) > 1e-4f || v->mip_fade > 0.0f) {
             float im = 1.0f / (float)m, dp = (pos - p0) * im, dq = (pos2 - q0) * im, dk = (k - k0) * im,
                   pp = p0, qq = q0, kk = k0;
-            uint32_t ga = 0xFFFFFFFFu, gc = 0xFFFFFFFFu;
+            float xw = v->mip_fade, dxw = xw > 0.0f ? im * (1.0f / 12.0f) : 0.0f;   /* the copy it is leaving */
+            const int16_t *o0 = a0, *o1 = a1, *e0 = c0, *e1 = c1;
+            uint32_t ga = 0xFFFFFFFFu, gc = 0xFFFFFFFFu, mo = v->mip_old;
+            const uint32_t crossing = xw > 0.0f;   /* fixed for the tick, so the loop is compiled once for each
+                                                    * case and a voice not crossing pays nothing for it */
             for (i = 0; i < m; i++) {
                 float s;
                 uint32_t g;
@@ -1923,11 +2270,15 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
                     ga = g;
                     a0 = scan_frame(g, mip);
                     a1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mip);
+                    o0 = scan_frame(g, mo);
+                    o1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mo);
                 }
                 ph += inc;
                 if (ph >= (float)DF_WT_LEN)
                     ph -= (float)DF_WT_LEN;
                 s = scan_read(a0, a1, pp - (float)g, ph);
+                if (crossing)
+                    s += (scan_read(o0, o1, pp - (float)g, ph) - s) * xw;
                 if (air > 0.01f) {
                     qq += dq;
                     g = (uint32_t)qq;
@@ -1935,14 +2286,23 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
                         gc = g;
                         c0 = scan_frame(g, mip);
                         c1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mip);
+                        e0 = scan_frame(g, mo);
+                        e1 = scan_frame(g + 1u < SCAN_FR ? g + 1u : g, mo);
                     }
                     ph2 += inc2;
                     if (ph2 >= (float)DF_WT_LEN)
                         ph2 -= (float)DF_WT_LEN;
-                    s += scan_read(c0, c1, qq - (float)g, ph2) * air;
+                    {
+                        float s2 = scan_read(c0, c1, qq - (float)g, ph2);
+                        if (crossing)
+                            s2 += (scan_read(e0, e1, qq - (float)g, ph2) - s2) * xw;
+                        s += s2 * air;
+                    }
                 } else {
                     qq += dq;
                 }
+                if (crossing)
+                    xw -= dxw;
                 lp += (s * kk - lp) * c;
                 sph += sinc;
                 if (sph >= 1.0f)
@@ -1958,6 +2318,7 @@ static void render_scan(voice_t *v, const blk_t *b, float f, float lvl, uint32_t
                 ml[i] += s * gl;
                 mr[i] += s * gr;
             }
+            v->mip_fade = xw > 0.0f ? xw : 0.0f;
             m = 0;
         }
     }
@@ -2646,8 +3007,8 @@ static uint32_t rough_of(uint32_t pc)    /* how rough twelve pitch classes are t
         }
     return r;
 }
-int32_t dr_arp_note(void) { return orbit_on && dr_orbit_mode() == OM_ARP ? arp_held : -1; }
-int dr_arp_running(void) { return orbit_on && dr_orbit_mode() == OM_ARP && arp_n > 0u; }
+int32_t dr_arp_note(void) { return orbit_on && runner_mode(dr_orbit_mode()) ? arp_held : -1; }
+int dr_arp_running(void) { return orbit_on && runner_mode(dr_orbit_mode()) && arp_n > 0u; }
 uint32_t dr_arp_steps(void) { return arp_hits; }
 
 static int note_held_by_other(const voice_t *v, int32_t note)   /* another body sits (or is going) there */
@@ -3019,6 +3380,287 @@ static void cycle_plan(voice_t **cand, uint32_t cnt, int32_t d, uint32_t units, 
         if (to[i] != cur[i] && to[i] >= 12 && to[i] <= 108)
             pend_to[v[i] - vc] = (uint8_t)to[i];
 }
+static void body_move(uint32_t i, int32_t nxt);
+/* ------------------------------------------------------------------ MELODY, TURN, SWELL, STRUM --- */
+static void arp_gather(uint32_t played);
+float dr_strum_s(uint32_t p) { return 0.008f * fm_exp2f((float)(p & 127u) * (7.0f / 127.0f)); }   /* 8 ms .. 1 s */
+static int32_t mel_note(const voice_t *top, int32_t o, int32_t floor_n)
+{                                        /* the note o scale steps from the voice's key; -1 where it may not go: past
+                                          * an octave from its key, or down into the chord under it */
+    int32_t n = o ? scale_step((int32_t)dr_snap(top->home), o) : (int32_t)top->home;
+    return in_reach(top, n) && n > floor_n ? n : -1;
+}
+/* A phrase, note by note, each weighed against the one before: a step is likeliest, a third common, a leap rare
+ * and answered by a step back; a long note wants a note of the chord under it and shuns the one a semitone from
+ * a chord note; the last note is a chord note, and for the theme not home, so the phrase asks and its answer
+ * (melody_plan) comes home. And a phrase has a shape: it makes for a peak (above its key or below) three fifths
+ * of the way through and comes back to end halfway there. Without the shape every note was weighed toward the
+ * key and the line was a trill of the two notes either side of it. */
+static void mel_gen(const voice_t *top, int32_t floor_n, uint32_t pc, int32_t reach, int8_t *out, int32_t peak)
+{
+    int32_t prev = 0, last = 0, o, pk = (int32_t)(mel_n * 3u / 5u);
+    uint32_t i;
+    for (i = 0; i < mel_n; i++) {
+        uint32_t w[17], tot = 0, r, longn = mel_u[i] >= 2u, end = i + 1u == mel_n;
+        int32_t g = (int32_t)i <= pk ? peak * ((int32_t)i + 1) / (pk + 1)
+                                     : peak * ((int32_t)mel_n - (int32_t)i) / (2 * ((int32_t)mel_n - 1 - pk));
+        for (o = -reach; o <= reach; o++) {
+            int32_t n = mel_note(top, o, floor_n), d = o - prev, a = d < 0 ? -d : d, og = o > g ? o - g : g - o;
+            uint32_t x, in;
+            w[o + reach] = 0;
+            if (n < 0)
+                continue;
+            x = a == 0 ? 12u : a == 1 ? 100u : a == 2 ? 55u : a == 3 ? 22u : a == 4 ? 10u : 3u;
+            if ((last >= 3 && d < 0) || (last <= -3 && d > 0))
+                x *= 3u;
+            if ((last >= 3 && d > 0) || (last <= -3 && d < 0))
+                x /= 4u;
+            in = pc >> (uint32_t)(n % 12) & 1u;
+            if (end)
+                x = in ? x * 8u : x / 8u;
+            else if (longn)
+                x = in ? x * 5u : x / 2u;
+            if (longn && !in && ((pc >> (uint32_t)((n + 1) % 12) | pc >> (uint32_t)((n + 11) % 12)) & 1u))
+                x /= 6u;
+            if (end && o == 0)
+                x /= 4u;
+            x = x * 4u / (uint32_t)(1 + og);
+            w[o + reach] = x ? x : 1u;
+            tot += w[o + reach];
+        }
+        out[i] = (int8_t)prev;
+        if (!tot)
+            continue;
+        orbit_rng = orbit_rng * 1664525u + 1013904223u;
+        r = (orbit_rng >> 8) % tot;
+        for (o = -reach; o < reach && r >= w[o + reach]; o++)
+            r -= w[o + reach];
+        out[i] = (int8_t)o;
+        last = o - prev;
+        prev = o;
+    }
+}
+static void melody_plan(uint32_t chance)
+{                                        /* the highest voice GEN may move sings; the rest hold under it */
+    static const uint8_t MEL_U[4][8] = {{2, 1, 1, 2, 2, 4}, {1, 1, 2, 1, 1, 2, 4}, {3, 1, 2, 2, 4}, {2, 2, 1, 1, 1, 1, 4}};
+    static const uint8_t MEL_N[4] = {6u, 7u, 5u, 7u};
+    uint32_t i, pc, forced = orbit_force, roam = dr_scene.p[P_ORB_ROAM] * 100u / 127u;
+    voice_t *top = 0;
+    int32_t floor_n = 11, o, nxt, reach = 2 * (1 + (int32_t)(dr_scene.p[P_ORB_RANGE] * 4u / 128u)), peak;
+    orbit_force = 0;
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned
+            && (!top || vc[i].target > top->target))
+            top = &vc[i];
+    if (!top)
+        return;
+    pc = 1u << (top->home % 12u);
+    for (i = 0; i < NV; i++)
+        if (&vc[i] != top && vc[i].on && !vc[i].fading) {
+            int32_t at = (int32_t)(vc[i].target + 0.5f);
+            pc |= 1u << (uint32_t)(at % 12);
+            if (at <= (int32_t)top->home && at > floor_n)
+                floor_n = at;
+        }
+    if (mel_left > 1u && !forced) {      /* this note stands longer than one RATE */
+        mel_left--;
+        return;
+    }
+    if (!mel_n || mel_i >= mel_n) {      /* the next phrase */
+        uint32_t ph = mel_phr++ & 3u, fresh = !mel_have;
+        int8_t tmp[8];
+        if (ph == 0u && mel_have && roam > 50u) {   /* past half, ROAM writes a new theme now and then */
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;
+            fresh = (orbit_rng >> 8) % 100u < roam - 50u;
+        }
+        if (fresh) {
+            uint32_t tp;
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;
+            tp = (orbit_rng >> 10) & 3u;
+            mel_n = MEL_N[tp];
+            for (i = 0; i < mel_n; i++)
+                mel_u[i] = MEL_U[tp][i];
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;   /* the theme's peak: from half its reach to all of
+                                          * it, above the key three times in four (the chord is under it) */
+            peak = reach / 2 + (int32_t)((orbit_rng >> 9) % (uint32_t)(reach / 2 + 1));
+            if (((orbit_rng >> 20) & 3u) == 0u && mel_note(top, -2, floor_n) >= 0)
+                peak = -peak;
+            mel_peak = (int8_t)peak;
+            mel_gen(top, floor_n, pc, reach, mel_a, peak);
+            mel_have = 1;
+        }
+        for (i = 0; i < mel_n; i++)
+            mel_o[i] = mel_a[i];
+        peak = mel_peak;
+        if (ph == 2u && roam)            /* a fresh phrase, to the far end of the range, the other way if it can */
+            mel_gen(top, floor_n, pc, reach, mel_o, peak > 0 && mel_note(top, -2, floor_n) >= 0 ? -reach : reach);
+        if (ph == 3u && roam) {          /* the theme with some of its notes redrawn */
+            mel_gen(top, floor_n, pc, reach, tmp, peak);
+            for (i = 0; i + 1u < mel_n; i++) {
+                orbit_rng = orbit_rng * 1664525u + 1013904223u;
+                if ((orbit_rng >> 8) % 100u < roam / 2u)
+                    mel_o[i] = tmp[i];
+            }
+        }
+        if (ph & 1u)                     /* the answer: it ends at home */
+            mel_o[mel_n - 1u] = 0;
+        mel_i = 0;
+    }
+    o = mel_o[mel_i];
+    mel_left = mel_u[mel_i];
+    mel_i++;
+    if (!forced) {                       /* CHANCE: a note not taken is the one before it held on */
+        orbit_rng = orbit_rng * 1664525u + 1013904223u;
+        if ((orbit_rng >> 8) % 100u >= chance)
+            return;
+    }
+    nxt = mel_note(top, o, floor_n);
+    if (nxt < 0)
+        nxt = (int32_t)top->home;
+    if (nxt != body_at(top) && !note_held_by_other(top, nxt) && nxt >= 12 && nxt <= 108)
+        pend_to[top - vc] = (uint8_t)nxt;
+}
+static void turn_plan(voice_t **cand, uint32_t cnt, uint32_t range)
+{                                        /* the next inversion: climbing, the lowest voice goes up an octave; falling,
+                                          * the highest comes down one. No voice goes past an octave from its key, and
+                                          * RANGE is how far the chord travels before it turns: a quarter of its
+                                          * voices' worth of moves a step, the whole chord an octave out at 4 */
+    uint32_t limit = (cnt * range + 3u) / 4u, tries, i;
+    if (turn_net >= (int32_t)limit)
+        turn_dir = -1;
+    else if (turn_net <= -(int32_t)limit)
+        turn_dir = 1;
+    for (tries = 0; tries < 2u; tries++) {
+        voice_t *pick = 0;
+        int32_t pat = 0;
+        for (i = 0; i < cnt; i++) {
+            voice_t *v = cand[i];
+            int32_t at = body_at(v), to = at + 12 * turn_dir;
+            if (turn_to[v - vc] || !in_reach(v, to) || note_held_by_other(v, to))
+                continue;
+            if (!pick || (turn_dir > 0 ? at < pat : at > pat)) {
+                pick = v;
+                pat = at;
+            }
+        }
+        if (pick) {
+            pend_to[pick - vc] = (uint8_t)(pat + 12 * turn_dir);
+            return;
+        }
+        turn_dir = -turn_dir;
+    }
+}
+static void turn_tick(void)              /* a voice TURN has faded moves once it is silent, and comes back */
+{
+    uint32_t i;
+    for (i = 0; i < NV; i++) {
+        voice_t *v = &vc[i];
+        if (!turn_to[i])
+            continue;
+        if (!v->on || v->fading || !v->latched || v->restart || v->pinned || v->age != turn_age[i]) {
+            turn_to[i] = 0;
+            v->gg_to = 1.0f;
+        } else if (v->gg < 0.003f) {
+            body_move(i, (int32_t)turn_to[i]);
+            v->pitch = v->target;
+            turn_to[i] = 0;
+            v->gg_to = 1.0f;
+        }
+    }
+}
+static void swell_plan(void)
+{                                        /* some voices down, the rest up, and a different few each turn: the ones
+                                          * that have been up longest go down, so every voice has its turn and the
+                                          * chord is never the same mix twice running. Never all of them, and a
+                                          * chord of one is left alone. Each fade takes about a third of RATE */
+    uint32_t i, k, cnt = 0, want, score[NV], down = 0;
+    voice_t *cand[NV];
+    float depth = (float)dr_scene.p[P_ORB_CHANCE] * (1.0f / 127.0f);
+    float kk = fm_clampf(10.0f * (float)CTL / (float)(orbit_per ? orbit_per : 1u), 0.0004f, 0.03f);
+    orbit_force = 0;
+    for (i = 0; i < NV; i++)
+        if (vc[i].on && !vc[i].fading && vc[i].latched && !vc[i].restart && !vc[i].pinned)
+            cand[cnt++] = &vc[i];
+        else if (vc[i].gg_to != 1.0f) {  /* out of its reach since it went down (locked, let go and held again
+                                          * from MIDI): back up, or nothing would ever bring it back */
+            vc[i].gg_to = 1.0f;
+            vc[i].gg_k = kk;
+        }
+    if (cnt < 2u) {
+        if (cnt) {
+            cand[0]->gg_to = 1.0f;
+            cand[0]->gg_k = kk;
+        }
+        return;
+    }
+    want = 1u + dr_scene.p[P_ORB_BODIES] * (cnt - 2u) / 127u;
+    for (i = 0; i < cnt; i++) {
+        orbit_rng = orbit_rng * 1664525u + 1013904223u;
+        score[i] = 1u + swell_up[cand[i] - vc] * 8u + (orbit_rng >> 12 & 7u);
+    }
+    for (k = 0; k < want; k++) {
+        uint32_t best = 0;
+        for (i = 1; i < cnt; i++)
+            if (score[i] > score[best])
+                best = i;
+        score[best] = 0;
+        down |= 1u << best;
+    }
+    for (i = 0; i < cnt; i++) {
+        uint32_t idx = (uint32_t)(cand[i] - vc);
+        if (down >> i & 1u) {
+            cand[i]->gg_to = 1.0f - depth;
+            swell_up[idx] = 0;
+        } else {
+            cand[i]->gg_to = 1.0f;
+            if (swell_up[idx] < 30u)
+                swell_up[idx]++;
+        }
+        cand[i]->gg_k = kk;
+    }
+}
+static void strum_plan(void)
+{                                        /* the chord struck across as leads, a note a SPREAD apart: a strum at a few
+                                          * ms, a harp at a few hundred. The voices drone on under it. The notes are
+                                          * the arp's (the latched voices, remembered once they are let go, over
+                                          * OCTAVES), in its PATTERN; they ring together to the end of the sweep and
+                                          * a sixth of RATE more, then fade at the LEAD page's RELEASE */
+    uint32_t order = dr_scene.p[P_ARP_ORDER] < AO_COUNT ? dr_scene.p[P_ARP_ORDER] : 0u, j, n, gap, idx[8], down;
+    orbit_force = 0;
+    echo_hush();
+    for (j = 0; j < 8u; j++)
+        echo_due[j] = echo_gate[j] = 0;
+    arp_gather(order == AO_PLAYED);
+    n = arp_n < 8u ? arp_n : 8u;
+    if (!n)
+        return;
+    gap = (uint32_t)(dr_strum_s(dr_scene.p[P_ORB_CHANCE]) * FS);
+    if (gap * n > orbit_per)
+        gap = orbit_per / n;
+    if (!gap)
+        gap = 1u;
+    for (j = 0; j < n; j++)
+        idx[j] = j;
+    if (order == AO_RANDOM)
+        for (j = n - 1u; j; j--) {
+            uint32_t r, x;
+            orbit_rng = orbit_rng * 1664525u + 1013904223u;
+            r = (orbit_rng >> 10) % (j + 1u);
+            x = idx[j];
+            idx[j] = idx[r];
+            idx[r] = x;
+        }
+    down = order == AO_DOWN || (order == AO_UPDOWN && (strum_flip++ & 1u));
+    for (j = 0; j < n; j++) {
+        uint32_t k = down ? idx[n - 1u - j] : idx[j], hold = (n - 1u - j) * gap + orbit_per / 6u;
+        echo_due[j] = 1u + j * gap;
+        echo_note[j] = (uint8_t)arp_notes[k];
+        echo_tune[j] = arp_tune[k];
+        echo_nvel[j] = (uint8_t)(j ? 104u - 3u * j : down ? 116u : 127u);   /* the first string struck hardest, a
+                                                                             * down stroke a little under an up */
+        echo_gate[j] = hold < (uint32_t)(FS * 0.06f) ? (uint32_t)(FS * 0.06f) : hold;
+    }
+}
 static void orbit_plan(void)             /* the countdown starts: choose the moves */
 {
     uint32_t i, cnt = 0, mode = dr_orbit_mode(), chance = dr_scene.p[P_ORB_CHANCE] * 100u / 127u;
@@ -3093,6 +3735,18 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
                                           * after a few minutes with nothing on the panel able to hold it:
                                           * measured, velocity 56 down to 10 over four minutes */
     }
+    if (mode == OM_STRUM) {
+        strum_plan();
+        return;
+    }
+    if (mode == OM_SWELL) {
+        swell_plan();
+        return;
+    }
+    if (mode == OM_MELODY) {
+        melody_plan(chance);
+        return;
+    }
     if (mode == OM_CHORD && shift_pass)  /* SHIFT landed on a chord rougher than the one struck: it moves on at
                                           * the next chance, whatever CHANCE says */
         orbit_force = 1;
@@ -3105,6 +3759,10 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
             cand[cnt++] = &vc[i];
     if (!cnt)
         return;
+    if (mode == OM_TURN) {
+        turn_plan(cand, cnt, range);
+        return;
+    }
     if (mode == OM_CYCLE) {              /* the progression: one step a period, a step standing for as many periods
                                           * as the table gives it, the chord led to each step's target */
         uint32_t prog = dr_scene.p[P_ORB_PROG] < DR_PROGS ? dr_scene.p[P_ORB_PROG] : 0u, units;
@@ -3323,6 +3981,16 @@ static void orbit_apply(void)            /* the countdown ends: the planned move
         pend_to[i] = 0;
         if (!v->on || v->fading || !v->latched || v->restart || v->pinned)
             continue;
+        if (dr_orbit_mode() == OM_TURN) {   /* it fades first, a fifth of RATE (0.12 to 2.5 s), and turn_tick
+                                          * moves it once it is silent */
+            float secs = fm_clampf(orbit_period_s() * 0.2f, 0.12f, 2.5f);
+            turn_net += nxt > (int32_t)(v->target + 0.5f) ? 1 : -1;
+            turn_to[i] = (uint8_t)nxt;
+            turn_age[i] = v->age;
+            v->gg_to = 0.0f;
+            v->gg_k = 5.8f * (float)CTL / (secs * FS);
+            continue;
+        }
         if (!shift) {
             stag_to[i] = 0;              /* a move it was still waiting to make is overtaken by this one */
             body_move(i, nxt);
@@ -3419,8 +4087,74 @@ static void arp_release(void)
         arp_held = -1;
     }
 }
+/* BASS: a line under the chord, struck as leads at their own pitch (TRANSPOSE left out), at TEMPO and DIV with
+ * GATE and EUCLID as the arp has them. The root is the chord's lowest note, an octave or more under it and
+ * below C3; the pattern names each step as the root, its octave, the chord's fifth, its third, the note under
+ * the root (the seventh, where the chord has one) or the scale note that leads back into the root. A chord
+ * without a third or a fifth takes the scale's. The chord changing, the line follows at its next step. */
+enum { BT_R, BT_O, BT_F, BT_T, BT_S, BT_A };
+const char *const DR_BASS_NAME[DR_BASS_PATS] = {"ROOT", "OCTAVE", "FIFTHS", "WALKING", "CLIMB", "PULSE", "DROP", "FREE"};
+static const uint8_t BASS_PAT[DR_BASS_PATS][8] = {
+    {BT_R, BT_R, BT_R, BT_R, BT_R, BT_R, BT_R, BT_R},
+    {BT_R, BT_O, BT_R, BT_O, BT_R, BT_O, BT_R, BT_O},
+    {BT_R, BT_F, BT_R, BT_F, BT_R, BT_F, BT_O, BT_F},
+    {BT_R, BT_T, BT_F, BT_T, BT_O, BT_F, BT_T, BT_A},
+    {BT_R, BT_T, BT_F, BT_O, BT_O, BT_F, BT_T, BT_R},
+    {BT_R, BT_R, BT_O, BT_R, BT_R, BT_F, BT_R, BT_A},
+    {BT_O, BT_R, BT_F, BT_R, BT_O, BT_R, BT_S, BT_R},
+    {BT_R, BT_R, BT_R, BT_R, BT_R, BT_R, BT_R, BT_R}};   /* FREE: only its first step is written */
+static uint32_t bass_pick(void)
+{
+    static const uint8_t ANY[8] = {BT_R, BT_R, BT_O, BT_F, BT_F, BT_T, BT_T, BT_S};
+    static const uint8_t LAST[4] = {BT_A, BT_A, BT_F, BT_O};   /* FREE's last step: mostly the note that leads back in */
+    uint32_t i, pc = 0, pat = dr_scene.p[P_ORB_PROG] < DR_BASS_PATS ? dr_scene.p[P_ORB_PROG] : 0u;
+    uint32_t roam = dr_scene.p[P_ORB_ROAM] * 100u / 127u, step = bass_i++ & 7u, tok = BASS_PAT[pat][step], k;
+    int32_t root = (int32_t)arp_notes[0] - 12, n;
+    for (i = 0; i < arp_n; i++)
+        pc |= 1u << (arp_notes[i] % 12u);
+    while (root >= 48)
+        root -= 12;
+    while (root < 24)
+        root += 12;
+#define IN_CH(x) (pc >> (uint32_t)((root + (x)) % 12) & 1u)
+#define IN_SC(x) (scale_mask >> (uint32_t)((root + (x) + 120 - (int32_t)scale_root) % 12) & 1u)
+    orbit_rng = orbit_rng * 1664525u + 1013904223u;
+    if (step && (pat == DR_BASS_PATS - 1u || (orbit_rng >> 8) % 100u < roam / 2u))   /* ROAM: a step redrawn */
+        tok = ANY[(orbit_rng >> 20) & 7u];
+    orbit_rng = orbit_rng * 1664525u + 1013904223u;
+    if (step == 7u && (orbit_rng >> 8) % 100u < roam)   /* and the bar's last step leading back in */
+        tok = BT_A;
+    if (step == 7u && pat == DR_BASS_PATS - 1u)
+        tok = LAST[(orbit_rng >> 20) & 3u];
+    switch (tok) {
+    case BT_O: n = root + 12; break;
+    case BT_F:
+        k = IN_CH(7) ? 7u : IN_CH(6) ? 6u : IN_CH(8) ? 8u : IN_SC(7) ? 7u : IN_SC(6) ? 6u : 7u;
+        n = root + (int32_t)k;
+        break;
+    case BT_T:
+        k = IN_CH(4) ? 4u : IN_CH(3) ? 3u : IN_SC(4) ? 4u : IN_SC(3) ? 3u : IN_CH(5) ? 5u : IN_CH(2) ? 2u : 7u;
+        n = root + (int32_t)k;
+        break;
+    case BT_S:
+        k = IN_CH(10) ? 10u : IN_CH(11) ? 11u : IN_CH(9) ? 9u : IN_SC(10) ? 10u : IN_SC(9) ? 9u : 7u;
+        n = root + (int32_t)k - 12;
+        break;
+    case BT_A:
+        k = IN_SC(11) ? 1u : IN_SC(10) ? 2u : IN_SC(9) ? 3u : 2u;
+        n = root - (int32_t)k;
+        break;
+    default: n = root; break;
+    }
+#undef IN_CH
+#undef IN_SC
+    if (n < 21)
+        n += 12;
+    return (uint32_t)n;
+}
 static void arp_tick(uint32_t n)
 {
+    uint32_t bass = dr_orbit_mode() == OM_BASS;
     uint32_t gate = dr_scene.p[P_ARP_GATE], order = dr_scene.p[P_ARP_ORDER] < AO_COUNT ? dr_scene.p[P_ARP_ORDER] : 0u;
     if (arp_gate_left) {
         if (arp_gate_left > n)
@@ -3459,7 +4193,7 @@ static void arp_tick(uint32_t n)
     arp_hits++;
     {
         uint32_t k, l_age = arp_pos < arp_n ? arp_age[arp_pos] : 0u, l_note = arp_pos < arp_n ? arp_notes[arp_pos] : 0u;
-        arp_gather(order == AO_PLAYED);
+        arp_gather(!bass && order == AO_PLAYED);
         for (k = 0; k < arp_n; k++)      /* a body added or let go: on from the step just played, where it now stands */
             if (arp_age[k] == l_age && arp_notes[k] == l_note)
                 arp_pos = k;
@@ -3468,7 +4202,10 @@ static void arp_tick(uint32_t n)
         return;
     {
         uint32_t note;
+        if (bass)
+            order = AO_COUNT;            /* none of the arp's orders: the pattern picks the note */
         switch (order) {
+        case AO_COUNT: break;
         case AO_DOWN:
             arp_pos = arp_pos && arp_pos <= arp_n ? arp_pos - 1u : arp_n - 1u;
             break;
@@ -3499,16 +4236,18 @@ static void arp_tick(uint32_t n)
         }
         if (arp_pos >= arp_n)
             arp_pos = 0;
-        note = arp_notes[arp_pos];
+        note = bass ? bass_pick() : arp_notes[arp_pos];
         if (note_out)
             note_out(note, arp_acc, 1);
         lead_machine = 1;
+        lead_flat = (uint8_t)bass;
         lead_event(note, arp_acc, 1, 0);
+        lead_flat = 0;
         lead_machine = 0;
         {
             voice_t *ld = find_lead(note);
             if (ld)
-                ld->ed_tune = arp_tune[arp_pos];
+                ld->ed_tune = bass ? 0 : arp_tune[arp_pos];
         }
         arp_held = (int32_t)note;
         /* GATE: the lead let go that far through the step; at the top, legato, at the next step */
@@ -3524,7 +4263,7 @@ static void orbit_now(void)              /* SEL + PLAY: the move coming comes no
     uint32_t i, mode = dr_orbit_mode(), planned = 0;
     if (!orbit_on)
         return;
-    if (mode == OM_ARP) {
+    if (runner_mode(mode)) {
         if (clk_ext)
             arp_due = 1;
         else
@@ -3535,7 +4274,7 @@ static void orbit_now(void)              /* SEL + PLAY: the move coming comes no
         orbit_clk_left = orbit_clk_per = orbit_clocks();
     else
         orbit_left = orbit_per = (uint32_t)(orbit_period_s() * FS);
-    if (mode == OM_ECHO) {
+    if (mode == OM_ECHO || mode == OM_STRUM) {   /* they play over the period: it starts over, once */
         orbit_force = 1;
         orbit_plan();
         return;
@@ -3563,6 +4302,19 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
         pend_to[i] = 0;
     shift_last = 0;
     shift_debt = shift_pass = 0;
+    for (i = 0; i < NV; i++) {           /* a voice SWELL or TURN had down comes back */
+        turn_to[i] = swell_up[i] = 0;
+        if (vc[i].gg_to != 1.0f) {
+            vc[i].gg_to = 1.0f;
+            if (vc[i].gg_k < 0.004f)
+                vc[i].gg_k = 0.004f;
+        }
+    }
+    turn_dir = 1;
+    turn_net = 0;
+    mel_n = mel_i = mel_phr = mel_have = 0;
+    mel_left = 0;
+    strum_flip = bass_i = 0;
 #ifdef PLAT_HOST
     orbit_leap = 0;
 #endif
@@ -3627,7 +4379,7 @@ void dr_clock(int port)
     }
     clk_last = clk_now;
     clk_ext = 1;
-    if (orbit_on && mode == OM_ARP) {
+    if (orbit_on && runner_mode(mode)) {
         if (clk_count % arp_div_clk() == 0u)
             arp_due = 1;
     } else if (orbit_on) {
@@ -3672,7 +4424,8 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
             if (echo_due[j] > n)
                 echo_due[j] -= n;
             else {
-                uint32_t vel = (uint32_t)(echo_vel * (float)echo_nvel[j]);
+                uint32_t strum = dr_orbit_mode() == OM_STRUM;
+                uint32_t vel = (uint32_t)((strum ? 1.0f : echo_vel) * (float)echo_nvel[j]);
                 vel = vel < 1u ? 1u : vel > 127u ? 127u : vel;
                 echo_due[j] = 0;
                 if (note_out)
@@ -3680,6 +4433,11 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
                 lead_machine = 1;
                 lead_event(echo_note[j], vel, 1, 0);
                 lead_machine = 0;
+                if (strum) {
+                    voice_t *ld = find_lead(echo_note[j]);
+                    if (ld)
+                        ld->ed_tune = echo_tune[j];
+                }
                 echo_off[j] = echo_gate[j] ? echo_gate[j]
                                            : 1u + orbit_per / (2u * (echo_n ? echo_n + 1u : 2u));
             }
@@ -3754,9 +4512,28 @@ static void orbit_tick(uint32_t n)
     if (!orbit_on)
         return;
     mode = dr_orbit_mode();
-    if (mode == OM_ECHO)
+    if (mode != gen_mode_was) {          /* MODE turned while GEN runs: what the last mode had in hand is put back -
+                                          * a voice SWELL or TURN had down, a note STRUM or LOOP was holding */
+        uint32_t i;
+        gen_mode_was = mode;
+        arp_release();                   /* ARP's or BASS's note: its gate only runs down inside the runner */
+        arp_gate_left = 0;
+        echo_hush();
+        for (i = 0; i < 8u; i++)
+            echo_due[i] = echo_gate[i] = 0;
+        for (i = 0; i < NV; i++) {
+            turn_to[i] = 0;
+            if (vc[i].gg_to != 1.0f) {
+                vc[i].gg_to = 1.0f;
+                if (vc[i].gg_k < 0.004f)
+                    vc[i].gg_k = 0.004f;
+            }
+        }
+    }
+    turn_tick();
+    if (mode == OM_ECHO || mode == OM_STRUM)
         echo_tick(n);
-    if (mode == OM_ARP) {
+    if (runner_mode(mode)) {
         if (clk_out && !clk_ext && rt_out) {   /* 24 clocks a beat from RATE */
             float per = 60.0f / dr_arp_bpm(dr_scene.p[P_ARP_RATE]) * FS * (1.0f / 24.0f);
             clk_acc += (float)n;
@@ -3802,7 +4579,8 @@ static void orbit_tick(uint32_t n)
     }
     orbit_apply();
     {                                    /* the next countdown: the period, give or take a quarter (a half in SCATTER) */
-        float j = mode == OM_SCATTER ? 0.5f : 0.25f;
+        float j = mode == OM_SCATTER ? 0.5f : mode == OM_MELODY || mode == OM_STRUM ? 0.0f : 0.25f;   /* a line and
+                                          * a strum keep time */
         float per = orbit_period_s() * (1.0f + j * frand(&orbit_rng));
         if (mode == OM_CHORD && shift_pass)   /* SHIFT is on a chord rougher than the one struck: half the stay */
             per *= 0.5f;
@@ -4233,7 +5011,7 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         v->restart = 1;
     }
     for (i = NV; i < NV_ALL; i++)        /* a held lead follows LIFT as it turns */
-        if (vc[i].on && vc[i].held)
+        if (vc[i].on && vc[i].held && !vc[i].flat)   /* not BASS's: its notes sound where the pattern put them */
             vc[i].target = (float)vc[i].home + b->lift;
     orbit_tick(n);
     space = p01(P_SPACE);
@@ -4350,6 +5128,7 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
 }
 
 /* ------------------------------------------------------------------ for the screen --- */
+float dr_body_gen(uint32_t i) { return i < NV ? vc[i].gg : 1.0f; }
 uint32_t dr_bodies(void)
 {
     uint32_t i, c = 0;

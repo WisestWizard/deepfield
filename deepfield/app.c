@@ -77,6 +77,8 @@ static void midi_cc(uint32_t cc, uint32_t v)
         return;
     case 2:
     case 3:
+    case CC_CHORD:
+    case CC_VOICING:
     case CC_NOISE_SW:
     case CC_AS_SAVED:
     case CC_GEN_NOW:
@@ -311,6 +313,7 @@ void app_init(void)
     plat_cpu2_set(1);                        /* the second core renders half the bodies; one core if it fails */
 #endif
     scale_apply();
+    chord_apply();
     plat_usb_audio_full(set.speaker != SPK_ON);
     dr_note_out(orbit_note_out);
     dr_realtime_out(realtime_out);
@@ -397,7 +400,50 @@ int app_expect(const char *what, int *got)
         *got = set.vel;
     else if (!strcmp(what, "orbit"))
         *got = dr_orbit_on();
-    else if (!strcmp(what, "orbitmode"))
+    else if (!strcmp(what, "chord"))         /* the chord keys: size + 16 * voicing */
+        *got = set.chord;
+    else if (!strcmp(what, "leads"))
+        *got = (int)dr_leads();
+    else if (!strcmp(what, "heldleads") || !strcmp(what, "leadlow")) {   /* leads held (not releasing); the lowest
+                                                                          * lead's pitch, rounded (-1 none) */
+        uint32_t i, held = 0;
+        int low = -1;
+        dr_body_t b;
+        for (i = 0; i < DR_NL; i++)
+            if (dr_lead_body(i, &b)) {
+                held += !b.fading;
+                if (low < 0 || (int)(b.pitch + 0.5f) < low)
+                    low = (int)(b.pitch + 0.5f);
+            }
+        *got = what[0] == 'h' ? (int)held : low;
+    }
+    else if (!strcmp(what, "lowest")) {      /* the lowest latched body, where it is going (-1 none) */
+        uint32_t i;
+        dr_body_t b;
+        *got = -1;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && b.latched && !b.fading && (*got < 0 || (int)(b.target + 0.5f) < *got))
+                *got = (int)(b.target + 0.5f);
+    } else if (!strncmp(what, "at", 2) && what[2] >= '0' && what[2] <= '9') {   /* "at64": latched bodies going to 64 */
+        uint32_t i;
+        dr_body_t b;
+        *got = 0;
+        for (i = 0; i < DR_NV; i++)
+            *got += dr_body(i, &b) && b.latched && !b.fading && (int)(b.target + 0.5f) == atoi(what + 2);
+    } else if (!strcmp(what, "pcmask")) {    /* the latched bodies' pitch classes, where they are going (bit 0: C) */
+        uint32_t i;
+        dr_body_t b;
+        *got = 0;
+        for (i = 0; i < DR_NV; i++)
+            if (dr_body(i, &b) && b.latched && !b.fading)
+                *got |= 1 << ((int)(b.target + 0.5f) % 12);
+    } else if (!strcmp(what, "quiet")) {     /* latched bodies GEN has under half their level (SWELL, TURN) */
+        uint32_t i;
+        dr_body_t b;
+        *got = 0;
+        for (i = 0; i < DR_NV; i++)
+            *got += dr_body(i, &b) && b.latched && !b.fading && dr_body_gen(i) < 0.5f;
+    } else if (!strcmp(what, "orbitmode"))
         *got = (int)dr_orbit_mode();
     else if (!strcmp(what, "pending")) {     /* bodies with a move planned */
         uint32_t i, to;

@@ -220,3 +220,31 @@ NOISE 2	noise two
 RAIN CLOCK	rain clock
 BRONZE BOWL	bronze bowl
 INIT	init
+PLAY MELODY	generate melody
+PLAY TURN	generate turn
+PLAY SWELL	generate swell
+PLAY BASS	generate bass
+SEL CHORD	chord keys
+5TH	fifth
+7TH	seventh
+9TH	ninth
+SUS	suspended
+MAJ	major
+MIN	minor
+DIM	diminished
+AUG	augmented
+SUS4	suspended fourth
+SUS2	suspended second
+SUS B2	suspended flat second
+MAJ7	major seventh
+MIN7	minor seventh
+DIM7	diminished seventh
+MAJ9	major ninth
+MIN9	minor ninth
+MIN MAJ7	minor major seventh
+MIN MAJ9	minor major ninth
+B5	flat five
+B9	flat nine
+#5	sharp five
+DIM 5	diminished fifth
+AUG 5	augmented fifth

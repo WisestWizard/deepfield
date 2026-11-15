@@ -19,12 +19,12 @@
  * SAVE again saves, HOME cancels); REC is Bluetooth. Every knob sends its CC and takes it (CC_OF). */
 #include "art.h"                         /* the model glyphs and the page icons */
 enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY,
-       PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_MIX, PG_FX_MIX, PG_GLOBAL, PG_MIDI, PG_USB, PG_COUNT };
+       PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_MIX, PG_FX_MIX, PG_GLOBAL, PG_MIDI, PG_USB, PG_CHORD, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
-       PID_USB_LEVEL, PID_CLOCK_OUT, PID_OUT_LEVEL, PID_NONE, PID_COUNT };
+       PID_USB_LEVEL, PID_CLOCK_OUT, PID_OUT_LEVEL, PID_CHORD, PID_VOICING, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_MORPH, K_CHIN, K_CHOUT,
        K_ONOFF, K_HZ, K_STEPS, K_ATTACK, K_RELEASE, K_SEMI, K_OMODE, K_DIST, K_BODIES, K_BPM, K_ORDER, K_OCTS,
-       K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_DTYPE, K_RHYTHM, K_DIV, K_NONE };
+       K_TEXTURE, K_SPEAKER, K_USBLVL, K_PROG, K_DTYPE, K_RHYTHM, K_DIV, K_CHORD, K_VOICING, K_NONE };
 typedef struct {
     const char *title, *button;
     uint8_t p[4];
@@ -54,6 +54,9 @@ static const page_t PAGES[PG_COUNT] = {
                                           * can be reached in every mode, not only on the GEN page under ARP */
     {"MIDI", "GLO", {PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL}},
     {"USB", "GLO", {PID_SPEAKER, PID_USB_LEVEL, PID_CLOCK_OUT, PID_NONE}},   /* recording and clock over the cable */
+    {"CHORD", "GLO", {PID_CHORD, PID_VOICING, PID_NONE, PID_NONE}},   /* the keys as chord keys. The last page, so
+                                          * SELECT spun right from anywhere stops on it, and no page before it
+                                          * moved from where the hands know it */
 };
 typedef struct {
     const char *label;
@@ -87,6 +90,7 @@ static const pmeta_t PM[PID_COUNT] = {
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
     [PID_SPEAKER] = {"SPEAKER", K_SPEAKER}, [PID_USB_LEVEL] = {"USB LEVEL", K_USBLVL}, [PID_CLOCK_OUT] = {"CLOCK OUT", K_ONOFF},
     [PID_OUT_LEVEL] = {"OUT", K_PCT},
+    [PID_CHORD] = {"CHORD", K_CHORD}, [PID_VOICING] = {"VOICING", K_VOICING},
     [PID_NONE] = {"", K_NONE},
 };
 /* MIDI CC for every value (0: none), in and out: a knob turned sends its CC, a CC in sets the value (app.c midi_cc;
@@ -110,8 +114,10 @@ static const uint8_t CC_OF[PID_COUNT] = {
     [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ORB_ROAM] = 51, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53,
     [P_BED_LEVEL] = 54,
     [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
-    [PID_SCALE] = 2, [PID_ROOT] = 3,
+    [PID_SCALE] = 2, [PID_ROOT] = 3, [PID_CHORD] = 49, [PID_VOICING] = 50,
 };
+#define CC_CHORD 49u
+#define CC_VOICING 50u
 #define CC_NOISE_SW 12u                  /* the switches (64 up: on) and the triggers (64 up: now) */
 #define CC_AS_SAVED 13u
 #define CC_GEN_NOW 14u
@@ -202,6 +208,7 @@ static struct {
     uint8_t keynote[NKEYS];              /* the note a key struck */
     uint32_t keynotes;                   /* bit k: key k struck a note this press */
     uint32_t keylead;                    /* bit k: it struck a lead (LATCH off), let go at its release */
+    uint32_t keychord;                   /* bit k: it struck as a chord key (CHORD on) */
     uint8_t looking;                     /* Bluetooth MIDI devices: REC pressed, the scan's list up (lib/btdev) */
     uint32_t rec_t, fx_t, fx_up, sel_t, sel_down;
     uint8_t rec_latch;          /* LATCH as it was before a LOOP take lifted it */
@@ -320,7 +327,12 @@ static void ui_say(const char *a, const char *b)
 }
 
 /* ------------------------------------------------------------------ values --- */
-static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP"};
+static const char *const OMODE_NAME[OM_COUNT] = {"WALK", "SHIFT", "RANDOM", "ARP", "PROG", "LOOP", "MELODY", "TURN",
+                                                 "SWELL", "STRUM", "BASS"};
+static const char *const CHORD_NAME[CH_COUNT] = {"OFF", "5TH", "TRIAD", "SUS", "7TH", "9TH"};
+static const char *const VOICING_NAME[CV_COUNT] = {"CLOSE", "OPEN", "WIDE"};
+#define RUNNER(m) ((m) == OM_ARP || (m) == OM_BASS)   /* the modes that step at TEMPO and DIV */
+static int chord_on(void) { return (set.chord & 15u) != 0u; }
 static const char *const PROG_NAME[DR_PROGS] = {"ROUND", "UNDERTOW", "SLOW RISE", "TWO ROOMS", "OPEN DOOR",
                                                 "COLOUR", "BREATH", "STONES"};
 static const char *const ORDER_NAME[AO_COUNT] = {"UP", "DOWN", "UP DOWN", "RANDOM", "PLAYED"};
@@ -338,6 +350,11 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
             {P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER},       /* ARP */
             {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_PROG},    /* CYCLE */
             {P_ORB_PERIOD, P_ECHO_DECAY, P_ECHO_JUMP},   /* ECHO */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE},   /* MELODY */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE},   /* TURN */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_BODIES},  /* SWELL: CHANCE's value is its DEPTH */
+            {P_ORB_PERIOD, P_ORB_CHANCE, P_ARP_ORDER},   /* STRUM: CHANCE's value is its SPREAD, the arp's PATTERN */
+            {P_ARP_RATE, P_ARP_GATE, P_ORB_PROG},        /* BASS: the arp's TEMPO and GATE, CHORDS' value its PATTERN */
         };
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
@@ -345,12 +362,14 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
                                           * whose setting this mode's generator never reads is empty, rather than
                                           * sitting there taking a turn and doing nothing */
         uint32_t m = dr_orbit_mode();
-        if (k == 0u)                     /* RETURN pulls a wandering voice home: ARP and PROG/LOOP never wander */
-            return m == OM_ARP || m == OM_CYCLE || m == OM_ECHO ? PID_NONE : P_GRAVITY;
+        if (k == 0u)                     /* RETURN pulls a wandering voice home: only WALK, SHIFT and RANDOM wander */
+            return m <= OM_SCATTER ? P_GRAVITY : PID_NONE;
         if (k == 1u)                     /* PROG: how far the generator may take the written progression; LOOP: how
-                                          * far each pass travels; ARP: the octaves it runs over */
-            return m == OM_CYCLE || m == OM_ECHO ? P_ORB_ROAM : m == OM_ARP ? P_ARP_OCT : PID_NONE;
-        return m == OM_ARP ? PAGES[pg].p[k] : PID_NONE;   /* EUCLID and DIV are the runner's own */
+                                          * far each pass travels; MELODY and BASS: how far the line is varied; ARP
+                                          * and STRUM: the octaves they run over */
+            return m == OM_CYCLE || m == OM_ECHO || m == OM_MELODY || m == OM_BASS ? P_ORB_ROAM
+                   : m == OM_ARP || m == OM_STRUM ? P_ARP_OCT : PID_NONE;
+        return RUNNER(m) ? PAGES[pg].p[k] : PID_NONE;   /* EUCLID and DIV are the runner's own */
     }
     return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
@@ -368,6 +387,8 @@ static uint32_t value_of(uint32_t id)
     case PID_USB_LEVEL: return set.usb_level;
     case PID_CLOCK_OUT: return set.clock_out;
     case PID_OUT_LEVEL: return set.out_level;
+    case PID_CHORD: return set.chord & 15u;
+    case PID_VOICING: return set.chord >> 4;
     case PID_NONE: return 0;
     default: return dr_scene.p[id];
     }
@@ -377,6 +398,8 @@ static uint32_t value_max(uint32_t id)
     switch (PM[id].kind) {
     case K_MODEL: return M_COUNT - 1u;
     case K_OMODE: return OM_COUNT - 1u;
+    case K_CHORD: return CH_COUNT - 1u;
+    case K_VOICING: return CV_COUNT - 1u;
     case K_PROG: return DR_PROGS - 1u;
     case K_SPEAKER: return SPK_OFF;
     case K_USBLVL: return 6u;
@@ -498,7 +521,7 @@ static void value_text(uint32_t id, char *b)
     case K_GLIDE: ms_text(0.02f * fm_exp2f((float)v * (8.6f / 127.0f)), b); break;
     case K_ORBIT: {                      /* tenths below 10 s; ECHO never under a second; under MIDI clock, beats */
         float sec = dr_orbit_s(v);
-        if (dr_clock_ext() && dr_orbit_mode() != OM_ARP) {
+        if (dr_clock_ext() && !RUNNER(dr_orbit_mode())) {
             uint32_t c = dr_orbit_clocks(v);
             if (c < 24u)
                 text_cat(b, c < 12u ? "1/4 BEAT" : "1/2 BEAT");
@@ -548,7 +571,11 @@ static void value_text(uint32_t id, char *b)
         break;
     case K_CHOUT: int_text((int32_t)v, b); break;
     case K_ONOFF: text_cat(b, v ? "ON" : "OFF"); break;
-    case K_STEPS: int_text((int32_t)(1u + v * 4u / 128u), b); break;   /* the engine's 1 .. 4 scale steps */
+    case K_STEPS:                        /* the engine's 1 .. 4 scale steps; MELODY's line reaches twice as far */
+        int_text((int32_t)((1u + v * 4u / 128u) * (dr_orbit_mode() == OM_MELODY ? 2u : 1u)), b);
+        break;
+    case K_CHORD: text_cat(b, CHORD_NAME[v % CH_COUNT]); break;
+    case K_VOICING: text_cat(b, VOICING_NAME[v % CV_COUNT]); break;
     case K_ATTACK:
     case K_RELEASE: {
         float s = id == P_LD_ATTACK ? dr_attack_s(v) : dr_release_s(v);
@@ -560,7 +587,7 @@ static void value_text(uint32_t id, char *b)
         break;
     }
     case K_OMODE: text_cat(b, OMODE_NAME[v % OM_COUNT]); break;
-    case K_PROG: text_cat(b, PROG_NAME[v % DR_PROGS]); break;
+    case K_PROG: text_cat(b, dr_orbit_mode() == OM_BASS ? DR_BASS_NAME[v % DR_BASS_PATS] : PROG_NAME[v % DR_PROGS]); break;
     case K_SPEAKER: text_cat(b, v == SPK_ON ? "ON" : v == SPK_AUTO ? "AUTO" : "OFF"); break;
     case K_USBLVL:                       /* 0 .. -18 dB, in 3 dB steps */
         if (!v)
@@ -595,6 +622,8 @@ static void value_text(uint32_t id, char *b)
         if (!n)
             n = 8u;
         want = 1u + v * (n - 1u) / 127u;
+        if (dr_orbit_mode() == OM_SWELL)   /* SWELL takes voices down, and never all of them */
+            want = n > 2u ? 1u + v * (n - 2u) / 127u : 1u;
         if (want >= n && n > 1u)
             text_cat(b, "ALL");
         else {
@@ -634,7 +663,7 @@ static void value_text(uint32_t id, char *b)
 static int orbit_quick(void)             /* EVERY under half a second: where ORBIT goes is not shown (it would only flicker) */
 {
     uint32_t m = dr_orbit_mode();
-    return m != OM_ARP && m != OM_ECHO && dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) < 0.5f;
+    return !RUNNER(m) && m != OM_ECHO && m != OM_STRUM && m != OM_SWELL && dr_orbit_s(dr_scene.p[P_ORB_PERIOD]) < 0.5f;
 }
 static void midi_settings_apply(void);
 static void value_set(uint32_t id, uint32_t v)
@@ -682,6 +711,13 @@ static void value_set(uint32_t id, uint32_t v)
         set.speaker = (uint8_t)v;
         set_dirty = 1;
         plat_usb_audio_full(set.speaker != SPK_ON);
+        ui.redraw_head = 1;
+        break;
+    case PID_CHORD:
+    case PID_VOICING:
+        set.chord = (uint8_t)(id == PID_CHORD ? (set.chord & 0xF0u) | v : (set.chord & 15u) | v << 4);
+        chord_apply();
+        set_dirty = 1;
         ui.redraw_head = 1;
         break;
     case PID_NONE: break;
@@ -755,6 +791,13 @@ static const char *param_label(uint32_t id)   /* TIMBRE, SHAPE and NOISE name wh
         {"BRIGHTNESS", "MATERIAL", "NOISE"},     /* RESONATOR */
     };
     uint32_t m = dr_scene.p[P_MODEL] % M_COUNT;
+    if (id == P_ORB_CHANCE && dr_orbit_mode() == OM_SWELL)   /* the modes that read another mode's value name it
+                                                  * for what it does there */
+        return "DEPTH";
+    if (id == P_ORB_CHANCE && dr_orbit_mode() == OM_STRUM)
+        return "SPREAD";
+    if (id == P_ORB_PROG && dr_orbit_mode() == OM_BASS)
+        return "PATTERN";
     if (id == P_LD_LEVEL && ui.page == PG_MIX)   /* on the mixer the row reads BED, LEAD, OUT; on the LEAD page the
                                                   * same value is that page's LEVEL */
         return "LEAD";
@@ -935,6 +978,32 @@ static uint32_t key_vel(uint32_t k)
     uint32_t v = touch_vel(k) * 127u / 108u;
     return v > 127u ? 127u : v;
 }
+static void chord_say(uint32_t note)     /* a chord key struck: the chord it plays, by name */
+{
+    static const struct { uint16_t iv; const char *q; } Q[] = {
+        {0x080, "5"}, {0x040, "DIM 5"}, {0x100, "AUG 5"}, {0x090, "MAJ"}, {0x088, "MIN"}, {0x048, "DIM"}, {0x110, "AUG"},
+        {0x0A0, "SUS4"}, {0x084, "SUS2"}, {0x082, "SUS B2"}, {0x890, "MAJ7"}, {0x490, "7"}, {0x488, "MIN7"},
+        {0x448, "MIN7 B5"}, {0x888, "MIN MAJ7"}, {0x248, "DIM7"}, {0x910, "MAJ7 #5"}, {0x894, "MAJ9"}, {0x494, "9"},
+        {0x48C, "MIN9"}, {0x492, "7 B9"}, {0x48A, "MIN7 B9"}, {0x44A, "MIN7 B5 B9"}, {0x44C, "MIN9 B5"},
+        {0x88C, "MIN MAJ9"}, {0x914, "MAJ9 #5"}};
+    uint8_t t[5];
+    uint32_t n = dr_chord_tones(note, t), i, iv = 0;
+    char a[24];
+    if (!n)
+        return;
+    for (i = 1; i < n; i++)
+        iv |= 1u << ((uint32_t)(t[i] - t[0]) % 12u);
+    iv &= ~1u;
+    a[0] = 0;
+    text_cat(a, NOTE_NAME[t[0] % 12u]);
+    for (i = 0; i < sizeof Q / sizeof Q[0]; i++)
+        if (Q[i].iv == iv) {
+            text_cat(a, " ");
+            text_cat(a, Q[i].q);
+            break;
+        }
+    ui_say("CHORD", a);
+}
 static void key_on(uint32_t k, uint32_t vel)
 {
     uint32_t note = key_note(k), evel = set.vel ? vel : 127u;   /* VELOCITY off: the engine hears every key struck
@@ -944,6 +1013,17 @@ static void key_on(uint32_t k, uint32_t vel)
     ui.keynotes |= 1u << k;
     ui.prs[k] = 0;
     ui.vel[k] = (uint8_t)evel;
+    if (set.local && chord_on()) {       /* a chord key: the engine sends the chord's own notes out, not the key's */
+        ui.keychord |= 1u << k;
+        chord_say(note);
+        if (set.latch)
+            dr_chord_key(note, evel);
+        else {
+            dr_chord_lead(note, evel, 1);
+            ui.keylead |= 1u << k;
+        }
+        return;
+    }
     midi_note_out(note, vel, 1);
     if (set.local) {                     /* LATCH on: a body that stays (a key where one sounds lets it go: input());
                                           * off: a lead over the bed, whatever is latched */
@@ -960,6 +1040,16 @@ static void key_off(uint32_t k)
     uint32_t note = ui.keynote[k], lead = ui.keylead >> k & 1u;
     ui.keynotes &= ~(1u << k);
     ui.keylead &= ~(1u << k);
+    if (ui.keychord >> k & 1u) {         /* a chord key: its leads end (a latched chord stays); its pressure too */
+        ui.keychord &= ~(1u << k);
+        if (lead)
+            dr_chord_lead(note, 0, 0);
+        if (ui.prs[k]) {
+            dr_channel_pressure(0);
+            plat_midi_send(0x0Du | (0xD0u | ((uint32_t)set.midi_out - 1u)) << 8, TO_USB | TO_BLE);
+        }
+        return;
+    }
     if (set.local) {                     /* the engine sends the note off (a latched body keeps it until let go) */
         if (lead)
             dr_lead(note, 0, 0);
@@ -1065,7 +1155,7 @@ static void orbit_toggle(void)
         t[0] = 0;
         text_cat(t, OMODE_NAME[mode]);
         text_cat(t, " ");
-        if (mode == OM_ARP) {
+        if (RUNNER(mode)) {
             value_text(P_ARP_RATE, v);
             text_cat(t, v);
         } else {
@@ -1258,7 +1348,7 @@ static void ble_device_button(void)  /* the MIDI page lists the devices already:
 
 /* ------------------------------------------------------------------ buttons --- */
 static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_FX,
-                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO};
+                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -1383,7 +1473,7 @@ static void input(void)
                 transpose_key(k);
                 continue;
             }
-            if (set.local && set.latch && (at = dr_body_at(key_note(k))) >= 0) {   /* the key a latched body sounds
+            if (set.local && set.latch && !chord_on() && (at = dr_body_at(key_note(k))) >= 0) {   /* the key a latched body sounds
                                                                                      * on: let go at the release, or a
                                                                                      * knob turned meanwhile sets it */
                 ui.bk_down |= bit;
@@ -1404,6 +1494,12 @@ static void input(void)
                 key_off(k);
         } else if ((keys & bit) && (ui.keynotes & bit) && touch_pressure(k) != ui.prs[k]) {
             ui.prs[k] = touch_pressure(k);
+            if (ui.keychord & bit) {     /* a chord key leaned on: every voice of the chord, as channel pressure */
+                dr_channel_pressure(ui.prs[k]);
+                plat_midi_send(0x0Du | (0xD0u | ((uint32_t)set.midi_out - 1u)) << 8 | (uint32_t)ui.prs[k] << 16,
+                               TO_USB | TO_BLE);
+                continue;
+            }
             if (set.local)
                 dr_pressure(ui.keynote[k], ui.prs[k]);
             plat_midi_send(0x0Au | (0xA0u | ((uint32_t)set.midi_out - 1u)) << 8 | (uint32_t)ui.keynote[k] << 16
@@ -1586,12 +1682,12 @@ static void input(void)
     ui.oct_mid = (uint8_t)(set.octave == 1 ? 2u : set.octave == -1 ? 1u : 0u);
     if (dr_orbit_on()) {
         uint32_t m = dr_orbit_mode(), steps = dr_arp_steps();
-        play_led = (m == OM_ARP ? 0u : LED_PLAY_GREEN) | (m == OM_WANDER ? 0u : 1u << B_PLAY);
+        play_led = (RUNNER(m) ? 0u : LED_PLAY_GREEN) | (m == OM_WANDER ? 0u : 1u << B_PLAY);
         if (steps != ui.arp_steps) {
             ui.arp_steps = steps;
             ui.arp_step_t = now;
         }
-        if ((m == OM_SCATTER && now - ui.orbit_flash_t < 150u) || (m == OM_ARP && now - ui.arp_step_t < 60u))
+        if ((m == OM_SCATTER && now - ui.orbit_flash_t < 150u) || (RUNNER(m) && now - ui.arp_step_t < 60u))
             play_led = 0;
     }
     lit_btn = btn | (set.latch ? 1u << B_SEL : 0u) | (dr_frozen() ? 1u << B_SEQ : 0u) | play_led
@@ -2379,14 +2475,15 @@ static void draw_header(void)
     x = 237 - text_w(&FONT_T, t);
     cv_rect(x - 5, 0, 240 - x + 5, 18, C_BLACK);   /* a long name ends under it */
     cv_text(x, 4, &FONT_T, t, overload_seen || usb_underruns() ? C_WARN : C_LABEL);
-    pill(3, 54, transposing() ? "SEL TRANS" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
+    pill(3, 54, transposing() ? "SEL TRANS" : chord_on() ? "SEL CHORD" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name. LOOP
                                           * says how many notes its phrase holds and lights while it replays them:
                                           * an empty phrase reads EMPTY instead of looking broken, which is what it
                                           * looked like with LATCH on, where the keys make bodies and no lead is
                                           * ever captured */
         static const char *const PILL[OM_COUNT] = {"PLAY GEN", "PLAY SHIFT", "PLAY RANDOM", "PLAY ARP", "PLAY PROG",
-                                                   "PLAY LOOP"};
+                                                   "PLAY LOOP", "PLAY MELODY", "PLAY TURN", "PLAY SWELL",
+                                                   "PLAY STRUM", "PLAY BASS"};
         uint32_t m = dr_orbit_on() ? dr_orbit_mode() : 0u, n;
         const char *s = PILL[m];
         char t[16], v[8];
@@ -2583,8 +2680,11 @@ static void midi_cmd_apply(uint32_t cc, uint32_t v)
     char t[16];
     switch (cc) {
     case 2u:
-    case 3u: {
-        uint32_t id = cc == 2u ? PID_SCALE : PID_ROOT, nv = cc_in_val(id, v);
+    case 3u:
+    case CC_CHORD:
+    case CC_VOICING: {
+        uint32_t id = cc == 2u ? PID_SCALE : cc == 3u ? PID_ROOT : cc == CC_CHORD ? PID_CHORD : PID_VOICING;
+        uint32_t nv = cc_in_val(id, v);
         if (nv != value_of(id)) {
             uint8_t sd = set_dirty, cd = ui.cfg_dirty;   /* playback, not editing: SAVE stays as it was */
             value_set(id, nv);

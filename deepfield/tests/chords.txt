@@ -1,0 +1,234 @@
+# DEEP FIELD's chord keys and the GEN modes after LOOP (MELODY, TURN, SWELL, STRUM, BASS), in the host simulator,
+# from a fresh store (an empty directory):
+#   deepfield/build/host/deepfield_host deepfield/tests/chords.txt <an empty directory>
+# keys: key 7 is C4 (60); the scale is C MAJOR
+wait 700
+tap HOME
+wait 200
+expect boot 0
+# CHORD: the last page; TRIAD
+tap GLO
+spin SELECT 9
+wait 30
+expect page 19
+spin K1 2
+wait 30
+expect chord 2
+out
+key 7 down
+wait 100
+key 7 up
+wait 200
+expect latch 3
+expect at60 1
+expect at64 1
+expect at67 1
+expect_out USB 90 3C 75
+expect_out USB 90 40 75
+expect_out USB 90 43 75
+shot chord.png
+# A3: led to A minor - the bass to the key, E holds, G to C
+out
+key 4 down
+wait 100
+key 4 up
+wait 600
+expect latch 3
+expect lowest 57
+expect at60 1
+expect at64 1
+expect at67 0
+expect pcmask 529
+# the same key again lets the chord go
+key 4 down
+wait 100
+key 4 up
+wait 200
+expect latch 0
+wait 6000
+# 7TH, C then F
+spin K1 2
+wait 30
+expect chord 4
+key 7 down
+wait 100
+key 7 up
+wait 200
+expect latch 4
+expect at71 1
+key 12 down
+wait 100
+key 12 up
+wait 600
+expect latch 4
+expect at65 1
+expect at69 1
+expect at72 1
+expect at76 1
+# a triad over four voices: one doubles
+spin K1 -2
+wait 30
+key 7 down
+wait 100
+key 7 up
+wait 600
+expect latch 4
+expect lowest 60
+expect pcmask 145
+# TURN: the inversions, the notes of the chord and no others
+tap ARP
+wait 30
+spin K1 7
+wait 30
+expect orbitmode 7
+spin K2 -127
+spin K3 127
+spin K4 127
+tap PLAY
+wait 6000
+expect moves >6
+expect pcmask 145
+expect leap 12
+tap PLAY
+wait 1500
+expect quiet 0
+expect pcmask 145
+# SWELL: some voices down, never all, and back when it stops; MODE turned while it runs puts them back too
+spin K1 1
+wait 30
+expect orbitmode 8
+spin K2 60
+tap PLAY
+wait 4000
+expect quiet >0
+expect quiet <4
+expect latch 4
+spin K1 -8
+wait 3000
+expect orbitmode 0
+expect quiet 0
+spin K1 8
+wait 4000
+expect quiet >0
+tap PLAY
+wait 3000
+expect quiet 0
+# the chord's key again brings it home from wherever TURN left it
+tap GLO
+spin SELECT 9
+key 7 down
+wait 100
+key 7 up
+wait 2000
+expect lowest 60
+expect pcmask 145
+expect latch 4
+# MELODY: the top voice sings, the bass stays
+tap ARP
+spin K1 -2
+wait 30
+expect orbitmode 6
+spin K2 -127
+spin K2 30
+tap PLAY
+wait 9000
+expect moves >12
+expect lowest 60
+tap PLAY
+wait 200
+# STRUM
+spin K1 3
+wait 30
+expect orbitmode 9
+out
+tap PLAY
+wait 400
+expect leads >0
+tap PLAY
+wait 100
+# BASS: the root two octaves under the chord, on the bar's first step struck full; a new chord, its root
+spin K1 1
+wait 30
+expect orbitmode 10
+out
+tap PLAY
+wait 1500
+expect_out USB 90 24 7F
+expect arprun 1
+tap GLO
+spin SELECT 9
+key 12 down
+wait 100
+key 12 up
+out
+wait 2500
+expect_out USB 90 29 7F
+tap PLAY
+wait 2000
+# LATCH off: the chord as leads
+tap SEL
+wait 100
+expect latchmode 0
+tap GLO
+spin SELECT 9
+spin K1 2
+wait 30
+expect chord 4
+key 14 down
+wait 100
+expect leads 4
+key 14 up
+wait 5000
+expect leads 0
+# two chord keys held at once as leads (LATCH is off): the first let go takes only its own notes
+midi B0 31 38
+wait 100
+key 7 down 100
+wait 300
+key 11 down 100
+wait 300
+key 7 up
+wait 100
+expect heldleads 3
+key 11 up
+wait 6000
+expect leads 0
+# BASS sounds where its pattern put it, whatever the LEAD page's TRANSPOSE says
+midi B0 39 7F
+wait 100
+key 7 down 100
+wait 100
+key 7 up
+wait 300
+param 34 64
+param 36 10
+param 39 60
+param 40 127
+param 47 0
+midi B0 3A 7F
+wait 1500
+expect leadlow 36
+# MODE turned away from BASS with a note held (GATE full): the note is let go
+param 36 0
+wait 1500
+expect heldleads 0
+midi B0 3A 00
+param 34 0
+wait 6000
+# SWELL: voices locked while they are down come back up
+param 36 8
+param 24 30
+param 25 127
+param 38 127
+midi B0 3A 7F
+wait 3000
+expect quiet >0
+midi B0 63 04
+midi B0 62 3C
+midi B0 06 7F
+midi B0 62 40
+midi B0 06 7F
+midi B0 62 43
+midi B0 06 7F
+wait 4000
+expect quiet 0

@@ -226,6 +226,44 @@ and GEN only moves voices to notes in it. A voice on a note outside the scale is
 it the first time GEN moves it, so a chord wants the scale it was written in: a preset's chord brings its own
 (section 9).
 
+**Chord keys (CHORD).** With CHORD on, one key plays a whole chord, and the chord is always in the scale. To
+turn it on:
+
+1. Press GLO, then turn SELECT right until it stops: the CHORD page (the last page).
+2. Turn KNOB 1 (CHORD) from OFF to a size: 5TH (root, fifth, octave), TRIAD, SUS, 7TH or 9TH. The SEL pill now
+   reads SEL CHORD.
+3. Turn KNOB 2 (VOICING) if you like: CLOSE (the notes stacked up from the key), OPEN (the note above the root an
+   octave higher) or WIDE (that, and the root an octave lower).
+4. Press a key. The screen names the chord.
+
+Each key plays the chord SCALE and ROOT give its note. In C MAJOR, C plays C major, D plays D minor and B plays B
+diminished; with 7TH, C plays C MAJ7 and G plays G7. A key outside the scale plays the chord of the scale note below
+it. CHROMATIC has no chords of its own, so it plays MAJOR's. In MAJ PENTA, MIN PENTA and WHOLE TONE the chords are
+built from the scale's notes a third or more apart, and where the result has no ordinary name the screen names only
+its root. SUS plays the fourth, or the second on the one key whose fourth in the scale is a tritone.
+
+**With LATCH on, the next chord key leads the chord you have to the new one.** It is not struck over it:
+
+- The lowest voice goes to the key, so the key you press is the bass note you hear.
+- A voice already on a note of the new chord stays where it is.
+- Each of the other voices glides to the nearest note of the new chord that nobody has yet, over GLIDE.
+- A new chord with more notes than you have voices has the extra notes struck. With more voices than notes, the
+  spare voices double a note.
+- Press the key of the chord that is already sounding and the chord stops, as a latched note's key does. If GEN
+  has moved the chord since, the first press brings it back and the second stops it.
+
+With nothing latched, the chord is struck as VOICING has it. A locked voice is left alone. Where the chord lands is
+its new home, the place GEN counts from. While CHORD is on, holding a key and turning a knob does not open a
+voice's own values: turn CHORD to OFF for that. SEL held still moves the whole chord, brings in a preset's chord
+and stops every voice.
+
+**With LATCH off, a chord key plays its chord as leads** while you hold it, over whatever is latched: up to four
+notes (a 9TH leaves out its fifth). The four leads are shared, so a second chord key takes them over.
+
+Pressing harder on a chord key brightens every voice (it is sent as channel pressure). MIDI notes are never turned
+into chords: they play as sent. Over MIDI out, a chord key sends the chord's notes, not its own. CHORD and VOICING
+are saved with the settings (SAVE), not with a preset.
+
 **OCT- and OCT+** move the keys down or up an octave, up to two octaves each way. The header shows OCT and the
 number.
 
@@ -269,7 +307,7 @@ TIMBRE) covers too wide a range for every value it can show to have a click of i
 small steps of their own; TEMPO moves one BPM a click. A knob with only a few values (RANGE, VOICES, TRANSPOSE,
 the delay's note lengths, FM 4-OP's patches) moves one value a click at any speed. However big the step, the sound
 never jumps with it: a level, a tone or an effect's amount glides to where you turned it over 10 to 20 ms (from a
-MIDI CC too; WAVETABLE's place in its sweep over 80 ms, since its frames are different waves), and a choice - a
+MIDI CC too; WAVETABLE's place in its sweep over 80 ms, since its frames are different waves, and its change of table as a glide crosses an octave over 9 ms), and a choice - a
 delay TYPE, a patch, a model - fades across, so turning a knob makes no click of its own.
 
 A few names are on two pages (ATTACK and RELEASE on ENVELOPE and LEAD, RATE on NOISE and GEN, GATE on DELAY 2 and
@@ -290,12 +328,13 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | FX, SELECT twice | DELAY 2 | TONE (dark or bright repeats) | DIFFUSION (echoes blurred into a cloud) | WOW (how far the tape wanders) | GATE (only slices of the sound go in) |
 | FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (how much, the same value as on the FX mixer) |
 | ARP | GEN | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
-| ARP, SELECT once | GEN 2 | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG, LOOP) or OCTAVES (ARP, 1 to 3) | EUCLID (ARP: its hits and rests) | DIV (ARP: a step's length) |
+| ARP, SELECT once | GEN 2 | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG, LOOP, MELODY, BASS) or OCTAVES (ARP, STRUM, 1 to 3) | EUCLID (ARP, BASS: its hits and rests) | DIV (ARP, BASS: a step's length) |
 | GLO | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
 | GLO, SELECT once | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
 | GLO, SELECT twice | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | TEMPO (40 to 240 BPM, EXT while MIDI clock comes in) |
 | GLO, SELECT three times | MIDI (and the Bluetooth device, in place of the view: section 10) | IN CH (OMNI or 1–16) | OUT CH (1–16) | LOCAL | VELOCITY |
 | GLO, SELECT four times | USB | SPEAKER (ON, AUTO, OFF) | USB LEVEL (the recording's level, 0 to -18 dB) | CLOCK OUT | – |
+| GLO, SELECT five times (or SELECT turned right until it stops, from any page) | CHORD | CHORD (OFF, 5TH, TRIAD, SUS, 7TH, 9TH: one key plays a chord in the scale, section 4) | VOICING (CLOSE, OPEN, WIDE) | – | – |
 
 **The models** (turn ALGORITHM, or KNOB 1 on OSC). A new model crosses every voice over in under a second, the new
 sound rising as the old one fades, as a preset in another model does over MORPH (section 9).
@@ -420,6 +459,11 @@ and PLAY's colour shows it:
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
 | PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time while the rest hold. ROAM (GEN 2) sets how far the generator may develop it. |
 | LOOP | orange | RATE, DECAY, OCT JUMP | A phrase you played, coming back at the velocities, the rhythm and the note lengths you played it with: a note you held for a second comes back held for a second. Closing a take sets RATE to the phrase's own length, so it loops at the speed it was played. Record one with REC (below), or just play with LATCH off and your last eight notes are caught on their own. DECAY drops notes and fades the phrase, and at 0 holds it for good; OCT JUMP throws notes an octave; ROAM (GEN 2) carries each pass to another degree of the scale. The pill counts the phrase (LOOP 5) and lights while it plays. |
+| MELODY | orange | RATE, CHANCE, RANGE | The highest voice sings a line in the scale while the others hold under it (below). |
+| TURN | orange | RATE, CHANCE, RANGE | The chord climbs and falls through its inversions: a voice fades out, moves an octave and comes back. The notes never change, only where they sit (below). |
+| SWELL | orange | RATE, DEPTH, VOICES | No voice moves. Every RATE a different few voices fade down and the rest come back, so the chord thins and fills, a different mix each time. DEPTH is how far they fade (100 % is silence), VOICES how many are down at once: never all of them, and a chord of one note is left alone. A fade takes about a third of RATE. Stop GEN, or turn MODE, and they all come back. |
+| STRUM | orange | RATE, SPREAD, PATTERN | Every RATE the chord is struck across as leads, a note a SPREAD apart: 8 ms is a strum, a few hundred a harp. The voices keep droning under it (below). |
+| BASS | red | TEMPO, GATE, PATTERN | A bass line under the chord, stepping at TEMPO and DIV as ARP does, that follows the chord when it changes (below). |
 
 **Recording a phrase (LOOP).** Selecting LOOP with nothing recorded puts **REC THEN PLAY** on the screen, since an
 empty loop has nothing to play. With the GEN page showing and MODE on LOOP, **REC** takes a phrase:
@@ -440,10 +484,65 @@ travels: at 0 it repeats at the pitches you played, and turned up each pass is c
 scale, chosen by the same weights PROG uses, so it walks somewhere rather than wandering. REC is the Bluetooth
 button everywhere else - it only takes a phrase while the GEN page is up with LOOP showing.
 
-ARP plays from the voices you have latched, not from the keys - with nothing latched it has no notes and stays
-silent. LOOP plays from the keys. Every other mode moves latched voices: with none,
+ARP, STRUM and BASS play from the voices you have latched, not from the keys - with nothing latched they have no
+notes and stay silent. LOOP plays from the keys. Every other mode moves latched voices: with none,
 nothing moves. RANDOM has no CHANCE knob but still uses the CHANCE last set in another mode; LOOP ignores CHANCE
 altogether. A locked voice (section 4) is never moved.
+
+**MELODY sings with the top voice.** The highest voice that is not locked plays the line; every other voice
+holds, so the chord stays under it.
+
+- A phrase is five to seven notes. Some last one RATE and some two to four, and every phrase ends on a long note.
+- Notes move mostly by step. A leap is followed by a step back. Long notes land on notes of the chord under them.
+- Each phrase heads for a peak and comes back. The first phrase ends away from the voice's key and the next is the
+  same phrase ending on the key: a question and its answer.
+- RANGE is how far the line goes from the voice's key: 2, 4, 6 or 8 scale steps. It never goes more than an octave
+  from the key and never down into the chord under it.
+- CHANCE is the chance each note is taken. A note not taken is the one before it held on, so a low CHANCE gives
+  longer notes.
+- ROAM (GEN 2): at 0 the question and its answer repeat as they are. Turned up, every third phrase is a new one at
+  the far end of the range and every fourth is the first with some notes redrawn; past half, a whole new theme is
+  written now and then.
+
+RATE keeps strict time in MELODY, with no give or take. The voice glides from note to note over GLIDE. Stop GEN
+and it stays on the note it was singing.
+
+**TURN moves the chord through its inversions.** Climbing, the lowest voice fades out and comes back an octave
+higher, then the next lowest, and so on; falling, the highest comes down an octave. Nothing slides: a voice leaves
+below and arrives above, each fade a fifth of RATE (never under 0.12 s or over 2.5 s). RANGE is how far the chord
+goes before it turns round. At 4 the whole chord reaches an octave above where you played it, comes back, goes an
+octave below and returns; at 1 it rocks through one or two inversions. CHANCE is the chance of each move. No voice
+goes more than an octave from its key, and stopping GEN leaves the chord in the inversion it had reached.
+
+**STRUM strikes the chord across.** Its notes are the ones ARP would play: the latched voices, remembered after
+you stop them, spread over OCTAVES (GEN 2), up to eight a strum. PATTERN is ARP's: UP, DOWN, UP DOWN (the strokes
+alternate), RANDOM or PLAYED. The first note of a strum is struck hardest. The notes ring together until the sweep
+ends and a sixth of RATE more, then fade at the LEAD page's RELEASE; that page's ATTACK, TRANSPOSE and LEVEL shape
+them too. Only four leads sound at once, so in a sweep of more than four notes the earliest give way to the
+latest. A sweep never lasts longer than RATE, whatever SPREAD says, and RATE keeps strict time.
+
+**BASS plays a line under the chord.**
+
+- Its root is the chord's lowest note, taken down at least an octave and below C3. With CHORD on (section 4) the
+  lowest note is always the chord's root, so the line follows the chords you play: press a new chord key and the
+  next step is in the new chord.
+- PATTERN picks the line, eight steps long: ROOT (the root on every step), OCTAVE (the root and its octave),
+  FIFTHS (the root and the fifth), WALKING (root, third, fifth, third, octave, fifth, third, then the scale note
+  that leads back to the root), CLIMB (up the chord and down again), PULSE (roots with an octave, a fifth and a
+  lead-in), DROP (down from the octave, touching the note under the root) or FREE (the root on the first step and
+  the rest chosen afresh every time).
+- The third and the fifth are the chord's own. A chord without one takes the scale's.
+- TEMPO, GATE, DIV and EUCLID (GEN 2) work as in ARP, MIDI clock too, and the first step of each EUCLID bar is
+  struck full.
+- ROAM (GEN 2) redraws steps: at 0 the pattern plays as written, turned up more steps change and the bar's last
+  step leads back into the root more often.
+- The notes are leads, so the LEAD page's ATTACK, RELEASE and LEVEL shape them. TRANSPOSE is left out: a bass note
+  sounds where the pattern put it, in the middle of the stereo field and with no SUB under it. They go out over
+  MIDI.
+- A locked voice is not counted when the lowest note is found, and like ARP the line remembers the chord after you
+  stop every voice.
+
+The FM-1's speaker does not reach down to C2: listen to BASS on headphones or the line out.
 
 **RATE** runs from 0.1 s to 60 s, shown in tenths of a second below ten. Under a second GEN stops changing the
 chord and starts playing it: at half a second WALK and RANDOM make a slow melody inside the chord, and with GLIDE
@@ -459,7 +558,8 @@ RELEASE (LEAD page) toll like bells.
 
 **GEN 2's knobs are the mode's, like the GEN page's.** A knob whose setting the mode's generator never reads is
 empty rather than sitting there turning to nothing: RETURN only in WALK, SHIFT and RANDOM, which are the modes
-that wander; ROAM in PROG and LOOP; OCTAVES, EUCLID and DIV only in ARP, since they are the runner's own. The
+that wander; ROAM in PROG, LOOP, MELODY and BASS; OCTAVES in ARP and STRUM; EUCLID and DIV in ARP and BASS, the
+two modes that step at TEMPO. The
 value is kept either way - set EUCLID in ARP, go to WALK and back, and it is as you left it, and MIDI can set any
 of them at any time (section 11).
 
@@ -753,13 +853,14 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | --- | --- |
 | 1 | Vibrato (the mod wheel) · 7 Volume · 64 Sustain |
 | 2, 3 | SCALE, ROOT |
+| 49, 50 | CHORD, VOICING (the chord keys, section 4) |
 | 5 | GLIDE |
 | 9 | MODEL |
 | 12 | The noise layer on or off (switch) |
 | 13 | The preset back as saved, like HOME held (trigger) |
 | 14 | GEN's next move now, like SEL + PLAY (trigger) |
-| 15 | CHORDS (PROG) |
-| 51 | ROAM (PROG, and how far LOOP travels) |
+| 15 | CHORDS (PROG), and BASS's PATTERN |
+| 51 | ROAM (PROG, how far LOOP travels, and how far MELODY and BASS are varied) |
 | 16, 17, 18, 19 | TIMBRE, DRIFT, REVERB, TREMOLO (74 and 91 also set TIMBRE and REVERB on the way in; REVERB is on the FX pages, the other three on HOME) |
 | 20 | The noise layer's LEVEL |
 | 21, 22 | SUB, NOISE (OSC) |
@@ -781,7 +882,7 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 88, 89, 94 | DLY TIME, DLY FDBK, DLY MIX · 102 TYPE (seven equal parts) |
 | 90, 105, 103, 104 | TONE, DIFFUSION, WOW, GATE (DELAY 2) |
 | 106, 107, 108 | DECAY, DAMPING, SHIMMER (REVERB) |
-| 109, 110, 111, 112, 113 | MODE, RATE, CHANCE, RANGE, RETURN (GEN) |
+| 109, 110, 111, 112, 113 | MODE (eleven equal parts), RATE, CHANCE (also SWELL's DEPTH and STRUM's SPREAD), RANGE, RETURN (GEN) |
 | 114, 115 | RANGE (SHIFT), VOICES (RANDOM) |
 | 116, 117, 118, 119 | TEMPO, GATE, PATTERN, OCTAVES (ARP) |
 | 120 | Silence at once · 121 Controllers back to rest · 123 Stop every voice (120 and 123 send the note offs) |

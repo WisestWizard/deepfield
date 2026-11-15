@@ -1,6 +1,138 @@
-# Handoff — DEEP FIELD, 2026-11-13
+# Handoff — DEEP FIELD, 2026-11-14
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
+
+## Start here: chord keys and five more GEN modes (flashed 2026-11-14, not heard, not committed)
+
+Kyle, after looking at other firmwares on the hub: "I feel like we can push deep field further - I think we can add
+more motion types - lets add something that basically ensures nice chords etc - like the orchid". He chose, from
+four questions: chords from the scale (not the Orchid's held type keys); with LATCH on the next chord key leads
+the voices rather than striking fresh; all four modes offered (MELODY, TURN, SWELL, STRUM) and "something
+specifically for bass"; and the flashed click sweep and SHIFT RATE work committed first (43ca952).
+
+**The chord keys** (`chord_build`, `chord_key`, `chord_lead` in `engine/drone.c`; the CHORD page, the last one,
+so SELECT spun right from anywhere lands on it and no other page moved): CHORD is OFF, 5TH, TRIAD, SUS, 7TH or 9TH,
+VOICING CLOSE, OPEN or WIDE, both in the settings record (the byte that was once the VIEW; the record is DEF8 and a
+DEF7 one comes up with them off), CC 49 and 50. A key plays the chord SCALE gives its note, thirds counted along a
+seven-note scale and stacked by distance in a five or six-note one; CHROMATIC plays MAJOR's; a key off the scale
+plays the scale note below. LATCH on: the lowest voice goes to the key's root, a voice already on a chord note
+inside the voicing holds, the rest take the nearest note nobody has, spare notes are struck, spare voices double;
+the standing chord's key lets it go; the landing is the voices' new home. LATCH off: the chord as leads (four at
+most, a ninth drops its fifth). The screen names the chord (C MAJ7, D MIN, B DIM...), the SEL pill reads SEL CHORD,
+a chord key's pressure is channel pressure, MIDI out carries the chord's notes. With CHORD on a held key and a knob
+do not open a voice's own values.
+
+**The modes** (`OM_MELODY` .. `OM_BASS`, appended after LOOP so a saved MODE reads as it did; no new scene values,
+each reads values other modes already had, so the bank's layout and SysEx frame are unchanged):
+
+- **MELODY** (RATE, CHANCE, RANGE, ROAM): the highest unlocked voice sings; phrases of 5 to 7 notes with a peak,
+  a question then its answer ending on the key, long notes on chord notes, never below the chord. Strict time.
+- **TURN** (RATE, CHANCE, RANGE): inversions. A voice fades (a fifth of RATE), moves an octave silent, comes back
+  (`turn_tick`); the pitch classes never change (checked: `pcmask` holds over 6 s of moves, `leap` 12).
+- **SWELL** (RATE, DEPTH on CHANCE's value, VOICES on RANDOM's): a rotating few fade down; never all.
+- **STRUM** (RATE, SPREAD on CHANCE's value, ARP's PATTERN and OCTAVES): the chord across as leads, through LOOP's
+  scheduler (`echo_due`), 8 ms to 1 s a note.
+- **BASS** (ARP's TEMPO, GATE, EUCLID, DIV; PATTERN on CHORDS' value; ROAM): eight patterns under the chord's
+  lowest note, below C3, struck as leads without TRANSPOSE (`voice_t.flat`), following the chord at its next step.
+
+SWELL and TURN use a new per-voice level (`gg`, a tick's exponential toward `gg_to`), put back when GEN stops or
+MODE is turned mid-run (which now also lets go a note LOOP or STRUM was holding).
+
+**Measured** (host): the suite 842 pass (two LOOP checks rewritten: LOOP is no longer MODE's last value);
+`tests/chords.txt`, new, 58 pass from an empty store; the 16 preset renders match their goldens. Clicks, on FIRST
+LIGHT with a C triad, 20 s each, the whitened residual's five largest 5 ms peaks over its median: untouched 17.8 to
+15.8 dB, TURN 20.2 to 19.2, SWELL 18.1 to 17.9, ten chord-key changes 23.3 to 21.8 - each a flat cluster with no
+peak standing clear, so nothing reads as a click; the chord keys sit 5 dB over the untouched render, which is the
+glides and the strikes, not checked further. Traces of MELODY and every BASS pattern were read as note names.
+Device image then 446,728 B, build 5B023575 (superseded by the check pass below). CPU on the unit not read: the
+additions run at the control rate, one multiply a tick a voice.
+
+**The check pass before the flash** (Kyle: "check through the new stuff looking for clicks and pops with all the
+things we learned in our previous fixes - also do other testing for bugs"). Same tools and criteria as the second
+click sweep (`evt.py`, `genevt.py`, `evtscore.py`, copied to this session's scratchpad `ck/`; a click: crest +5 over
+the untouched render and +3 over itself, or s1 over +10 with both crests over +3).
+
+- **Clicks, 1,045 events over 224 scenarios and 452 GEN moves over 80, all sixteen presets**: chord keys (TRIAD,
+  7TH OPEN, 9TH WIDE at GLIDE 0, far jumps, from nothing, the standing chord let go and struck again while fading),
+  chord leads at two ATTACKs with a second chord key stealing, SWELL started, stopped, MODE turned and a program
+  change mid-fade, TURN stopped and MODE turned at four points of a dip, chord keys and a program change under
+  TURN, STRUM with and without OCTAVES, BASS under chord changes and with a long RELEASE; per move: TURN at two
+  RATEs, MELODY at the preset's GLIDE and at 0, BASS. **GEN moves: 0 clicks. Events: 13, then 12.**
+- **Found and fixed: WAVETABLE's table copies switched in one tick** as a glide crossed an octave (STARLIGHT, a
+  7TH OPEN chord key two octaves away: +7.5 / +6.6). Older than the chord keys - SEL + key over the same distance
+  read +6.3 - but a chord key makes far glides ordinary. Confirmed by holding one copy throughout (+3.0). The two
+  copies now cross over 12 ticks, 9 ms (`mip_fade`, `mip_old`; the next change waits for the crossing to end):
+  chord keys +4.2 at most, SEL + key +2.6. Cost, eight WAVETABLE voices for two simulated minutes without vector
+  code: 1.19 s to 1.24 s of user time.
+- **The twelve left are not the new code's**: a chord key as leads on RAIN CLOCK +6.0 to +7.0 reads as four keys
+  struck together with CHORD off do (+5.1 to +6.1: FM 4-OP's operators coming in, the leftover the second sweep
+  listed at +4.2 for one note); STRUM's first note on VOID TIDE +6.3 reads as ARP's first step does there (+6.5),
+  23 dB under the bed's own error; MODE turned from STRUM to ARP on RAIN CLOCK +5.4 is that arp's first note; the
+  rest are +3.1 to +4.3 (STARLIGHT twice, PULSAR, CATHEDRAL, INIT at GLIDE 0).
+- **Bugs, each reproduced in the simulator before its fix** (an independent review of the diff named 1 to 5 and
+  7; a random torture run found 6):
+  1. Two chord keys held as leads: letting the first go took the second's notes on the same pitches, and a note
+     both chords hold went out over MIDI as on then off. Leads now carry the chord key that struck them
+     (`voice_t.own`, `chord_lead_off`), and a stolen lead's off goes out before the new note's on.
+  2. BASS took the LEAD page's TRANSPOSE after its first block (C2 sounded C3 at +12): the per-block "a held lead
+     follows LIFT" loop now leaves `flat` leads alone.
+  3. MODE turned away from BASS or ARP mid-note left the note held, its MIDI off never sent (ARP had this
+     before): the mode-change block lets it go.
+  4. SWELL: a voice locked, or let go and held again from MIDI, while it was down stayed silent: `swell_plan` now
+     brings back every voice outside its reach, and LOCK and a re-strike do at once.
+  5. TURN: a model change during a fade left the voice's twin silent: `twin` carries `turn_to` and `swell_up`.
+  6. Older than this work: a key struck on a note a MIDI keyboard was holding sent a note on that never got its
+     off (3 of the first 60 torture runs). The key takes the body over now.
+  7. Older, reachable only after overloads cut the voice count below a chord's size: a voice stolen twice in one
+     block sent its off to the wrong note. Fixed by reading; not reproduced.
+- **Torture**: 200 random sequences of 120 steps (chord keys, overlaps, MODE, PLAY, SEL, CHORD on and off under a
+  held key, SEL + PLAY, all notes off, scale and root, program changes, OCT, MIDI notes), every note on matched by
+  an off, no lead or quiet voice left at the end: clean after the fixes.
+- **Sanitizers** (address, undefined) over both suites and six torture runs: only the known `fastmath.h:58`.
+- **Checks**: the suite 842 pass, `tests/chords.txt` 64 (the four reproductions added), goldens match. Device
+  image **447,752 B (23 % free)**, RAM 79,660 B, build **ADD4DF41**.
+- **Not done**: FM 4-OP's onset under four notes at once is left as it is; the crossfade's cost is not read on the
+  unit; nothing here is heard yet.
+
+**Not done:** not flashed, not heard, not committed. The version is still 1.8, the site and the emulator are not
+rebuilt or published, the hub text does not name any of this, no screenshot of the CHORD page. Not built: the
+Orchid's held type keys (Kyle chose the scale), a register setting for BASS, chords into LOOP's take as one step
+(each note of a chord lead goes in as its own note).
+
+**On the unit:** flashed 2026-11-14 on Kyle's "Flash it" (fast install over 8E0B9A09), build ADD4DF41, dev
+identity `FM-1_4400`. The log after the restart: `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`, `lock 00000001`.
+
+**Kyle's first listen (2026-11-14): "I got some crunch on first light in the bass mode"**, on the speaker and on
+headphones both. **Not reproduced, cause not confirmed.** What was measured:
+
+- The unit: no xruns, CPU 51 % at most. Its log shows the FIRST LIGHT preset played as ADDITIVE b4 once, then
+  SUPERSAW, FM and mostly BOWED (b4 and b8), so which model crunched is not known.
+- The mix path is linear with the bass in it: the bass's part of the output at LEAD 59 % against LEAD 31 % scaled
+  up differs by a residual 45 to 48 dB under it in ADDITIVE, SUPERSAW, FM and BOWED, with a 7TH chord and with
+  eight voices latched (FORMANT is the one model that reaches the limiter: 24 dB). No clipping; peaks -1 to -8 dB.
+- A held C2 alone on ADDITIVE: every partial on a harmonic of 65.5 Hz, the rest 61 dB or more down.
+- On the shipped lead settings two or three bass notes sound at once (RELEASE 0.33 s over 0.25 s steps).
+- **Two defects found on the way and fixed in the tree (not flashed):** the bass line stood hard left (a lead is
+  placed by its pitch: C2 read -18.9 dB left, -29.4 dB right; now centred), and SUB added an octave under each
+  bass note, 32 to 61 Hz at -10 dB (now none for a bass note). Either may be part of what he heard, the SUB on the
+  speaker especially; neither is shown to be it. Suite 842, chords 64, goldens match.
+  **Flashed 2026-11-14 on Kyle's "Flash fixes first"**: build 065375A9, image 447,688 B, over ADD4DF41. Not heard.
+- Next: record the unit's USB audio while he reproduces it (`ffmpeg -f avfoundation`, the input shows as DEEP
+  FIELD FM-1; SPEAKER must be ON on the USB page or AUTO silences his monitoring), or get the model, PATTERN,
+  TEMPO and keys from him.
+
+**To check on the unit**:
+
+1. GLO, SELECT right until it stops: CHORD. KNOB 1 to TRIAD. Press C4: C major, and the screen says CHORD C MAJ.
+2. Press A3, then F3, then G3: the chord moves to each, the bass on the key, the other voices sliding a little.
+3. Press G3 again: the chord stops.
+4. KNOB 1 to 7TH, KNOB 2 to OPEN, play a few keys.
+5. Latch a chord, press PLAY, MODE to BASS, PATTERN to WALKING, headphones on. Press other chord keys: the bass
+   follows.
+6. MODE to MELODY, RATE about 0.7 s, CHANCE up, then RANGE and ROAM (GEN 2).
+7. MODE to TURN at RATE 2 s, then SWELL (DEPTH 100 %), then STRUM (SPREAD up and down, PATTERN UP DOWN).
+8. SEL (LATCH off) and play chord keys as leads.
+
 
 ## Start here: SHIFT's RATE is the time between voice moves (flashed 2026-11-13)
 
