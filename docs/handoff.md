@@ -2,7 +2,7 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: 1.9 made ready for the hub (2026-11-15, pushed; not tagged, site not published)
+## Start here: 1.9 released and the site published (2026-11-15)
 
 Kyle: "update everything we talked about in terms of docs, manuals etc and push everything to main and make sure
 everything is ready for the firmware hub to get the new version". He did not say what he heard on 3F557FF3.
@@ -15,15 +15,16 @@ were already in the manual, both cheat sheets and `deepfield/README.md`. Checks 
 `FM-1_44010900`, package 616,003 B) and the site reads Version 1.9 in the preview. `master` pushed (6665b53), and `release.yml` dry-run on it green (run 43762261392: built, tested, attested, nothing
 released).
 
-**Left, each on Kyle's word:**
+**Released on Kyle's "Publish and tag 1.9":** the site is live at deepfield.fog.baby reading Version 1.9, and the
+tag `1.9` (on 01f2aae) built, tested, attested and released `deepfield-1.9.fwsc` (616,003 B, run 43762700674). The
+hub takes a new release within three hours by itself; not checked there yet.
 
-1. `deepfield/tools/publish_site.sh 1.9` (he must say "publish"): the site and its emulator are still 1.8, and
-   `fmhub.json`'s `play` and `cheat` links point at them.
-2. `git tag 1.9 && git push origin 1.9`: CI builds, tests, attests and releases `deepfield-1.9.fwsc`; the hub takes
-   it within three hours. A failed tag cannot be deleted from here, so only after a green dry run.
-3. The unit runs dev build 3F557FF3 (the same source as 1.9 but the dev identity); flash the release asset after
-   the tag if it should carry the released bytes.
-4. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
+**Left:**
+
+1. Look at thefirmwarehub.com after three hours: the card should read 1.9.
+2. The unit runs dev build 3F557FF3 (the same source as 1.9 but the dev identity); flash the release asset on
+   Kyle's word if it should carry the released bytes.
+3. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
 
 ## The settings debug pass (2026-11-15, flashed, not heard, committed fe36b68, pushed)
 
