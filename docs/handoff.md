@@ -2,7 +2,55 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: chord keys and five more GEN modes (flashed 2026-11-14, not heard, not committed)
+## Start here: the deep dive on the new modes (2026-11-14, flashed, not heard, not committed)
+
+Kyle: "do a deep dive and debug to see what you can find with the new voices and motion types". The unit was not
+on USB during the work, so nothing here was read from it.
+
+**Flashed 2026-11-14 on Kyle's "Flash it"**: build D1282956, image 448,120 B, fast install over 065375A9. The
+installer finished and the unit restarted; its log reads `no crash recorded`, `cpu 5% b0 ADDITIVE s0 x0`,
+`late 00000000`. The log does not name the build, so D1282956 is the package's id, not one read back. Not heard.
+
+**Four faults found, each reproduced on 7f2b9fe before it was touched** (`tests/chords.txt`, its last three
+blocks: 10 checks fail on 7f2b9fe, 80 of 80 pass now). All four are about the four leads GEN's lines and the keys
+share (`lead_event` in `engine/drone.c`):
+
+- **A note or chord held on the keys was taken by GEN's line.** A lead with none free took the oldest, whatever it
+  was doing. With LEAD RELEASE at 100 a key held over BASS or ARP was gone by the line's third note; a chord key
+  held over BASS lost all three notes. Older than BASS (ARP did it too). Now the lead taken is, in order: one
+  already let go, one GEN struck (`voice_t.mach`), a strum's first string (`keep`), then the oldest held.
+- **GEN's note off ended a key's note at the same pitch**, and a key coming up ended GEN's. A chord held over a
+  strum of its own notes lost them one by one. A note off now goes to a lead struck by whoever lets it go
+  (`mach` against `lead_machine`); `arp_release` marks its off as the machine's, which also stops it closing a
+  note in LOOP's phrase.
+- **STRUM cut its own root.** FIRST LIGHT's triad over OCTAVES 2 is six notes on four leads: the fifth note took
+  the first, the one struck at 127, 4 SPREADs in. The first string is now the last of the strum's own to go.
+- **BASS notes piled up.** Left to LEAD RELEASE two or three rang under each new one, all within a third of each
+  other below 100 Hz; at RELEASE 100 four. Now the notes before end as the next starts (`choke`, 43 dB in 66 ms).
+  Bus peak before its clip, FIRST LIGHT, LEVEL full, RELEASE 100, TEMPO 90: 0.607 to 0.458; STARLIGHT 1.337 to
+  1.168.
+
+**The crunch on FIRST LIGHT in BASS is still not reproduced.** What was ruled out on the host: every model alone
+at notes 21 to 47 is as clean as at 60 (energy off the harmonics, 39 model and SHAPE settings); FIRST LIGHT's bus
+in BASS peaks at 0.33 before a clip that starts to bend near 0.6, and the limiter never moves; 640 bass steps
+across all sixteen presets, five settings, score 3 marginal, all VOID TIDE's SUPERSAW onsets. The overlapping low
+notes are the one thing found that could be heard as roughness, and they are gone; whether that was it only the
+unit can say. If it is still there after the next flash: record the unit over USB (`ffmpeg -f avfoundation`, input
+"DEEP FIELD FM-1", SPEAKER on in the USB page) or note the MODEL, PATTERN, TEMPO and keys.
+
+**Also measured, nothing found**: TURN over 40 s at RATE 0.17 s on three presets, a TRIAD or a 9TH key, two RANGEs
+(the pitch classes never change, at most one voice down at a time, none left down after GEN stops); SWELL (the
+count down always the one asked for, none left down); BASS over 84 chord key, size, pattern and ROAM settings in
+C MAJOR (13,524 notes, none off the scale, the first step always the root); 160 random sequences of 140 actions (keys,
+chords, MODE turns, program changes, MIDI clock, pedal, pressure, key + knob) with no stuck note, and 60 more under
+the address and undefined-behaviour sanitizers with only the known `fastmath.h:58` shift.
+
+**Left as found**: STARLIGHT's bass with LEAD LEVEL full drives the bus to 1.05 before its clip (one note, not a
+pile-up: LEVEL full is 9 dB over a voice by design). CHOIR and GLASS play 10 to 13 dB quieter at C1 than at C4, so
+BASS is quiet on them. A preset's own chord sends no note on over MIDI when it lands, so the first chord key or GEN
+move after it sends note offs for notes that were never on (older than the chord keys; harmless to a receiver).
+
+## Chord keys and five more GEN modes (flashed 2026-11-14, not heard, not committed)
 
 Kyle, after looking at other firmwares on the hub: "I feel like we can push deep field further - I think we can add
 more motion types - lets add something that basically ensures nice chords etc - like the orchid". He chose, from

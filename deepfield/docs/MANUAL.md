@@ -193,7 +193,7 @@ with the voice when GEN or SEL moves it, and are saved with the preset. Over MID
 were latched keep sounding: the *held chord*. The keys now play **leads** over it. A lead is a note in the preset's
 own sound that plays while you hold its key and fades when you let go. Leads never latch, and GEN never moves
 them. A key whose note is already latched plays a lead on top of its voice, as an accent. Up to four leads play at
-once; a fifth replaces the oldest, which fades out as it was before the new one starts. On the screen a lead is a thin white beam, and its key is white on the keys
+once; a fifth replaces one that is already fading if there is one, then a note GEN is playing (ARP, STRUM, BASS, LOOP), and only then the oldest note you hold, and the one replaced fades out as it was before the new one starts. On the screen a lead is a thin white beam, and its key is white on the keys
 strip. Tap SEL again to go back to LATCH.
 
 MIDI notes work the same way: with LATCH on, a MIDI note plays a voice that sounds until its note off (it never
@@ -519,7 +519,7 @@ you stop them, spread over OCTAVES (GEN 2), up to eight a strum. PATTERN is ARP'
 alternate), RANDOM or PLAYED. The first note of a strum is struck hardest. The notes ring together until the sweep
 ends and a sixth of RATE more, then fade at the LEAD page's RELEASE; that page's ATTACK, TRANSPOSE and LEVEL shape
 them too. Only four leads sound at once, so in a sweep of more than four notes the earliest give way to the
-latest. A sweep never lasts longer than RATE, whatever SPREAD says, and RATE keeps strict time.
+latest, all but the first, which rings to the end of the sweep. A sweep never lasts longer than RATE, whatever SPREAD says, and RATE keeps strict time.
 
 **BASS plays a line under the chord.**
 
@@ -536,6 +536,8 @@ latest. A sweep never lasts longer than RATE, whatever SPREAD says, and RATE kee
   struck full.
 - ROAM (GEN 2) redraws steps: at 0 the pattern plays as written, turned up more steps change and the bar's last
   step leads back into the root more often.
+- The line plays one note at a time: each note ends as the next one starts, and RELEASE is heard in full only
+  after the last.
 - The notes are leads, so the LEAD page's ATTACK, RELEASE and LEVEL shape them. TRANSPOSE is left out: a bass note
   sounds where the pattern put it, in the middle of the stereo field and with no SUB under it. They go out over
   MIDI.

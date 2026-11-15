@@ -80,7 +80,11 @@ typedef struct {
                                           * go its own notes and not another chord's on the same pitch */
     uint8_t mip_old;                     /* WAVETABLE: the table copy it is crossing over from (mip_fade) */
     float mip_fade;                      /* WAVETABLE: how much of that copy is still heard, 1 falling to 0 */
-    uint8_t line_pad[4];                 /* to a whole number of cache lines (voice_on_lines) */
+    uint8_t keep;                        /* a lead no other strike steals while one without the mark is there (a
+                                          * strum's first string) */
+    uint8_t choke;                       /* a bass note let go with the next one struck: out in 60 ms, not RELEASE */
+    uint8_t mach;                        /* a lead GEN struck (ARP, STRUM, BASS, LOOP), not a key or MIDI */
+    uint8_t line_pad[1];                 /* to a whole number of cache lines (voice_on_lines) */
 } voice_t;
 typedef char voice_on_lines[(sizeof(voice_t) % 32u) == 0u ? 1 : -1];
 
@@ -207,6 +211,7 @@ static uint8_t mel_u[8], mel_n, mel_i, mel_phr, mel_have;
 static int8_t mel_peak;                  /* the theme's peak, in scale steps from the key */
 static uint32_t mel_left;
 static uint32_t strum_flip, bass_i;      /* UP DOWN's stroke; BASS: the step of its pattern */
+static uint8_t lead_keep;                /* the lead being struck is a strum's first string */
 static uint8_t lead_flat;                /* the lead being struck is the machine's, at its own pitch (BASS) */
 static int8_t echo_tune[8];              /* STRUM: each note's own TUNE */
 static uint32_t ch_size, ch_voicing;     /* the chord keys' size (CH_*) and voicing (CV_*) */
@@ -409,7 +414,7 @@ static void voice_strike(voice_t *v, uint32_t note, uint32_t vel, uint32_t latch
     v->latched = (uint8_t)latch;
     v->sustained = 0;
     v->midi = (uint8_t)midi;
-    v->lead = v->held = v->flat = v->own = 0;
+    v->lead = v->held = v->flat = v->own = v->keep = v->choke = v->mach = 0;
     v->ed_lvl = v->ed_tone = v->ed_tune = 0;
     v->pinned = 0;
     v->ed_gain = 1.0f;
@@ -621,10 +626,21 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
                 v = &vc[i];
                 break;
             }
-        if (!v)
-            for (i = NV; i < NV_ALL; i++)
-                if (!v || vc[i].age < v->age)
+        if (!v) {                        /* none free: one already let go (its tail) before one held, GEN's own
+                                          * note before one a hand holds, a strum's first string after its others;
+                                          * among equals the oldest. It was the oldest whatever it was doing: a
+                                          * chord held on the keys over BASS, ARP or STRUM was taken note by note,
+                                          * and a strum of six notes cut its own root, struck hardest, as the fifth
+                                          * landed */
+            uint32_t best = 0, sc;
+            for (i = NV; i < NV_ALL; i++) {
+                sc = vc[i].held ? 8u + (vc[i].mach ? 0u : 4u) + (vc[i].keep ? 2u : 0u) : 0u;
+                if (!v || sc < best || (sc == best && vc[i].age < v->age)) {
                     v = &vc[i];
+                    best = sc;
+                }
+            }
+        }
         if (v->on) {                     /* stolen: a short fade first, and its note off out if still owed */
             if (note_out && v->midi == 0u && v->held)
                 note_out(v->home, 0, 0);
@@ -634,6 +650,8 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
         v->lead = 1;
         v->held = 1;
         v->flat = lead_flat;
+        v->keep = lead_keep;
+        v->mach = lead_machine;
         if (!lead_machine) {             /* a player's note: into LOOP's phrase, which wakes */
             uint32_t gap = echo_n ? (loop_clk - loop_t_last) >> 6 : 0u;
             echo_gap[echo_w] = (uint16_t)(gap > 60000u ? 60000u : gap);
@@ -657,7 +675,15 @@ static void lead_event(uint32_t note, uint32_t vel, uint32_t on, uint32_t midi)
                 v->pan = v->pan_live = 0.0f;
         }
     } else {
-        v = find_lead(note);
+        uint32_t i;                      /* the newest lead held on that note by whoever lets it go: GEN's note off
+                                          * ended a note a key was holding at the same pitch (a chord held over a
+                                          * strum of its own notes lost them one by one), and a key coming up ended
+                                          * GEN's */
+        v = 0;
+        for (i = NV; i < NV_ALL; i++)
+            if (vc[i].on && vc[i].held && vc[i].home == note && vc[i].mach == lead_machine
+                && (!v || vc[i].age > v->age))
+                v = &vc[i];
         if (!v)
             return;
         if (midi && sustain) {
@@ -1514,7 +1540,7 @@ static void voice_tick(voice_t *v, const blk_t *b, float *f_out, float *lvl_out)
                 v->quick = 0;
             }
         } else {
-            v->env *= b->rel_m;
+            v->env *= v->choke && b->rel_m > 0.9468f ? 0.9468f : b->rel_m;   /* 43 dB down in 66 ms */
             v->fading = 0;
             if (v->env < 0.0005f) {
                 v->on = 0;
@@ -4083,7 +4109,9 @@ static void arp_gather(uint32_t played)  /* the latched notes as struck (none: t
 static void arp_release(void)
 {
     if (arp_held >= 0) {
+        lead_machine = 1;
         lead_event((uint32_t)arp_held, 0, 0, 0);
+        lead_machine = 0;
         arp_held = -1;
     }
 }
@@ -4239,6 +4267,16 @@ static void arp_tick(uint32_t n)
         note = bass ? bass_pick() : arp_notes[arp_pos];
         if (note_out)
             note_out(note, arp_acc, 1);
+        if (bass) {                      /* one note at a time, as a bass plays: the notes before this one end as
+                                          * it starts. Left to LEAD RELEASE two or three of them rang on under
+                                          * each new one, all within a third of each other below 100 Hz, and at a
+                                          * long RELEASE four piled up (STARLIGHT, LEVEL full: the bus at 1.34,
+                                          * well into its clip) */
+            uint32_t i;
+            for (i = NV; i < NV_ALL; i++)
+                if (vc[i].on && vc[i].flat && !vc[i].held)
+                    vc[i].choke = 1;
+        }
         lead_machine = 1;
         lead_flat = (uint8_t)bass;
         lead_event(note, arp_acc, 1, 0);
@@ -4431,7 +4469,9 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
                 if (note_out)
                     note_out(echo_note[j], vel, 1);
                 lead_machine = 1;
+                lead_keep = (uint8_t)(strum && j == 0u);
                 lead_event(echo_note[j], vel, 1, 0);
+                lead_keep = 0;
                 lead_machine = 0;
                 if (strum) {
                     voice_t *ld = find_lead(echo_note[j]);

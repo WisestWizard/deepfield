@@ -232,3 +232,69 @@ midi B0 62 43
 midi B0 06 7F
 wait 4000
 expect quiet 0
+# STRUM over more notes than there are leads keeps its first string, struck hardest: a triad over two octaves is six
+# notes on four leads, and the fifth used to cut the root
+reboot
+wait 700
+tap HOME
+wait 600
+midi B0 7B 00
+wait 200
+midi B0 31 38
+midi B0 39 7F
+wait 50
+key 7 down 100
+wait 100
+key 7 up
+wait 200
+expect latch 3
+midi B0 39 00
+wait 50
+expect latchmode 0
+param 33 55
+param 36 9
+param 24 30
+param 25 40
+midi B0 3A 7F
+wait 650
+expect leads 4
+expect lead60 1
+midi B0 3A 00
+wait 3000
+# a chord key held over the bass line keeps its three notes, whatever LEAD RELEASE: the line takes its own tails
+param 36 10
+param 33 100
+midi B0 3A 7F
+wait 1500
+expect arprun 1
+key 20 down 100
+wait 3000
+expect lead72 1
+expect lead76 1
+expect lead79 1
+key 20 up
+wait 12000
+# and BASS plays one note at a time: the note before ends as the next starts, however long RELEASE is
+expect leads <3
+wait 130
+expect leads <3
+wait 130
+expect leads <3
+expect arprun 1
+midi B0 3A 00
+param 33 55
+# a chord held on the keys over STRUM keeps its notes too: the strum makes do with the lead that is left
+param 36 9
+param 24 30
+param 25 40
+midi B0 3A 7F
+wait 1000
+key 20 down 100
+wait 3000
+expect lead72 1
+expect lead76 1
+expect lead79 1
+key 20 up
+midi B0 3A 00
+wait 3000
+expect leads 0
