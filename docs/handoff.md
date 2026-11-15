@@ -2,7 +2,29 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the settings debug pass (2026-11-15, flashed, not heard, committed, not pushed)
+## Start here: 1.9 made ready for the hub (2026-11-15, pushed; not tagged, site not published)
+
+Kyle: "update everything we talked about in terms of docs, manuals etc and push everything to main and make sure
+everything is ready for the firmware hub to get the new version". He did not say what he heard on 3F557FF3.
+
+**Done:** MODE's rest added to both cheat sheets (the manual had it); the chord keys and MELODY, STRUM and BASS in
+the site's landing page, the root README and the catalogue description (`fm1.toml` and `firmware.json`, 595 of 600
+characters; `fmhub.json`'s `what` already had chords, unchanged). The chord keys, the five modes and SHIFT's RATE
+were already in the manual, both cheat sheets and `deepfield/README.md`. Checks on this tree: `basic.txt` 842 ok,
+`chords.txt` 89 ok, all 16 renders match golden, `publish_site.sh 1.9 --local` builds (release identity
+`FM-1_44010900`, package 616,003 B) and the site reads Version 1.9 in the preview. `master` pushed.
+
+**Left, each on Kyle's word:**
+
+1. `deepfield/tools/publish_site.sh 1.9` (he must say "publish"): the site and its emulator are still 1.8, and
+   `fmhub.json`'s `play` and `cheat` links point at them.
+2. `git tag 1.9 && git push origin 1.9`: CI builds, tests, attests and releases `deepfield-1.9.fwsc`; the hub takes
+   it within three hours. A failed tag cannot be deleted from here, so only after a green dry run.
+3. The unit runs dev build 3F557FF3 (the same source as 1.9 but the dev identity); flash the release asset after
+   the tag if it should carry the released bytes.
+4. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
+
+## The settings debug pass (2026-11-15, flashed, not heard, committed fe36b68, pushed)
 
 **Next session, on Kyle's word** ("I'll have you update all docs etc and push on the next session"):
 
