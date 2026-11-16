@@ -24,15 +24,17 @@ unit was not on USB, so its build was matched by hash. A dev build of HEAD reads
 fe36b68's `deepfield/fm1.toml` in place of HEAD's, the same hash reads 3F557FF3. The catalogue text in `fm1.toml`
 is the only hashed file that differs, and it does not reach the image, so the unit plays exactly HEAD's code. The hub's
 `catalog.json` reads version 1.9, `deepfield-1.9.fwsc`, 616,003 B, published 2026-11-15T21:17:39Z; its card text
-(eight voices, thirteen sounds) still matches the code. 536c00e (which GEN modes the factory presets use) pushed;
-the live manual and cheat sheet still read "every GEN mode on two" until `publish_site.sh 1.9` runs again.
+(eight voices, thirteen sounds) still matches the code. 536c00e (which GEN modes the factory presets use) pushed.
+**Site republished as 1.9 on Kyle's "Publish 1.9"** (gh-pages 97e06cb, from 37ae22a): the live manual and cheat
+sheet read the new preset line. Its installer's package is a local build, `255c4177e848cbea`, build 6CAA3A42, the
+same build as the release's CI run but not its bytes (`7bee45c86719506b`; CI's image is 448,820 B against 448,808
+locally), as with every release since 1.6 (see the 1.6 note on reproducibility below).
 
 **Left:**
 
-1. Republish the site as 1.9 on Kyle's word "publish" (the docs fix only; the firmware is unchanged).
-2. The unit runs dev build 3F557FF3 (HEAD's code, the dev identity); flash the release asset on
+1. The unit runs dev build 3F557FF3 (HEAD's code, the dev identity); flash the release asset on
    Kyle's word if it should carry the released bytes.
-3. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
+2. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
 
 ## The settings debug pass (2026-11-15, flashed, not heard, committed fe36b68, pushed)
 
