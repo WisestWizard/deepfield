@@ -30,11 +30,19 @@ sheet read the new preset line. Its installer's package is a local build, `255c4
 same build as the release's CI run but not its bytes (`7bee45c86719506b`; CI's image is 448,820 B against 448,808
 locally), as with every release since 1.6 (see the 1.6 note on reproducibility below).
 
-**Left:**
+**The unit runs the released 1.9 bytes** (Kyle: "I don't think we need to show any installation on the video do it
+now", then "dont overwrite the dvice if it is ahead"). It was not ahead: `fm1_install.py --info` read `FM-1_4400`,
+a dev build, and the newest dev source anywhere is 3F557FF3's (master's tree; the only other worktree,
+`claude/lucid-turing-a0708a`, is 14 commits behind with nothing ahead). The release asset, SHA-256
+`7bee45c86719506b`, `gh attestation verify --signer-repo zvenson/fm1-build` passing, went on with
+`fm1_install.py <it> --yes`: `done: the FM-1 runs FM-1_44010900`. Log: no crash recorded, BT advertising as FM-1
+F9FC, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`, `lock 0000000D`; `screen` reads FIRST LIGHT on HOME with the
+same values as before the install (HARMONICS 37 %, DRIFT 29 %), so the saved settings came through. The walkthrough
+script no longer films an install: the shoot-order step, the unit checklist's install and its screen recording,
+and section 1's installer cutaway are gone (doc rev 40); the install link stays in the description.
 
-1. The unit runs dev build 3F557FF3 (HEAD's code, the dev identity); flash the release asset on
-   Kyle's word if it should carry the released bytes.
-2. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
+**Left:** still open from the pass below: what he heard, and the log's ` C<n>` (none so far on 1.9's first boot)
+and `late` over a long play.
 
 ## The settings debug pass (2026-11-15, flashed, not heard, committed fe36b68, pushed)
 
