@@ -1,4 +1,4 @@
-# Handoff — DEEP FIELD, 2026-11-15
+# Handoff — DEEP FIELD, 2026-11-16
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
@@ -19,10 +19,18 @@ released).
 tag `1.9` (on 01f2aae) built, tested, attested and released `deepfield-1.9.fwsc` (616,003 B, run 43762700674). The
 hub takes a new release within three hours by itself; not checked there yet.
 
+**Synced to the unit (2026-11-16, Kyle: "lets get everything synced with the current version on the device"):** the
+unit was not on USB, so its build was matched by hash. A dev build of HEAD reads 410C5A8E, image 448,808 B; with
+fe36b68's `deepfield/fm1.toml` in place of HEAD's, the same hash reads 3F557FF3. The catalogue text in `fm1.toml`
+is the only hashed file that differs, and it does not reach the image, so the unit plays exactly HEAD's code. The hub's
+`catalog.json` reads version 1.9, `deepfield-1.9.fwsc`, 616,003 B, published 2026-11-15T21:17:39Z; its card text
+(eight voices, thirteen sounds) still matches the code. 536c00e (which GEN modes the factory presets use) pushed;
+the live manual and cheat sheet still read "every GEN mode on two" until `publish_site.sh 1.9` runs again.
+
 **Left:**
 
-1. Look at thefirmwarehub.com after three hours: the card should read 1.9.
-2. The unit runs dev build 3F557FF3 (the same source as 1.9 but the dev identity); flash the release asset on
+1. Republish the site as 1.9 on Kyle's word "publish" (the docs fix only; the firmware is unchanged).
+2. The unit runs dev build 3F557FF3 (HEAD's code, the dev identity); flash the release asset on
    Kyle's word if it should carry the released bytes.
 3. Still open from the pass below: what he heard, and the log's ` C<n>` and `late` with the unit on USB.
 
