@@ -5,8 +5,8 @@ swells in, keeps sounding, slowly breathes and drifts, and fades out when you st
 is its weight — its level, how bright it is, and how fast it arrives. Up to eight play at once.
 Four knobs shape every voice at the same time, a held key sets one voice apart, and with CHORD on one key plays a
 chord in your scale. GEN moves the voices to nearby notes, leads them through a chord progression over the scale
-you set, runs an arpeggio over them that can learn a phrase you play, or adds a melody, a strum or a bass line
-that follows the chord. Thirteen models range from breathing harmonics to wavetables and FM, and the reverb can freeze
+you set, runs an arpeggio over them whose notes and rests MUTATE and DEVIATE vary, loops a phrase you record after a
+four-beat count-in, or adds a melody, a strum or a bass line that follows the chord. Thirteen models range from breathing harmonics to wavetables and FM, and the reverb can freeze
 and shimmer. MIDI comes in over USB, Bluetooth and the TRS jack, and goes out over USB and Bluetooth; every
 knob has a CC, and the presets travel as SysEx.
 

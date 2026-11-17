@@ -3,8 +3,8 @@
 Every key strikes a voice that swells in and stays, as hard as you struck it: how hard sets its level over 18 dB,
 how bright it is and how fast it arrives. Eight of them rise as beams over the keys on the screen, breathe, drift,
 and move to neighbouring notes by themselves when GEN runs, through a chord progression that leads them one voice
-at a time across the scale you set, or under an arpeggio with Euclidean rhythms that can learn a phrase you played
-and carry it on, a generated melody, a strum or a bass line that follows the chord. With CHORD on, one key plays a
+at a time across the scale you set, or under an arpeggio with Euclidean rhythms and MUTATE and DEVIATE to vary its notes and rests, a loop of a
+phrase you record after a four-beat count-in, a generated melody, a strum or a bass line that follows the chord. With CHORD on, one key plays a
 chord in the scale. Four macros shape every voice at once; a held key and a knob give one voice its own level, tone and tune. Thirteen
 models, a noise layer, a hall reverb with FREEZE and SHIMMER, a delay of seven kinds and an ensemble. 32 presets,
 each a sound: changing preset morphs the sound under the chord you are playing. MIDI over USB, Bluetooth (both
@@ -28,7 +28,7 @@ history up to that day is in this repository, and each firmware's own carries on
 | Path | What |
 | --- | --- |
 | `deepfield/` | the firmware: `fm1.toml` (build settings), `app.c` / `ui.c` / `engine/` / `scenes.c`, `tests/` (simulator scripts), `docs/MANUAL.md`, `site/`, `tools/` |
-| `base/` | fm1-base, a git submodule (felucca-bsp inside it as `base/bsp`): upstream main plus the MASTER ramp, pinned to the [WisestWizard/fm1-base](https://github.com/WisestWizard/fm1-base) fork until [charlesvestal/fm1-base#50](https://github.com/charlesvestal/fm1-base/pull/50) is merged |
+| `base/` | fm1-base, a git submodule (felucca-bsp inside it as `base/bsp`): upstream main plus the MASTER ramp and the `loader_screen` build setting DEEP FIELD's update screen needs, pinned to the [WisestWizard/fm1-base](https://github.com/WisestWizard/fm1-base) fork until [charlesvestal/fm1-base#50](https://github.com/charlesvestal/fm1-base/pull/50) is merged |
 | `docs/` | `handoff.md` (where the work stands, read this first), the FM-1 research and the platform decision |
 | `firmware.json`, `fmhub.json` | what the firmware catalogues read: RemoteFM1 and M-Flasher the first, The Firmware Hub the second |
 | `build.sh` | runs `base/tools/build.py deepfield` |

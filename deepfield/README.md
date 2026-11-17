@@ -29,7 +29,8 @@ the point of view behind it: `docs/research.md`. The manual: `docs/MANUAL.md`.
 | `ui.c` | the keys, buttons, pages, the screen that mirrors the panel: beams over the keys strip |
 | `engine/drone.c`, `drone.h` | the engine: eight voices, thirteen models, each voice's own values, the hand-over between models, the noise layer, GEN and the arp, the morph (an -O2 unit) |
 | `engine/fx.c`, `fx.h` | ensemble, the delay and its seven types (WOW, GATE), an eight-line FDN hall with pre-delay, freeze and shimmer, limiter |
-| `tests/basic.txt` | 699 simulator checks; `tests/screens.txt` the manual's screenshots; `tests/golden.txt` the renders' hashes |
+| `loader_screen.c`, `loader_swirl.h` | the update screen, built into the update loader (fm1.toml `loader_screen`): the vortex drawing itself as the install goes; the table from `tools/gen_loader_swirl.py`, checked by `tests/loader_screen_test.c` |
+| `tests/basic.txt` | 1,057 simulator checks; `tests/screens.txt` the manual's screenshots; `tests/golden.txt` the renders' hashes |
 | `tools/render_scenes.py` | every factory preset, with its chord, to WAV, compared with the golden file (`--levels` prints peak/RMS); `tools/fx_levels.py` prints each effect's wet level |
 | `tools/gen_wt.py` | WAVETABLE's wavetables and their loudness gains, generated at build time (fm1.toml `gen`) into flash |
 | `tools/fm1_bank.py` | the presets over USB as SysEx: `dump` a bank to a .syx, `load` one back, `show` a file (needs mido; /usr/bin/python3 has it) |

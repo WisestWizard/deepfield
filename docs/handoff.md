@@ -7,8 +7,8 @@ The one page to read before the next session. Status first, then how to resume, 
 **Committed 2026-11-16 on Kyle's "commit everything"**, one commit on master for this section and the two below
 (the unit runs exactly this tree, build 3C307293). The `loader_screen` build setting is base 646673b on a new local
 branch `loader-screen` (off `master-ramp`, so it carries the MASTER ramp too), and the submodule pin moved to it.
-**Neither is pushed. Push base's `loader-screen` to WisestWizard/fm1-base before pushing master**, or the pin
-names a commit no clone can fetch and the release workflow fails at checkout. No version bump, site not published.
+Base's `loader-screen` was pushed to WisestWizard/fm1-base the same day (by URL, as `master-ramp` was), then master.
+Not offered upstream yet: that PR needs Kyle's word.
 
 Kyle, on the count-in build: "I noticed that the loop stopped playing when I changed the voice", then "shouldnt the
 loop just play endlessly until someone hits stop on the arp?".
