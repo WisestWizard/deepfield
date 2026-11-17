@@ -2,6 +2,28 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: 1.10 released and the site published (2026-11-16)
+
+Kyle: "push and update version so the firmware hub gets it update all docs etc", then "Publish and tag 1.10" (he
+was offered 1.10 or 2.0).
+
+**Released:** tag `1.10` on 0143b57 (8df50aa's code plus the READMEs, landing page and budget). `release.yml` dry
+run on master green first (run 44009982280: loader image 16,024 B, so CI's package carries the update screen;
+suite and goldens pass), then the tag's run 44010340485: `deepfield-1.10.fwsc`, 616,909 B, SHA-256
+`2b648d030b83980a`, identity `FM-1_44011000`, published 2026-11-17T03:29:01Z, attestation verified
+(`gh attestation verify <it> --repo WisestWizard/deepfield --signer-repo zvenson/fm1-build`).
+**Site:** `publish_site.sh 1.10` pushed gh-pages; deepfield.fog.baby reads Version 1.10 and the live manual and
+cheat sheet carry GEN 3, MUTATE, DEVIATE and the count-in. The root `firmware.json` did not change (it holds no
+version).
+**Base:** `loader-screen` (646673b) pushed to WisestWizard/fm1-base before master; not offered upstream.
+**The hub:** `catalog.json` still read 1.9 minutes after the release; it takes a new release within three hours by
+itself. Not checked since.
+**The unit** runs dev build 3C307293 (`FM-1_4400`), the same code as 1.10 but not the release's bytes.
+
+**Left:** the hub card reading 1.10; the unit onto the released bytes if Kyle wants them matched (as on 1.9);
+what he hears of MUTATE, DEVIATE, the click's level and the endless loop; the `loader_screen` setting offered
+upstream (his word needed); a GEN 3 screenshot in the manual.
+
 ## Start here: a recorded loop plays until PLAY stops it (flashed 2026-11-16, committed)
 
 **Committed 2026-11-16 on Kyle's "commit everything"**, one commit on master for this section and the two below
