@@ -59,6 +59,10 @@ typedef struct {
 /* a scene as an older bank stored it: the same layout with fewer parameters (name, p[old], notes, vels, fx_off,
  * three spare bytes) and no per-body values after them */
 #define OLD_SCENE_SIZE(np) (SCENE_NAME + (np) + 2u * DR_NV + 4u)
+/* and as a bank since the per-body values stored it: today's layout with fewer parameters (62 when the per-body
+ * values came, 63 from 1.5 to 1.9) */
+#define PB_SCENE_SIZE(np) (sizeof(scene_t) - P_COUNT + (np))
+#define P_COUNT_PB 62u
 static bank_t bank PLAT_POOL;
 static scene_t factory[NFACTORY] PLAT_POOL;
 
@@ -105,6 +109,20 @@ static void scene_name_set(scene_t *s, const char *name)
         s->name[i] = 0;
 }
 
+static void scene_init(scene_t *s, const char *name);
+static void scene_from_pb(const uint8_t *o, uint32_t np, scene_t *d)   /* a PB_SCENE_SIZE(np) record as today's
+                                          * scene: what it held, and the INIT scene's value for every parameter
+                                          * added since */
+{
+    uint8_t *b = (uint8_t *)d;
+    uint32_t j;
+    scene_init(d, "");
+    for (j = 0; j < SCENE_NAME + np; j++)
+        b[j] = o[j];
+    for (j = SCENE_NAME + P_COUNT; j < sizeof(scene_t); j++)
+        b[j] = o[j - P_COUNT + np];
+    d->name[SCENE_NAME - 1u] = 0;
+}
 static void scene_init(scene_t *s, const char *name)
 {
     static const uint8_t INIT[P_COUNT] = {
@@ -456,6 +474,26 @@ static void project_load(void)
                          * its size says how many it held, and never more than this build has (a flash holding a size
                          * that fits no build of ours loads the defaults). The parameters this build added keep the
                          * INIT scene's values, since scene_init runs first */
+        uint32_t pbp = ours && !legacy && bank.ssize >= PB_SCENE_SIZE(P_COUNT_PB) && bank.ssize < sizeof(scene_t)
+                       ? bank.ssize - (uint32_t)PB_SCENE_SIZE(0) : 0u;   /* a bank from a build with the per-body
+                         * values and fewer parameters (1.9 and before): every preset kept, the parameters added
+                         * since at the INIT scene's values. Without this the size check below took it for no bank
+                         * of ours and wrote the defaults over sixteen saved presets */
+        if (pbp && got == (int)(8u + NUSER * PB_SCENE_SIZE(pbp)) && bank.count == NUSER) {
+            uint8_t *raw = (uint8_t *)&bank + 8u;
+            int32_t k;
+            for (k = (int32_t)NUSER - 1; k >= 0; k--) {   /* from the end, each record copied out first: a scene
+                                                           * grows over the ones after it, never one unread */
+                uint8_t o[sizeof(scene_t)];
+                uint32_t j;
+                for (j = 0; j < PB_SCENE_SIZE(pbp); j++)
+                    o[j] = raw[(uint32_t)k * PB_SCENE_SIZE(pbp) + j];
+                scene_from_pb(o, pbp, &bank.u[k]);
+            }
+            bank.ssize = (uint8_t)sizeof(scene_t);
+            got = (int)sizeof bank;
+            oldp = 0;
+        }
         if (oldp && got == (int)(8u + NUSER * OLD_SCENE_SIZE(oldp)) && bank.count == NUSER
             && bank.ssize == OLD_SCENE_SIZE(oldp)) {   /* an older bank: the same scenes, a few bytes short each;
                                                         * unpacked from the end, so nothing is overwritten before it

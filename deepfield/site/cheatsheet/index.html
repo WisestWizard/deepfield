@@ -146,7 +146,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="v">tap</span><span class="c">FX</span></dt>
     <dd>ENSEMBLE. Turn SELECT for DELAY, DELAY 2, REVERB.</dd>
     <dt><span class="v">tap</span><span class="c">ARP</span></dt>
-    <dd>GEN. Turn SELECT for GEN 2, whose knobs are the mode's too &mdash; a knob the mode never reads is empty.</dd>
+    <dd>GEN. Turn SELECT for GEN 2 and GEN 3, whose knobs are the mode's too &mdash; a knob the mode never reads is empty.</dd>
     <dt><span class="v">tap</span><span class="c">GLO</span></dt>
     <dd>MIX: BED (everything latched), LEAD (what you play over it), OUT (a trim under the MASTER pot). Turn SELECT for FX MIX (ensemble, delay, reverb, shimmer on one screen), then GLOBAL (scale, root, morph, TEMPO &mdash; the arp and a synced delay time both follow it), MIDI, USB and CHORD. SELECT turned right until it stops lands on CHORD from any page.</dd>
     <dt><span class="c">GLO</span><span class="p">+</span><span class="v">turn</span><span class="c k">SELECT</span><span class="v">right</span></dt>
@@ -200,7 +200,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
   <h2>GEN: the voices move</h2>
   <dl>
     <dt><span class="v">tap</span><span class="c">PLAY</span></dt>
-    <dd>GEN on or off. PLAY's colour shows the mode. Turning it on opens the GEN page (KNOB 1 the mode, KNOB 2–4 set it; GEN 2 stays if open); turning it off leaves the page be. ARP opens the page any time. Turn the mode while GEN runs and the one you stop on starts a third of a second later; the ones you pass play nothing.</dd>
+    <dd>GEN on or off. PLAY's colour shows the mode. Turning it on opens the GEN page (KNOB 1 the mode, KNOB 2–4 set it; GEN 2 or GEN 3 stays if open); turning it off leaves the page be. ARP opens the page any time. Turn the mode while GEN runs and the one you stop on starts a third of a second later; the ones you pass play nothing.</dd>
     <dt><span class="v">hold</span><span class="c">SEL</span><span class="p">+</span><span class="v">tap</span><span class="c">PLAY</span></dt>
     <dd>The next move now (ARP: the next step), and the countdown starts over.</dd>
     <dt><span class="mode"><span class="dot g"></span> WALK</span></dt>
@@ -210,11 +210,11 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="mode"><span class="dot o"></span> RANDOM</span></dt>
     <dd>Several move at once, each its own way.</dd>
     <dt><span class="mode"><span class="dot r"></span> ARP</span></dt>
-    <dd>An arpeggio through the voices' notes, the first step of each bar accented. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar).</dd>
+    <dd>An arpeggio through the voices' notes, the first step of each bar accented. On GEN 2, EUCLID puts rests between the notes (3/8, 5/16 …) and DIV sets the step (1/16 to a bar). On GEN 3, MUTATE swaps notes for other chord notes, octaves or scale neighbours and DEVIATE turns notes into rests: each value is one fixed variation that repeats, 0 is off, higher changes more.</dd>
     <dt><span class="mode"><span class="dot o"></span> PROG</span></dt>
     <dd>The chord is led through a progression over the scale you set, one or two voices at a time while the rest hold (nothing is frozen &mdash; LOCK a voice yourself if you want a pedal under it): ROUND, UNDERTOW (sinks), SLOW RISE (climbs), TWO ROOMS, OPEN DOOR, COLOUR, BREATH, STONES on KNOB 4. On GEN 2, ROAM develops it: 0 plays it as written, up redraws about one chord in seven and moves the key centre.</dd>
     <dt><span class="mode"><span class="dot o"></span> LOOP</span></dt>
-    <dd>A phrase comes back at the velocities, the rhythm and the note lengths you played it with &mdash; hold a note for a second and it comes back held for a second. Selecting LOOP with nothing recorded says REC THEN PLAY: press REC on this page to record one (LATCH lifts for the take, REC again closes it and it loops at once, at the speed you played it), or just play with LATCH off and your last eight notes are caught on their own. DECAY fades it and at 0 holds it for good, recorded or caught (turned up, a caught phrase dies faster than a recorded one), OCT JUMP throws notes an octave, ROAM on GEN 2 carries each pass to another degree.</dd>
+    <dd>A phrase comes back at the velocities, the rhythm and the note lengths you played it with &mdash; hold a note for a second and it comes back held for a second. Selecting LOOP with nothing recorded says REC THEN PLAY: press REC on this page to record one (four clicks count you in at TEMPO over a full-screen 4 3 2 1, then a timer runs; LATCH lifts for the take, REC again closes it and it loops at once, at the speed you played it), or just play with LATCH off and your last eight notes are caught on their own. A recorded phrase loops until PLAY stops GEN; DECAY fades a phrase that was only caught, and at 0 holds that for good, OCT JUMP throws notes an octave, ROAM on GEN 2 carries each pass to another degree.</dd>
     <dt><span class="mode"><span class="dot o"></span> MELODY</span></dt>
     <dd>The top voice sings a line in the scale over the held chord: a phrase and its answer, mostly by step, long notes on chord notes. RANGE is how far it goes (2 to 8 scale steps), CHANCE how many notes it takes, ROAM on GEN 2 how much it is varied.</dd>
     <dt><span class="mode"><span class="dot o"></span> TURN</span></dt>
@@ -224,7 +224,7 @@ footer { margin-top: 8px; color: var(--muted); font-size: .92rem; }
     <dt><span class="mode"><span class="dot o"></span> STRUM</span></dt>
     <dd>Every RATE the chord is struck across as leads, a note a SPREAD apart: 8 ms a strum, a few hundred a harp. PATTERN is ARP's (UP DOWN alternates the strokes), OCTAVES on GEN 2.</dd>
     <dt><span class="mode"><span class="dot r"></span> BASS</span></dt>
-    <dd>A bass line under the chord at TEMPO and DIV, below C3, following the chord as it changes: ROOT, OCTAVE, FIFTHS, WALKING, CLIMB, PULSE, DROP or FREE on KNOB 4; ROAM on GEN 2 varies it. With CHORD on, one finger plays the chords and BASS follows them. Use headphones or the line out.</dd>
+    <dd>A bass line under the chord at TEMPO and DIV, below C3, following the chord as it changes: ROOT, OCTAVE, FIFTHS, WALKING, CLIMB, PULSE, DROP or FREE on KNOB 4; ROAM on GEN 2 varies it, and MUTATE and DEVIATE on GEN 3 work as in ARP. With CHORD on, one finger plays the chords and BASS follows them. Use headphones or the line out.</dd>
     <dt><span class="v">turn</span><span class="c k">KNOB 2</span><span class="v">left</span></dt>
     <dd>RATE down to 0.1 s: below a second GEN plays the chord instead of changing it.</dd>
   </dl>

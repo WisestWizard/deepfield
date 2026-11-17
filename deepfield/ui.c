@@ -19,7 +19,7 @@
  * SAVE again saves, HOME cancels); REC is Bluetooth. Every knob sends its CC and takes it (CC_OF). */
 #include "art.h"                         /* the model glyphs and the page icons */
 enum { PG_HOME, PG_BODY, PG_NOISE, PG_NOISE2, PG_ENV, PG_LEAD, PG_MOTION, PG_VOICES, PG_FX_ENS, PG_FX_DLY,
-       PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_MIX, PG_FX_MIX, PG_GLOBAL, PG_MIDI, PG_USB, PG_CHORD, PG_COUNT };
+       PG_FX_DLY2, PG_FX_REV, PG_ORBIT, PG_ORBIT2, PG_ORBIT3, PG_MIX, PG_FX_MIX, PG_GLOBAL, PG_MIDI, PG_USB, PG_CHORD, PG_COUNT };
 enum { PID_SCALE = P_COUNT, PID_ROOT, PID_MORPH, PID_MIDI_IN, PID_MIDI_OUT, PID_LOCAL, PID_VEL, PID_SPEAKER,
        PID_USB_LEVEL, PID_CLOCK_OUT, PID_OUT_LEVEL, PID_CHORD, PID_VOICING, PID_NONE, PID_COUNT };
 enum { K_PCT, K_MODEL, K_TIME, K_GLIDE, K_ORBIT, K_ENS, K_DLYTIME, K_SCALE, K_ROOT, K_MORPH, K_CHIN, K_CHOUT,
@@ -46,6 +46,7 @@ static const page_t PAGES[PG_COUNT] = {
     {"REVERB", "FX", {P_REV_SIZE, P_REV_DAMP, P_SHIMMER, P_SPACE}},
     {"GEN", "ARP", {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE}},   /* knobs 2-4 by MODE: page_param */
     {"GEN 2", "ARP", {P_GRAVITY, P_ARP_OCT, P_ARP_RHYTHM, P_ARP_DIV}},   /* RHYTHM and DIV: the runner's */
+    {"GEN 3", "ARP", {P_ARP_MUTATE, P_ARP_DEVIATE, PID_NONE, PID_NONE}},   /* the runner's variations */
     {"MIX", "GLO", {P_BED_LEVEL, P_LD_LEVEL, PID_OUT_LEVEL, PID_NONE}},   /* GLO opens the mixer: the latched bed,
                                           * the notes played over it, and the output under the MASTER pot */
     {"FX MIX", "GLO", {P_ENS_MIX, P_DLY_MIX, P_SPACE, P_SHIMMER}},   /* every effect's level on the next screen */
@@ -85,6 +86,7 @@ static const pmeta_t PM[PID_COUNT] = {
     [P_SPREAD] = {"SPREAD", K_PCT}, [P_CROSS] = {"CROSS MOD", K_PCT}, [P_TWALK] = {"TIMBRE DRIFT", K_PCT}, [P_SWAY] = {"PAN DRIFT", K_PCT},
     [P_ECHO_DECAY] = {"DECAY", K_PCT}, [P_ECHO_JUMP] = {"OCT JUMP", K_PCT}, [P_ORB_ROAM] = {"ROAM", K_PCT},
     [P_ARP_RHYTHM] = {"EUCLID", K_RHYTHM}, [P_ARP_DIV] = {"DIV", K_DIV},
+    [P_ARP_MUTATE] = {"MUTATE", K_PCT}, [P_ARP_DEVIATE] = {"DEVIATE", K_PCT},
     [PID_SCALE] = {"SCALE", K_SCALE},   [PID_ROOT] = {"ROOT", K_ROOT},
     [PID_MORPH] = {"MORPH", K_MORPH},   [PID_MIDI_IN] = {"IN CH", K_CHIN},
     [PID_MIDI_OUT] = {"OUT CH", K_CHOUT}, [PID_LOCAL] = {"LOCAL", K_ONOFF}, [PID_VEL] = {"VELOCITY", K_ONOFF},
@@ -113,7 +115,7 @@ static const uint8_t CC_OF[PID_COUNT] = {
     [P_ORB_DIST] = 114, [P_ORB_BODIES] = 115, [P_ARP_RATE] = 116, [P_ARP_GATE] = 117, [P_ARP_ORDER] = 118,
     [P_ARP_OCT] = 119, [P_ORB_PROG] = 15, [P_ORB_ROAM] = 51, [P_ECHO_DECAY] = 52, [P_ECHO_JUMP] = 53,
     [P_BED_LEVEL] = 54,
-    [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56,
+    [P_ARP_RHYTHM] = 55, [P_ARP_DIV] = 56, [P_ARP_MUTATE] = 47, [P_ARP_DEVIATE] = 48,
     [PID_SCALE] = 2, [PID_ROOT] = 3, [PID_CHORD] = 49, [PID_VOICING] = 50,
 };
 #define CC_CHORD 49u
@@ -221,6 +223,8 @@ static struct {
     uint32_t bank_save_t;                /* a preset came in over SysEx: the bank is saved once they stop coming */
     uint8_t cfg_dirty;                   /* a GLOBAL, MIDI or USB setting changed since the last save (SAVE lights) */
     uint8_t boot;                        /* the vortex is playing (boot_frame); boot_t: since when */
+    uint8_t counting;                    /* LOOP's count-in has the screen (count_frame) */
+    uint32_t count_t, take_t;            /* since when; the take: since when (the timer) */
     uint32_t boot_t;
     float mist;                          /* the noise mist's drift, in dither cells */
     uint16_t hud_id;                     /* the knob whose value the HUD shows (its bar under it); 0xFFFF none */
@@ -356,6 +360,9 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
             {P_ORB_PERIOD, P_ORB_CHANCE, P_ARP_ORDER},   /* STRUM: CHANCE's value is its SPREAD, the arp's PATTERN */
             {P_ARP_RATE, P_ARP_GATE, P_ORB_PROG},        /* BASS: the arp's TEMPO and GATE, CHORDS' value its PATTERN */
         };
+        if (dr_orbit_mode() == OM_ECHO && k == 2u && dr_loop_have())   /* a recorded take never fades: DECAY has
+                                          * nothing to do until the next phrase is one caught in passing */
+            return PID_NONE;
         return BY_MODE[dr_orbit_mode()][k - 1u];
     }
     if (pg == PG_ORBIT2) {               /* GEN 2's knobs are the mode's too, the way the GEN page's are: a knob
@@ -371,6 +378,8 @@ static uint32_t page_param(uint32_t pg, uint32_t k)   /* GEN: knobs 2-4 are the 
                    : m == OM_ARP || m == OM_STRUM ? P_ARP_OCT : PID_NONE;
         return RUNNER(m) ? PAGES[pg].p[k] : PID_NONE;   /* EUCLID and DIV are the runner's own */
     }
+    if (pg == PG_ORBIT3)                 /* MUTATE and DEVIATE too */
+        return RUNNER(dr_orbit_mode()) ? PAGES[pg].p[k] : PID_NONE;
     return *param_label(PAGES[pg].p[k]) ? PAGES[pg].p[k] : PID_NONE;
 }
 static uint32_t value_of(uint32_t id)
@@ -875,7 +884,7 @@ static void boot_end(void);
  * today's ROOT, LATCH on, its ORBIT values; a scene without a chord leaves the bodies alone */
 static const uint8_t ORB_P[] = {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE, P_GRAVITY, P_ORB_DIST, P_ORB_BODIES,
                                 P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER, P_ARP_OCT, P_ORB_PROG, P_ECHO_DECAY, P_ECHO_JUMP,
-                                P_ARP_RHYTHM, P_ARP_DIV};
+                                P_ARP_RHYTHM, P_ARP_DIV, P_ARP_MUTATE, P_ARP_DEVIATE};
 static void scene_go(uint32_t slot, int say, int chord)
 {
     char t[24];
@@ -1348,7 +1357,7 @@ static void ble_device_button(void)  /* the MIDI page lists the devices already:
 
 /* ------------------------------------------------------------------ buttons --- */
 static const uint8_t PAGE_BTN[PG_COUNT] = {B_HOME, B_EDIT, B_EDIT, B_EDIT, B_ENV, B_ENV, B_LFO, B_LFO, B_FX, B_FX, B_FX, B_FX,
-                                           B_ARP, B_ARP, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO};
+                                           B_ARP, B_ARP, B_ARP, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO, B_GLO};
 static void page_to(uint32_t pg)
 {
     ui.page = (uint8_t)pg;
@@ -1417,8 +1426,9 @@ static void button(uint32_t k, uint32_t now, uint32_t btn)
             orbit_now();
         } else {
             orbit_toggle();
-            if (dr_orbit_on() && ui.page != PG_ORBIT && ui.page != PG_ORBIT2)   /* on: the GEN page, its knobs the
-                                          * ones you want next (GEN 2 open stays open); off: the page stays */
+            if (dr_orbit_on() && ui.page != PG_ORBIT && ui.page != PG_ORBIT2 && ui.page != PG_ORBIT3)   /* on: the GEN
+                                          * page, its knobs the ones you want next (GEN 2 or 3 open stays open); off:
+                                          * the page stays */
                 page_to(PG_ORBIT);
         }
         break;
@@ -1557,11 +1567,17 @@ static void input(void)
                 if (!dr_orbit_on())
                     dr_orbit(1);
                 ui_say("LOOP", "PLAYING");
-            } else {
+            } else if (dr_count_beat(0)) {   /* REC again before the count is out: called off */
+                dr_count_in(0);
+                set.latch = ui.rec_latch;
+                ui_say("LOOP", "CANCELLED");
+            } else {                     /* four beats at TEMPO first, then the take opens on the beat (the engine
+                                          * counts and opens it: ui_frame sees it start) */
                 ui.rec_latch = set.latch;
                 set.latch = 0;
-                dr_loop_rec(1);
-                ui_say("LOOP", "RECORDING");
+                dr_count_in(1);
+                ui.count_t = now;
+                ui_say("LOOP", "COUNT IN");
             }
             ui.redraw_foot = 1;
         } else {
@@ -2234,6 +2250,7 @@ static void ble_panel(uint32_t now)
     cv_text(236 - text_w(&FONT_T, t), 69, &FONT_T, t, C_LABEL);
 }
 
+static void take_panel(uint32_t now);
 static void sky_draw(void)
 {
     uint32_t now = plat_ms(), hud = now < ui.hud_until, i, fx_layer = ui.btn >> B_FX & 1u;
@@ -2260,6 +2277,8 @@ static void sky_draw(void)
             cv_rect(x, 68, 44, 3, on ? C_FX_ON : C_RULE);
         }
         hud = 0;
+    } else if (dr_loop_recording() && !hud) {   /* a take: its timer in place of the view */
+        take_panel(now);
     } else if (ble_panel_up() && !hud) {   /* the MIDI page: the Bluetooth device in place of the view (a knob's value
                                             * or a message still shows over it for a moment) */
         ble_panel(now);
@@ -2763,9 +2782,11 @@ static void boot_px(int32_t x, int32_t y, uint32_t hue, float lvl, int32_t y0)  
     if (l)
         cv_px[(uint32_t)ry * 240u + (uint32_t)x] = hue_px(hue, l);
 }
+static float boot_dim = 1.0f, boot_ring = 0.9f;   /* the count-in draws the same field under its numeral: dimmer,
+                                          * and without the eye's ring, which would show through the digits */
 static void boot_field(float t, int32_t y0, int32_t h)   /* worked out once a 2 x 2 cell, dithered per pixel */
 {
-    float gain = boot_smooth(0.0f, 600.0f, t), col = boot_smooth(2900.0f, BOOT_MS, t);
+    float gain = boot_dim * boot_smooth(0.0f, 600.0f, t), col = boot_smooth(2900.0f, BOOT_MS, t);
     float zoom = 1.0f / (1.0f - 0.94f * col), flare = 1.0f + 1.6f * boot_smooth(2450.0f, 2800.0f, t)
                                                         * (1.0f - boot_smooth(2800.0f, 3150.0f, t));
     int32_t bx, by, k;
@@ -2784,7 +2805,7 @@ static void boot_field(float t, int32_t y0, int32_t h)   /* worked out once a 2 
             arm *= arm * arm;
             env = fm_clampf(1.0f - r * (1.0f / 165.0f), 0.0f, 1.0f);
             ring = fm_expf(-(r - 11.0f) * (r - 11.0f) * (1.0f / 18.0f));
-            lit = 0.85f * arm * env * (0.25f + 22.0f / (r + 28.0f)) * boot_smooth(5.0f, 16.0f, r) + 0.9f * ring * flare;
+            lit = 0.85f * arm * env * (0.25f + 22.0f / (r + 28.0f)) * boot_smooth(5.0f, 16.0f, r) + boot_ring * ring * flare;
             haze = 0.07f * env;          /* the faint glow between the arms: violet everywhere */
             lvl = fm_minf(31.0f * gain * (lit + haze), 31.0f);
             if (lvl <= 0.0f)
@@ -2880,6 +2901,103 @@ static void boot_frame(float t)          /* the whole screen in three strips */
         boot_name(t, y0);
         cv_blit(0, (uint32_t)y0);
     }
+}
+/* ------------------------------------------------------------------ LOOP's count-in and take --- */
+/* REC on the GEN page in LOOP: four beats over the whole screen before the take opens. The beat's number (4 3 2 1)
+ * stands in the vortex's eye, each of the font's pixels a block, white-hot on its click and cooling to cyan until
+ * the next; the vortex turns behind it, dimmed so the number is what is read; four pips along the bottom fill as
+ * the beats go by. The engine counts (dr_count_in): this only draws where it is */
+#define COUNT_S 5                        /* the numeral's scale: FONT_L's 32 rows as 160 */
+static void count_frame(uint32_t now)
+{
+    const felucca_font_t *f = &FONT_L;
+    float frac, t = 800.0f + (float)((now - ui.count_t) % 1496u);   /* 1496 ms: the three arms a third of a turn on,
+                                                                    * so the field runs on without a seam */
+    uint32_t beat = dr_count_beat(&frac), gi, w, bpr, gx, gy, i;
+    int32_t y0, x0, ty;
+    const uint8_t *gd;
+    char d[2] = {(char)('0' + (beat && beat <= 4u ? 5u - beat : 4u)), 0}, s[24], v[8];
+    float heat = (1.0f - frac) * (1.0f - frac);
+    gi = glyph(f, (uint8_t)d[0]);
+    w = f->bw[gi];
+    bpr = (w + 1u) / 2u;
+    gd = f->data + f->off[gi];
+    x0 = 120 - (int32_t)w * COUNT_S / 2;
+    ty = 116 - (int32_t)f->h * COUNT_S / 2;
+    boot_dim = 0.4f + 0.25f * heat;
+    boot_ring = 0.0f;
+    for (y0 = 0; y0 < 240; y0 += 84) {
+        int32_t h = 240 - y0 < 84 ? 240 - y0 : 84;
+        cv_begin(240, (uint32_t)h, C_SKY);
+        boot_field(t, y0, h);
+        for (gy = 0; gy < f->h; gy++) {
+            int32_t py = ty + (int32_t)gy * COUNT_S;
+            if (py + COUNT_S <= y0 || py >= y0 + h)
+                continue;
+            for (gx = 0; gx < w; gx++) {
+                uint32_t a = gd[gy * bpr + gx / 2u];
+                int32_t px = x0 + (int32_t)gx * COUNT_S, bx, by;
+                float lvl;
+                a = (gx & 1u) ? (a & 15u) : (a >> 4);
+                if (a < 2u)
+                    continue;
+                lvl = 31.0f * (float)a * (1.0f / 15.0f) * (0.62f + 0.38f * heat);
+                for (by = 0; by < COUNT_S; by++)
+                    for (bx = 0; bx < COUNT_S; bx++)
+                        boot_px(px + bx, py + by, heat > 0.55f ? HUE_STAR : HUE_CYAN,
+                                bx == COUNT_S - 1 || by == COUNT_S - 1 ? lvl * 0.45f : lvl, y0);   /* a dim seam
+                                          * between the blocks: the number is built of motes, as the name was */
+            }
+        }
+        if (y0 == 0) {
+            cv_text((240 - text_w(&FONT_S, "LOOP   COUNT IN")) / 2, 5, &FONT_S, "LOOP   COUNT IN", C_LABEL);
+        } else if (y0 == 168) {
+            for (i = 0; i < 4u; i++)
+                cv_rect(30 + 47 * (int32_t)i, 222 - 168, 39, 6,
+                        i + 1u < beat ? C_TEXT : i + 1u == beat ? (heat > 0.3f ? C_BRIGHT : C_TEXT) : C_RULE);
+            s[0] = 0;
+            int_text((int32_t)(dr_count_bpm() + 0.5f), v);
+            text_cat(s, v);
+            text_cat(s, " BPM   REC CANCELS");
+            cv_text((240 - text_w(&FONT_T, s)) / 2, 206 - 168, &FONT_T, s, C_LABEL);
+        }
+        cv_blit(0, (uint32_t)y0);
+    }
+    boot_dim = 1.0f;
+    boot_ring = 0.9f;
+}
+static void take_panel(uint32_t now)     /* the take, over the view: how long it has run, large; the notes caught of
+                                          * the eight LOOP holds; a lamp on each beat of TEMPO, since nothing clicks
+                                          * once the take is open */
+{
+    uint32_t ms = now - ui.take_t, beat = (uint32_t)(60000.0f / dr_count_bpm()), n = dr_loop_notes(), i;
+    char t[16], v[8];
+    int32_t x;
+    cv_rect(0, 0, SKY_W, SKY_H, C_SKY);
+    cv_rect(8, 9, 9, 9, beat && ms % beat < 90u ? RGB(255, 64, 80) : RGB(96, 20, 36));
+    cv_text(22, 5, &FONT_S, "REC", RGB(255, 64, 80));
+    t[0] = 0;
+    int_text((int32_t)(ms / 60000u), v);
+    text_cat(t, v);
+    text_cat(t, ":");
+    int_text((int32_t)(ms / 1000u % 60u), v);
+    if (!v[1])
+        text_cat(t, "0");
+    text_cat(t, v);
+    text_cat(t, ".");
+    int_text((int32_t)(ms / 100u % 10u), v);
+    text_cat(t, v);
+    x = (SKY_W - text_w(&FONT_L, "0:00.0")) / 2;   /* where the digits stand, whatever they are: no jitter */
+    cv_text(ms >= 600000u ? x - 8 : x, 22, &FONT_L, t, C_BRIGHT);
+    t[0] = 0;
+    text_cat(t, "NOTES ");
+    int_text((int32_t)n, v);
+    text_cat(t, v);
+    text_cat(t, "/8");
+    cv_text(SKY_W - 8 - text_w(&FONT_T, t), 8, &FONT_T, t, C_LABEL);
+    for (i = 0; i < 8u; i++)
+        cv_rect(40 + 20 * (int32_t)i, 66, 17, 5, i < n ? C_TEXT : C_RULE);
+    cv_text((SKY_W - text_w(&FONT_T, "REC AGAIN TO LOOP IT")) / 2, 73, &FONT_T, "REC AGAIN TO LOOP IT", C_LABEL);
 }
 static void boot_end(void)
 {
@@ -3028,6 +3146,17 @@ static void ui_frame(void)
             boot_frame((float)(now - ui.boot_t));
             return;
         }
+        boot_end();
+    }
+    if (dr_count_beat(0)) {
+        ui.counting = 1;
+        count_frame(now);
+        return;
+    }
+    if (ui.counting) {                   /* the count is out: the panel back, and the take's clock from here */
+        ui.counting = 0;
+        ui.take_t = now;
+        ui.hud_until = 0;
         boot_end();
     }
     sig = keys_sig();

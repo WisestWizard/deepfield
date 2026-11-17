@@ -243,6 +243,7 @@ static uint32_t arp_age[NV * 3u];        /* each step's body, by its age: the ch
 static uint32_t arp_mem[NV], arp_mem_age[NV], arp_mem_n;   /* the latched notes as struck, kept once the bed is let go */
 static int8_t arp_mem_tune[NV], arp_tune[NV * 3u];   /* each note's own TUNE: the step sounds where its body does */
 static uint32_t arp_hits;                /* notes played (the RHYTHM's rests not counted) */
+static uint32_t arp_mut_i;               /* MUTATE: the hit's place in its 16-hit cycle */
 static uint32_t arp_acc = 127u;          /* the step sounding now: its accent, as a velocity */
 /* RHYTHM: the runner's hits over a pattern of steps, spread as evenly as they go (Euclid); a rest waits, and the
  * notes move on only at a hit. DIV: a step's length in MIDI clocks (24 a beat) */
@@ -252,6 +253,69 @@ const char *const DR_DIV_NAME[DR_DIVS] = {"1/16", "1/16T", "1/8", "1/8T", "1/8D"
 static const uint8_t DIV_CLK[DR_DIVS] = {6, 4, 12, 8, 18, 24, 16, 48, 96};
 static uint32_t arp_rhythm(void) { return dr_scene.p[P_ARP_RHYTHM] < DR_RHYTHMS ? dr_scene.p[P_ARP_RHYTHM] : 0u; }
 static uint32_t arp_div_clk(void) { return DIV_CLK[dr_scene.p[P_ARP_DIV] < DR_DIVS ? dr_scene.p[P_ARP_DIV] : 2u]; }
+/* MUTATE and DEVIATE: the value picks the variation and says how much of the line it takes. The same value is
+ * always the same variation (so a preset keeps it, and a knob turned back finds it again), the next value another
+ * one, and a higher value changes more steps. Which steps, and into what, comes from a hash of the value and the
+ * step, never from the running random numbers */
+static uint32_t var_hash(uint32_t v, uint32_t i)
+{
+    uint32_t h = (v + 1u) * 0x9E3779B1u ^ (i + 0x7F4Au) * 0x85EBCA6Bu;
+    h ^= h >> 15;
+    h *= 0x2C1B3C6Du;
+    h ^= h >> 12;
+    h *= 0x297A2D39u;
+    return h ^ h >> 15;
+}
+static uint32_t var_pick(uint32_t v, uint32_t cand, uint32_t n)   /* n of cand's bits, the ones the value ranks first */
+{
+    uint32_t out = 0, i;
+    while (n--) {
+        uint32_t best = 32u, bh = 0, h;
+        for (i = 0; i < 32u; i++)
+            if ((cand >> i & 1u) && ((h = var_hash(v, i)), best == 32u || h < bh)) {
+                best = i;
+                bh = h;
+            }
+        if (best == 32u)
+            break;
+        cand &= ~(1u << best);
+        out |= 1u << best;
+    }
+    return out;
+}
+static uint32_t dev_len(uint32_t len) { return len < 12u ? 2u * len : len; }   /* DEVIATE's cycle: two bars of a
+                                          * short pattern, so the rests do not come round every eight steps */
+static uint32_t dev_rests(void)          /* DEVIATE: the cycle's hits that rest, a bit a step. The cycle's first
+                                          * hit is never one: the line keeps its downbeat at any value */
+{
+    static uint32_t key = ~0u, mask;
+    uint32_t v = dr_scene.p[P_ARP_DEVIATE] & 127u, r = arp_rhythm(), len = RHY[r][1], cyc = dev_len(len), i, hits = 0, n = 0;
+    if (!v)
+        return 0;
+    if (key == (v << 8 | r))
+        return mask;
+    for (i = 1; i < cyc; i++)
+        if (((i % len) * RHY[r][0]) % len < RHY[r][0]) {
+            hits |= 1u << i;
+            n++;
+        }
+    key = v << 8 | r;
+    mask = n ? var_pick(v + 128u, hits, 1u + (v * 100u / 127u) * (n - 1u) * 3u / 400u) : 0u;   /* at the top three
+                                          * hits in four rest: past that there is no line left to hear */
+    return mask;
+}
+static uint32_t mut_hits(void)           /* MUTATE: the hits of the 16 that play another note */
+{
+    static uint32_t key = ~0u, mask;
+    uint32_t v = dr_scene.p[P_ARP_MUTATE] & 127u;
+    if (!v)
+        return 0;
+    if (key != v) {
+        key = v;
+        mask = var_pick(v, 0xFFFFu, 1u + (v * 100u / 127u) * 15u / 100u);
+    }
+    return mask;
+}
 static uint32_t clk_now, clk_last, clk_period, clk_count, clk_ext, clk_out, orbit_clk_left, orbit_clk_per;
 static uint32_t clk_hist[25], clk_hn, clk_hw;   /* the last 25 clocks' arrivals: the tempo over a whole beat, so a
                                                  * clock bunched with the next (a Bluetooth packet, a computer's
@@ -3772,14 +3836,15 @@ static void orbit_plan(void)             /* the countdown starts: choose the mov
                 echo_gate[j] = g < lo ? lo : g > orbit_per ? orbit_per : g;
             }
         }
-        echo_vel *= 1.0f - (0.45f + (loop_have ? 0.0f : 0.25f)) * (float)decay * 0.01f;
-        return;                          /* DECAY is the only thing that takes a phrase away, and at 0 nothing
-                                          * fades however the phrase arrived. A phrase only caught in passing
-                                          * still dies faster than a recorded one once DECAY is up, which is the
-                                          * difference that was wanted - but it used to lose a twentieth of its
-                                          * level every pass whatever DECAY said, so a caught loop went quiet
-                                          * after a few minutes with nothing on the panel able to hold it:
-                                          * measured, velocity 56 down to 10 over four minutes */
+        if (!loop_have)                  /* a take recorded with REC never fades: it loops until PLAY stops GEN,
+                                          * whatever DECAY says (a preset's DECAY of 39 % had a recorded loop gone
+                                          * in 13 passes, which read as the loop breaking). DECAY is for the phrase
+                                          * only caught in passing, which nobody asked to keep */
+            echo_vel *= 1.0f - 0.70f * (float)decay * 0.01f;
+        return;                          /* at DECAY 0 a caught phrase does not fade either. It used to lose a
+                                          * twentieth of its level every pass whatever DECAY said, so a caught
+                                          * loop went quiet after a few minutes with nothing on the panel able to
+                                          * hold it: measured, velocity 56 down to 10 over four minutes */
     }
     if (mode == OM_STRUM) {
         strum_plan();
@@ -4169,6 +4234,9 @@ static uint32_t bass_pick(void)
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
     if (step && (pat == DR_BASS_PATS - 1u || (orbit_rng >> 8) % 100u < roam / 2u))   /* ROAM: a step redrawn */
         tok = ANY[(orbit_rng >> 20) & 7u];
+    if (step && (mut_hits() >> ((bass_i - 1u) & 15u) & 1u))   /* MUTATE: this step of the two bars written over, the
+                                          * same way each time round (the bar's first step stays the root) */
+        tok = ANY[var_hash(dr_scene.p[P_ARP_MUTATE] + 256u, (bass_i - 1u) & 15u) >> 8 & 7u];
     orbit_rng = orbit_rng * 1664525u + 1013904223u;
     if (step == 7u && (orbit_rng >> 8) % 100u < roam)   /* and the bar's last step leading back in */
         tok = BT_A;
@@ -4234,6 +4302,8 @@ static void arp_tick(uint32_t n)
         arp_release();
         if ((at * RHY[r][0]) % len >= RHY[r][0])
             return;
+        if (dev_rests() >> ((arp_count - 1u) % dev_len(len)) & 1u)   /* DEVIATE: this hit a rest */
+            return;
         arp_acc = at == 0u ? 127u : 2u * at == len ? 110u : 94u;   /* the bar's first step struck full, its middle a
                                           * little under, the rest 5 dB down: every step used to land at one level,
                                           * which reads as a machine and not as a part */
@@ -4249,7 +4319,7 @@ static void arp_tick(uint32_t n)
     if (!arp_n)
         return;
     {
-        uint32_t note;
+        uint32_t note, tune_pos;
         if (bass)
             order = AO_COUNT;            /* none of the arp's orders: the pattern picks the note */
         switch (order) {
@@ -4284,7 +4354,31 @@ static void arp_tick(uint32_t n)
         }
         if (arp_pos >= arp_n)
             arp_pos = 0;
+        tune_pos = arp_pos;
         note = bass ? bass_pick() : arp_notes[arp_pos];
+        if (!bass) {                     /* MUTATE: this hit plays another of the chord's notes, the note an octave
+                                          * off, or the scale note beside it (CHROMATIC has none worth the name:
+                                          * the octave). The order goes on from where it was */
+            uint32_t mi = arp_mut_i++ & 15u;
+            if (mut_hits() >> mi & 1u) {
+                uint32_t h = var_hash(dr_scene.p[P_ARP_MUTATE] + 256u, mi), kind = h >> 4 & 7u;
+                int32_t m = (int32_t)note;
+                if (kind < 3u && arp_n > 1u) {
+                    tune_pos = (arp_pos + 1u + (h >> 8) % (arp_n - 1u)) % arp_n;
+                    m = (int32_t)arp_notes[tune_pos];
+                } else if (kind >= 6u && scale_mask != 0xFFFu)
+                    m = scale_step((int32_t)dr_snap(note), kind == 6u ? 1 : -1);
+                else if (kind == 5u)
+                    m -= 12;
+                else
+                    m += 12;
+                if (m > 108)
+                    m -= 24;
+                if (m < 24)
+                    m += 24;
+                note = (uint32_t)m;
+            }
+        }
         if (note_out)
             note_out(note, arp_acc, 1);
         if (bass) {                      /* one note at a time, as a bass plays: the notes before this one end as
@@ -4305,7 +4399,7 @@ static void arp_tick(uint32_t n)
         {
             voice_t *ld = find_lead(note);
             if (ld)
-                ld->ed_tune = bass ? 0 : arp_tune[arp_pos];
+                ld->ed_tune = bass ? 0 : arp_tune[tune_pos];
         }
         arp_held = (int32_t)note;
         /* GATE: the lead let go that far through the step; at the top, legato, at the next step */
@@ -4376,7 +4470,7 @@ static void orbit_reset(void)            /* PLAY: a fresh start, the arp's memor
 #ifdef PLAT_HOST
     orbit_leap = 0;
 #endif
-    arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = arp_hits = 0;
+    arp_n = arp_mem_n = arp_dir = arp_left = arp_step = arp_count = arp_gate_left = arp_due = arp_hits = arp_mut_i = 0;
     arp_pos = ~0u;                       /* before the first step: it lands on the first note (DOWN: the top) */
     cyc_pos = 0;
     cyc_left = 1u;
@@ -4465,7 +4559,7 @@ void dr_clock_start(int port)
         return;
     clk_count = 0;
     arp_pos = ~0u;
-    arp_dir = 0;
+    arp_dir = arp_mut_i = 0;
     orbit_clk_left = 0;
     clk_ext = 1;
     clk_last = clk_now;
@@ -4517,20 +4611,17 @@ static void echo_tick(uint32_t n)        /* the scheduled replays: strike, then 
     }
 }
 int dr_echo_running(void) { return orbit_on && dr_orbit_mode() == OM_ECHO && echo_n > 0u && echo_vel >= 0.08f; }
+static volatile uint32_t cnt_on;
+static void loop_rec_open(void);
 void dr_loop_rec(int on)
 {                                        /* REC: the take starts empty and the notes played go in with their own
                                           * timing. Closing it leaves the phrase to loop; LOOP's own capture keeps
                                           * working as before, so playing more notes still starts a new phrase. */
     uint32_t i, lk = plat_lock();
+    (void)i;
+    cnt_on = 0;
     if (on) {
-        echo_n = echo_w = 0;
-        for (i = 0; i < 8u; i++)
-            loop_live[i] = 0;
-        loop_have = 0;
-        loop_rec = 1;
-        loop_deg = 0;
-        loop_t_last = loop_clk;
-        echo_vel = 1.0f;
+        loop_rec_open();
     } else {
         loop_close(0, 1);                /* keys still down when the take closes end here */
         loop_rec = 0;
@@ -4556,6 +4647,71 @@ void dr_loop_rec(int on)
     plat_unlock(lk);
 }
 int dr_loop_recording(void) { return (int)loop_rec; }
+/* the count-in: counted in samples by the render, so the clicks are a beat apart to the sample and the take opens
+ * on the beat, whatever the screen is doing. The click is a damped sine, the first beat's a fifth higher, put in
+ * after the effects and the limiter: dry, and never through the delay into the take's first bar */
+static volatile uint32_t cnt_on;
+static uint32_t cnt_n, cnt_left, cnt_beat;
+static float clk_y1, clk_y2, clk_a1, clk_a2;
+static void loop_rec_open(void)
+{
+    uint32_t i;
+    echo_n = echo_w = 0;
+    for (i = 0; i < 8u; i++)
+        loop_live[i] = 0;
+    loop_have = 0;
+    loop_rec = 1;
+    loop_deg = 0;
+    loop_t_last = loop_clk;
+    echo_vel = 1.0f;
+}
+float dr_count_bpm(void) { return clk_ext && clk_period ? dr_clock_bpm() : dr_arp_bpm(dr_scene.p[P_ARP_RATE]); }
+void dr_count_in(int on)
+{
+    uint32_t lk = plat_lock();
+    cnt_on = 0;
+    if (on && !loop_rec) {
+        cnt_beat = (uint32_t)(60.0f * FS / dr_count_bpm());
+        cnt_n = cnt_left = 0;
+        cnt_on = 1;
+    }
+    plat_unlock(lk);
+}
+uint32_t dr_count_beat(float *frac)
+{
+    uint32_t on = cnt_on, n = cnt_n, left = cnt_left, beat = cnt_beat;
+    if (frac)
+        *frac = on && beat ? fm_clampf(1.0f - (float)left / (float)beat, 0.0f, 1.0f) : 0.0f;
+    return on ? (n ? n : 1u) : 0u;
+}
+static inline float count_sample(void)   /* one sample of the count-in: its click, 0 between them */
+{
+    float y;
+    if (cnt_on) {
+        if (!cnt_left) {
+            if (cnt_n >= 4u) {
+                cnt_on = 0;
+                loop_rec_open();
+            } else {
+                float w = 6.2831853f * (cnt_n ? 1175.0f : 1760.0f) / FS, r = fm_expf(-1.0f / (0.010f * FS));
+                clk_a1 = 2.0f * r * fm_cosf(w);
+                clk_a2 = -r * r;
+                clk_y1 = 0.42f * fm_sinf(w);   /* its peak about a held chord's: heard over one, no louder */
+                clk_y2 = 0.0f;
+                cnt_n++;
+                cnt_left = cnt_beat;
+            }
+        }
+        if (cnt_left)
+            cnt_left--;
+    }
+    y = clk_y1;
+    clk_y1 = clk_a1 * y + clk_a2 * clk_y2;
+    clk_y2 = y;
+    if (y < 1e-6f && y > -1e-6f && clk_y1 < 1e-6f && clk_y1 > -1e-6f)
+        clk_y1 = clk_y2 = 0.0f;
+    return y;
+}
 int dr_loop_have(void) { return (int)loop_have; }
 uint32_t dr_loop_notes(void) { return echo_n; }   /* LOOP's phrase: notes captured, 0 when nothing was played
                                                    * as a lead (the keys latch, so LATCH must be off to fill it) */
@@ -5192,9 +5348,11 @@ void dr_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     for (i = 0; i < n; i++) {
         float a = mixl[i] < 0.0f ? -mixl[i] : mixl[i];
         pk_out = a > pk_out ? a : pk_out;
+        float ck = cnt_on || clk_y1 != 0.0f || clk_y2 != 0.0f ? count_sample() : 0.0f;
         gain_now += (gain - gain_now) * 0.004f;    /* ~5 ms: turning MASTER does not click */
-        lr[2 * i] = (int32_t)(mixl[i] * gain_now);
-        lr[2 * i + 1] = (int32_t)(mixr[i] * gain_now);
+        lr[2 * i] = (int32_t)(fm_clampf(mixl[i] + ck, -1.0f, 1.0f) * gain_now);   /* (the limiter's ceiling is under
+                                          * 1: the clamp only ever meets a click on top of a full bus) */
+        lr[2 * i + 1] = (int32_t)(fm_clampf(mixr[i] + ck, -1.0f, 1.0f) * gain_now);
     }
 }
 

@@ -2,6 +2,146 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: a recorded loop plays until PLAY stops it (flashed 2026-11-16, committed)
+
+**Committed 2026-11-16 on Kyle's "commit everything"**, one commit on master for this section and the two below
+(the unit runs exactly this tree, build 3C307293). The `loader_screen` build setting is base 646673b on a new local
+branch `loader-screen` (off `master-ramp`, so it carries the MASTER ramp too), and the submodule pin moved to it.
+**Neither is pushed. Push base's `loader-screen` to WisestWizard/fm1-base before pushing master**, or the pin
+names a commit no clone can fetch and the release workflow fails at checkout. No version bump, site not published.
+
+Kyle, on the count-in build: "I noticed that the loop stopped playing when I changed the voice", then "shouldnt the
+loop just play endlessly until someone hits stop on the arp?".
+
+**What it was** (simulator, F3 GLASS ORBIT, a three-note take, checked once a second): the loop stopped 13 s after
+the take closed with nothing changed, with the model changed (ALGO) and with the preset changed alike, and ran on
+with DECAY at 0. The preset's DECAY (39 %) took 18 % off each pass; the voice change only coincided with it.
+
+**What changed:** a take recorded with REC never fades (`engine/drone.c`, the fade now only for `!loop_have`);
+it loops until PLAY stops GEN. While one is held, knob 3 on the GEN page (DECAY) is empty. A phrase only caught in
+passing (LATCH off, no REC) fades with DECAY as before, at the old caught rate. Note `loop_have` stays set until the
+next REC opens, so notes played with LATCH off after a take join the held loop and do not fade either.
+
+**Checks:** `basic.txt` 1,057 ok (8 new: still sounding at full velocity 40 s on at DECAY 39 %, the knob empty,
+PLAY stops it), `chords.txt` 89, goldens match. Manual and both cheat sheets corrected. Everything below is still
+uncommitted too.
+
+**On the unit:** flashed 2026-11-16 on Kyle's "Flash it" (fast install over 3B5A72F4), device image 453,096 B, build
+3C307293, `FM-1_4400`. After: FIRST LIGHT on HOME, CPU 6 %, `no crash recorded`, `late 00000000`, `lock 0000000D`;
+the bank dumped before and after is the same. The unit was on BOWED SKY before the install and came back on FIRST
+LIGHT: the preset selection had not been saved, so the restart went to the saved one. Not heard yet.
+
+## Start here: the update screen and LOOP's count-in (flashed 2026-11-16, committed)
+
+Kyle: "lets make a cool loading screen (lean into the blue swirl theme and make a novel way to show update and
+progress) also for any place where we let people record a sequence when they hit rec I want to have a 4 beat
+metronome count in and then a timer on screen (full screen is ok lmk what you think)". His answers: the firmware
+update screen (not the boot), the vortex drawing itself as the progress, a full-screen count-in then the timer over
+the view with the keys showing, clicks for the count-in only. This sits on top of the MUTATE and DEVIATE work below,
+which is on the unit and also uncommitted.
+
+**The update screen** (`deepfield/loader_screen.c`, `loader_swirl.h` made by `tools/gen_loader_swirl.py`): on the
+sky's black, three log-spiral arms of 64 dots each, ghosts from the start, lit in order rim to eye as the install
+writes (violet, blue, cyan, white; each arm's newest dot white), the percentage in the eye. Waiting: a glimmer runs
+in along the ghosts. Host silent 2 s: the lit dots dim, the lines amber (USB LOST, RECONNECT THE CABLE, DO NOT
+POWER OFF). Done: a white ring round the eye, DONE, RESTARTING. Same five functions and rules as felucca-bsp's
+`loader/ldr_screen.c`, whose panel start, glyphs and text it copies.
+- **How it gets into the loader:** the loader's source is hugelton/felucca-bsp (base's own submodule), not ours to
+  change, so `base/tools/build.py` got a setting, `loader_screen = "loader_screen.c"` in `fm1.toml`: the build
+  copies `loader.c` with its one `#include "ldr_screen.c"` pointed at the app's file. **This is an uncommitted edit
+  in the base submodule's working tree.** A release build in CI checks base out at its pin, where the setting does
+  not exist and is ignored: the release would carry the stock cream screen until the build.py change is committed to
+  WisestWizard/fm1-base and the pin moved (and it is worth offering upstream with charlesvestal/fm1-base#50).
+- `tests/loader_screen_test.c` runs it on a model of the panel (the header has the command): nothing sent when
+  nothing changes, dots only grow, lost and back, all 192 lit and the ring at the end, nothing outside the panel.
+  A directory argument writes each state as a PPM. Loader image 16,024 B (ota.bin 13,753, was 12,847).
+- **Not seen on a panel yet.** The install of this build is the first time it runs on hardware (a package brings
+  its own loader). Watch the first install: if the screen is wrong the install itself is unaffected (the write path
+  is felucca-bsp's, untouched), and removing the `loader_screen` line brings the stock screen back.
+
+**LOOP's count-in and timer** (REC on the GEN page with MODE on LOOP, the only place REC records):
+- `engine/drone.c`: `dr_count_in`, counted in samples in the render: four clicks a beat apart (TEMPO, or the
+  followed clock's tempo), 1,760 Hz then three at 1,175 Hz, 10 ms decay, mixed after the effects and the limiter;
+  the take opens on the fifth beat from the render. Measured in the simulator: clicks 22,001 samples apart at
+  TEMPO 120, silent 60 ms after each.
+- `ui.c`: `count_frame` (whole screen: the boot's vortex dimmed and without its ring, the beat's number 4 3 2 1 at
+  five times FONT_L, white on the click cooling to cyan, four pips, the tempo, REC CANCELS); `take_panel` over the
+  view (red lamp on the beat, m:ss.t, NOTES n/8 as eight cells). LATCH lifts at the first click; REC during the
+  count calls it off and puts LATCH back.
+- The click is in what a computer records over USB too (count-in only, before the take).
+
+**Checks:** `basic.txt` 1,049 ok (24 new; two older LOOP blocks now wait out the count), `chords.txt` 89, all 16
+renders match golden, `loader_screen_test` ok, no warnings in `drone.c`. Device image 453,064 B, package 616,909 B,
+build 3B5A72F4. Manual (the recording steps, an update-screen paragraph under Install), both cheat sheets and the
+words updated. Previews: `deepfield/build/preview/update-screen.png` and `rec-count-in.png` (not tracked).
+
+**To check on the unit once flashed:**
+1. Watch the install itself: faint spiral, then the arms light from the rim inward with the percent in the middle,
+   a white ring and DONE at the end.
+2. Load a preset with a chord, press ARP, turn knob 1 to LOOP.
+3. Press REC: four clicks (first one higher), the screen counts 4 3 2 1.
+4. On the fifth beat the screen comes back with a timer in the view. Play a few notes: NOTES counts them.
+5. Press REC: LOOP PLAYING, and the phrase loops.
+6. Press REC, then REC again before the count ends: LOOP CANCELLED, LATCH back as it was.
+
+**On the unit:** flashed 2026-11-16 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
+(fast install over 986096EC), build 3B5A72F4, `FM-1_4400`. The install completed and restarted, so the new loader
+ran start to finish, and Kyle on the spiral filling in during it: "Yes, looked right" (nothing can read the screen
+in update mode, so his word is the check). After: FIRST LIGHT on HOME with the same values, CPU 6 %, `no crash recorded`, `late 00000000`,
+`lock 0000000D`. The bank dumped before and after is byte for byte the same. One `fm1_remote.py screen` right after
+the restart died with an RtMidi CoreMIDI client error (-304) on the Mac's side; the next call read fine.
+
+**Not done:** not heard (the click's level against a chord is set from the simulator's numbers), not
+committed, the base change not committed or pushed.
+
+## Start here: MUTATE and DEVIATE on a new GEN 3 page (flashed 2026-11-16, committed)
+
+Kyle: "we need to improve the actual arp settings to add mutate and deviate". He picked, from three questions:
+Launchkey style (each knob value one fixed variation that repeats and is saved with the preset; 0 off, higher
+changes more), a new GEN 3 page under ARP (nothing existing moves), and ARP and BASS both.
+
+**What changed:**
+- `engine/drone.c`: `P_ARP_MUTATE` (63) and `P_ARP_DEVIATE` (64), CC 47 and 48. Which steps change, and into
+  what, is a hash of the value and the step (`var_hash`, `var_pick`), never the running random numbers. MUTATE
+  runs over 16 hits (1 changed at 1 %, all 16 at 100 %): in ARP another chord note, an octave up or down, or the
+  scale note beside it (CHROMATIC: chord notes and octaves only); in BASS the step's token redrawn, the bar's
+  first step left the root. DEVIATE rests hits over two bars of the EUCLID pattern (one bar of the 12- and
+  16-step ones): one at 1 %, three in four at 100 %, never the first. Both counters restart on PLAY and on MIDI
+  start.
+- `ui.c`: `PG_ORBIT3` "GEN 3" after GEN 2, knobs 1 and 2, empty outside ARP and BASS; PLAY leaves it open. Every
+  page from MIX on is one higher in the simulator's `expect page` (tests renumbered).
+- **Preset storage:** a preset is 121 bytes now (119 on 1.9). The boot's size check took any bank with the
+  per-voice values and fewer parameters for no bank of ours and wrote the defaults over it: reproduced with a
+  flash image saved by a 1.9 simulator build (U5 came back as the INIT preset). `scenes.c` now reads such a bank
+  (`scene_from_pb`), and the same 1.9 image comes up with its preset, chord and values, MUTATE and DEVIATE 0.
+  SysEx frames are marked 07; 06 and 05 frames (1.9 and before) are still taken. A 07 file does not load on 1.9.
+
+**Checks:** `basic.txt` 1,025 ok (183 new: the page, the counts, the sequences repeating and coming back with the
+value, CHROMATIC, BASS, a 1.9 bank and a 1.9 frame read), `chords.txt` 89 ok, all 16 renders match golden (GEN is
+off in them), no warnings in `drone.c`. Device image 450,344 B (1.9: 448,808), package 616,003 B, build 986096EC.
+Manual (the page table, a MUTATE and DEVIATE passage after EUCLID, the CC table, the SysEx paragraph), both
+cheat sheets and the screen reader's words updated. No version bump, site not published.
+
+**To check on the unit once flashed:**
+1. Before flashing, note a user preset you care about; after, confirm it is still there with its chord.
+2. F10 RAIN CLOCK (ARP, RANDOM) or F5 PULSAR; press ARP, turn SELECT two clicks right: GEN 3, MUTATE and DEVIATE.
+3. Set PATTERN to UP on the GEN page so the changes are easy to hear, then MUTATE to 15 %: a few notes of every
+   two bars are different, the same ones each time round.
+4. Turn MUTATE a click at a time: each click is another variation. Go back a click: the earlier one returns.
+5. MUTATE 0, DEVIATE 50 %: holes in the rhythm, the same each time round; 100 %: a sparse figure, the downbeat kept.
+6. GEN MODE BASS: both knobs are there and vary the bass line; WALK: both are empty.
+
+**On the unit:** flashed 2026-11-16 on Kyle's "Flash it" with `fm1_install.py deepfield/build/deepfield.fwsc --yes`
+(fast install over the released 1.9, `FM-1_44010900`), build 986096EC, dev identity `FM-1_4400`. `screen` reads
+FIRST LIGHT on HOME with the values it had before (HARMONICS 37 %, DRIFT 29 %, SUB 27 %, TREMOLO 27 %), VOICES 0,
+CPU 6 %; the log `no crash recorded`, `cpu 6% b0 ADDITIVE s0 x0`, `late 00000000`, `lock 0000000D`.
+**The user presets:** a read-only `fm1_bank.py dump` after the flash shows U1-U16 all the untouched default.
+Kyle: "No, none saved", so nothing was lost; the migration has only been proven in the simulator (on a real 1.9
+flash image), never on a unit holding saved presets. Dump the bank before the next flash that changes a preset's size.
+
+**Not done:** not heard, not committed, CPU on the unit not measured while ARP runs (the added work is two table
+lookups a step). The manual has no screenshot of GEN 3 (`tests/screens.txt` not extended).
+
 ## Start here: 1.9 released and the site published (2026-11-15)
 
 Kyle: "update everything we talked about in terms of docs, manuals etc and push everything to main and make sure

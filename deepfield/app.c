@@ -165,14 +165,17 @@ static void midi_settings_apply(void) {}
 /* the bank over SysEx (main loop; the manual's section 10): F0 7D 44 46 cmd .. F7 ("DF").
  *   01 ss        a request: slot ss (0..15 F1..F16, 16..31 U1..U16) comes back as a 02 frame; 40 every user slot,
  *                41 every slot, one frame each
- *   02 ss 06 d.. a preset for slot ss: the scene (118 bytes, SCN6's layout, 06 says so; an 05 frame is taken and
- *                its velocities brought up to the engine's law) packed seven bytes to eight
+ *   02 ss 07 d.. a preset for slot ss: the scene (121 bytes, 07 says so; an 06 frame, 1.9's and before, is two
+ *                parameters shorter and is taken, MUTATE and DEVIATE off; an 05 frame too, its velocities
+ *                brought up to the engine's law) packed seven bytes to eight
  *                (the high bits first, then the seven bytes with them stripped). In: written to user slot ss (a
  *                factory slot is refused) and the bank saved once the frames stop; out: the answer to 01.
  * A sound heard now is left alone: the slot's next recall plays what came in. A .syx from a computer is the same
  * frames one after another (tools/fm1_bank.py dumps and loads one). */
 #define DFX_HEAD 6u                       /* 7D 44 46 cmd slot ver */
 #define DFX_GROUPS ((sizeof(scene_t) + 6u) / 7u)
+#define DFX_P_V6 63u                      /* an 06 or 05 frame's parameters (1.9 and before) */
+#define DFX_GROUPS_V6 ((PB_SCENE_SIZE(DFX_P_V6) + 6u) / 7u)
 #define DFX_BODY (DFX_GROUPS * 8u)
 static uint8_t dfx_frame[2u + DFX_HEAD + DFX_BODY];
 static uint32_t dfx_pending;              /* bit s: slot s is to be sent (one a frame, so the panel stays live) */
@@ -212,7 +215,7 @@ static uint32_t dfx_build(uint32_t slot)  /* a 02 frame for a slot into dfx_fram
     dfx_frame[3] = 0x46;
     dfx_frame[4] = 0x02;
     dfx_frame[5] = (uint8_t)(slot % NSLOTS);
-    dfx_frame[6] = 6;
+    dfx_frame[6] = 7;
     dfx_pack(slot_scene(slot % NSLOTS), dfx_frame + 1u + DFX_HEAD);
     dfx_frame[1u + DFX_HEAD + DFX_BODY] = 0xF7;
     return 2u + DFX_HEAD + DFX_BODY;
@@ -221,9 +224,20 @@ static int dfx_take(const uint8_t *p, uint32_t n)   /* a 02 frame in: the preset
 {
     uint32_t slot = p[4];
     scene_t sc;
-    if (n < DFX_HEAD + DFX_BODY || (p[5] != 6u && p[5] != 5u) || slot < NFACTORY || slot >= NSLOTS)
+    if (slot < NFACTORY || slot >= NSLOTS)
         return 0;
-    dfx_unpack(p + DFX_HEAD, &sc);
+    if (p[5] == 7u && n >= DFX_HEAD + DFX_BODY)
+        dfx_unpack(p + DFX_HEAD, &sc);
+    else if ((p[5] == 6u || p[5] == 5u) && n >= DFX_HEAD + DFX_GROUPS_V6 * 8u) {   /* a .syx saved from 1.9 or
+                                          * before: two parameters shorter, the rest where it was */
+        uint8_t o[DFX_GROUPS_V6 * 7u];
+        uint32_t g, k;
+        for (g = 0; g < DFX_GROUPS_V6; g++)
+            for (k = 0; k < 7u; k++)
+                o[g * 7u + k] = (uint8_t)(p[DFX_HEAD + g * 8u + 1u + k] | (p[DFX_HEAD + g * 8u] >> k & 1u) << 7);
+        scene_from_pb(o, DFX_P_V6, &sc);
+    } else
+        return 0;
     sc.name[SCENE_NAME - 1u] = 0;
     if (p[5] == 5u)                       /* a .syx from before the velocity law changed: its chord sounds as it did */
         vel_v5_to_v6(&sc);
@@ -570,6 +584,10 @@ int app_expect(const char *what, int *got)
     }
     else if (!strcmp(what, "echorun"))
         *got = dr_echo_running();
+    else if (!strcmp(what, "count"))
+        *got = (int)dr_count_beat(0);
+    else if (!strcmp(what, "takems"))
+        *got = dr_loop_recording() ? (int)(plat_ms() - ui.take_t) : -1;
     else if (!strcmp(what, "looprec"))
         *got = dr_loop_recording();
     else if (!strcmp(what, "loopnotes"))
@@ -618,6 +636,33 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
         uint32_t n = dfx_build((uint32_t)atoi(a));
         dfx_frame[5] = (uint8_t)atoi(b);
         return app_sysex(dfx_frame + 1, n - 2u);
+    }
+    if (!strcmp(cmd, "sxold")) {         /* "sxold A B": slot A as 1.9 framed it (63 parameters, an 06), into B */
+        uint8_t raw[PB_SCENE_SIZE(DFX_P_V6)], f[DFX_HEAD + DFX_GROUPS_V6 * 8u];
+        const uint8_t *s = (const uint8_t *)slot_scene((uint32_t)atoi(a) % NSLOTS);
+        uint32_t i, g, k;
+        for (i = 0; i < sizeof raw; i++)
+            raw[i] = s[i < SCENE_NAME + DFX_P_V6 ? i : i + P_COUNT - DFX_P_V6];
+        f[0] = 0x7D, f[1] = 0x44, f[2] = 0x46, f[3] = 2, f[4] = (uint8_t)atoi(b), f[5] = 6;
+        for (g = 0; g < DFX_GROUPS_V6; g++) {
+            f[DFX_HEAD + g * 8u] = 0;
+            for (k = 0; k < 7u; k++) {
+                f[DFX_HEAD + g * 8u] |= (uint8_t)((raw[g * 7u + k] >> 7) << k);
+                f[DFX_HEAD + g * 8u + 1u + k] = raw[g * 7u + k] & 127u;
+            }
+        }
+        return app_sysex(f, sizeof f);
+    }
+    if (!strcmp(cmd, "bankold")) {       /* the stored bank rewritten as 1.9 stored it: the next boot has it to read */
+        static uint8_t old[8u + NUSER * PB_SCENE_SIZE(DFX_P_V6)];
+        uint32_t i, k;
+        old[0] = (uint8_t)BANK_MAGIC, old[1] = (uint8_t)(BANK_MAGIC >> 8), old[2] = (uint8_t)(BANK_MAGIC >> 16);
+        old[3] = (uint8_t)(BANK_MAGIC >> 24), old[4] = NUSER, old[5] = (uint8_t)PB_SCENE_SIZE(DFX_P_V6), old[6] = old[7] = 0;
+        for (k = 0; k < NUSER; k++)
+            for (i = 0; i < PB_SCENE_SIZE(DFX_P_V6); i++)
+                old[8u + k * PB_SCENE_SIZE(DFX_P_V6) + i] =
+                    ((const uint8_t *)&bank.u[k])[i < SCENE_NAME + DFX_P_V6 ? i : i + P_COUNT - DFX_P_V6];
+        return !plat_store_save(OBJ_SCENES, old, sizeof old);
     }
     if (strcmp(cmd, "param") || atoi(a) < 0 || atoi(a) >= (int)P_COUNT)
         return 0;

@@ -158,10 +158,10 @@ tap GLO
 wait 30
 spin SELECT 2
 wait 30
-expect page 16
+expect page 17
 spin SELECT 1
 wait 30
-expect page 17
+expect page 18
 spin K4 -1
 wait 30
 expect velon 0
@@ -348,9 +348,6 @@ tap GLO
 wait 30
 spin SELECT 2
 wait 30
-expect page 16
-spin SELECT 1
-wait 30
 expect page 17
 spin SELECT 1
 wait 30
@@ -360,10 +357,13 @@ wait 30
 expect page 19
 spin SELECT 1
 wait 30
-expect page 19
+expect page 20
+spin SELECT 1
+wait 30
+expect page 20
 spin SELECT -4
 wait 30
-expect page 15
+expect page 16
 tap EDIT
 wait 8500
 expect page 1
@@ -858,7 +858,7 @@ spin SELECT 2
 wait 30
 spin SELECT 2
 wait 30
-expect page 18
+expect page 19
 expect speaker 1
 expect gain 4096
 expect usbrec1 1
@@ -1019,7 +1019,7 @@ expect h3 58
 expect bodies 3
 press GLO
 wait 400
-expect page 14
+expect page 15
 key 5 down 100 64
 wait 600
 expect morphing 0
@@ -1958,7 +1958,7 @@ tap GLO
 wait 30
 spin SELECT 1
 wait 30
-expect page 15
+expect page 16
 # an effect switched off on the FX keys reads OFF on its knobs (REVERB on the FX mixer and on its own page, SHIMMER
 # through the hall); a turn of one of them brings the effect back on at the amount turned to, never a dead knob
 # stuck at OFF. REVERB used to sit on HOME as well, while it was the only effect there was
@@ -1974,7 +1974,7 @@ release FX
 wait 200
 said REVERB OFF
 expect fxon2 0
-expect page 15
+expect page 16
 turn K3 1
 wait 50
 unsaid OFF
@@ -2451,7 +2451,7 @@ spin SELECT 2
 wait 30
 spin SELECT 1
 wait 30
-expect page 17
+expect page 18
 expect ble_dev 1
 listen
 wait 700
@@ -2709,16 +2709,16 @@ jack in
 master 4096
 tap GLO
 wait 600
-expect page 14
-spin SELECT 1
-wait 100
 expect page 15
 spin SELECT 1
 wait 100
 expect page 16
+spin SELECT 1
+wait 100
+expect page 17
 tap GLO
 wait 100
-expect page 14
+expect page 15
 key 7 down
 wait 60
 key 7 up
@@ -2776,6 +2776,8 @@ expect orbitmode 5
 expect latchmode 1
 tap REC
 wait 200
+# (the count-in first: four beats before the take opens)
+wait 3000
 expect latchmode 0
 expect looprec 1
 expect velon 0
@@ -2832,6 +2834,8 @@ tap ARP
 wait 100
 tap REC
 wait 300
+# (the count-in first: four beats before the take opens)
+wait 3000
 tap REC
 wait 300
 expect loopnotes 0
@@ -3014,3 +3018,576 @@ land 20
 wait 300
 expect scene 20
 expect scale 5
+# MUTATE and DEVIATE (GEN 3, the runner's: ARP and BASS). GEN 3 is the third page under ARP; its knobs are empty
+# outside ARP and BASS; PLAY leaves it open. F3's chord (C3 G3 C4 G4) in ARP, UP, 8/8, eighths at 120
+reboot
+wait 700
+land 2
+wait 6000
+expect latch 4
+param 36 0
+tap ARP
+wait 30
+spin SELECT 2
+wait 50
+expect page 14
+said GEN 3
+spin K1 5
+wait 60
+spin K2 5
+wait 60
+expect p63 0
+expect p64 0
+param 36 3
+wait 30
+spin K1 5
+wait 60
+spin K2 7
+wait 60
+spin K3 5
+wait 60
+spin K4 5
+wait 60
+expect p63 5
+expect p64 7
+midi B0 2F 14
+midi B0 30 40
+wait 50
+expect p63 20
+expect p64 64
+param 39 51
+param 40 110
+param 41 0
+param 42 0
+param 60 0
+param 61 2
+param 63 0
+param 64 0
+tap PLAY
+wait 30
+expect page 14
+# DEVIATE: 32 steps are 32 notes at 0; at 50 % (64) 6 of the two bars' 16 hits rest; at the top 11 do; at 1 one does.
+# The same value twice is the same line
+wait 7850
+expect arpsteps 32
+tap PLAY
+wait 200
+param 64 64
+tap PLAY
+wait 7850
+expect arpsteps 20
+tap PLAY
+wait 200
+param 64 127
+tap PLAY
+wait 7850
+expect arpsteps 10
+tap PLAY
+wait 200
+param 64 1
+tap PLAY
+wait 7850
+expect arpsteps 30
+tap PLAY
+wait 200
+param 64 64
+tap PLAY
+wait 7850
+expect arpsteps 20
+# its rests fall on the same steps each time round (-1: a rest; the notes wait for the next hit)
+tap PLAY
+wait 200
+param 64 64
+tap PLAY
+wait 100
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote -1
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote -1
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote -1
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote -1
+wait 249
+expect arpnote -1
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote -1
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote -1
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote -1
+wait 249
+expect arpnote 67
+wait 249
+# MUTATE: at 0 the chord as it stands; at 20 three of every 16 hits play another note, the same three each
+# time round and the same again when the value comes back; the value beside it is another variation
+tap PLAY
+wait 200
+param 64 0
+param 63 0
+tap PLAY
+wait 100
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+tap PLAY
+wait 200
+param 63 20
+tap PLAY
+wait 100
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 57
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 48
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote 57
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 67
+wait 249
+tap PLAY
+wait 200
+param 63 21
+tap PLAY
+wait 100
+expect arpnote 67
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 62
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+tap PLAY
+wait 200
+param 63 20
+tap PLAY
+wait 100
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 57
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 250
+expect arpnote 55
+wait 249
+expect arpnote 48
+wait 249
+expect arpnote 67
+wait 250
+# CHROMATIC has no scale note beside a note: a mutated hit stays on the chord's notes and their octaves
+tap PLAY
+wait 200
+param 63 127
+tap PLAY
+wait 100
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 62
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote 67
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 69
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 57
+wait 249
+expect arpnote 48
+wait 249
+expect arpnote 48
+wait 250
+tap PLAY
+wait 200
+midi B0 02 00
+wait 50
+expect scale 0
+param 63 127
+tap PLAY
+wait 100
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 72
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 60
+wait 250
+expect arpnote 67
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 79
+wait 250
+expect arpnote 60
+wait 249
+expect arpnote 67
+wait 250
+expect arpnote 48
+wait 249
+expect arpnote 55
+wait 249
+expect arpnote 55
+wait 250
+expect arpnote 67
+wait 249
+expect arpnote 48
+wait 249
+expect arpnote 48
+wait 250
+# BASS: the pattern's steps written over the same way, the bar's first step the root
+tap PLAY
+wait 200
+midi B0 02 10
+wait 50
+param 36 10
+param 62 0
+param 15 0
+param 63 64
+tap PLAY
+wait 100
+expect arpnote 36
+wait 249
+expect arpnote 36
+wait 250
+expect arpnote 36
+wait 249
+expect arpnote 43
+wait 249
+expect arpnote 33
+wait 250
+expect arpnote 36
+wait 249
+expect arpnote 36
+wait 249
+expect arpnote 36
+wait 250
+expect arpnote 36
+wait 249
+expect arpnote 36
+wait 250
+expect arpnote 40
+wait 249
+expect arpnote 36
+wait 249
+expect arpnote 36
+wait 250
+expect arpnote 36
+wait 249
+expect arpnote 43
+wait 249
+expect arpnote 40
+wait 250
+tap PLAY
+wait 200
+param 63 0
+param 36 3
+# a bank saved by 1.9 (63 parameters a preset) is read, not replaced by the defaults: U1 keeps its name and values,
+# MUTATE and DEVIATE off; a 1.9 .syx frame is taken the same way
+tap HOME
+wait 30
+param 1 91
+param 62 80
+param 63 33
+tap SAVE
+wait 30
+tap SAVE
+wait 300
+expect scene 16
+bankold
+reboot
+wait 700
+expect scene 16
+expect p1 91
+expect p62 80
+expect p61 2
+expect p63 0
+expect p64 0
+expect latch 0
+param 64 55
+tap SAVE
+wait 30
+tap SAVE
+wait 300
+sxold 16 18
+wait 1200
+midi C0 12
+wait 500
+expect scene 18
+expect p1 91
+expect p62 80
+expect p63 0
+expect p64 0
+sxloop 16 19
+wait 1200
+midi C0 13
+wait 500
+expect scene 19
+expect p64 55
+# REC in LOOP counts four beats in before the take: the whole screen is the count, LATCH is lifted from the first
+# beat, the take opens by itself on the fifth beat (TEMPO 120: 499 ms a beat) and its timer runs from there; REC
+# during the count calls it off and puts LATCH back; REC during the take closes it as before
+reboot
+wait 700
+land 2
+wait 6000
+param 39 51
+tap ARP
+wait 30
+spin K1 5
+wait 50
+expect orbitmode 5
+expect latchmode 1
+tap REC
+wait 60
+expect count 1
+expect looprec 0
+expect latchmode 0
+wait 500
+expect count 2
+wait 500
+expect count 3
+tap REC
+wait 60
+expect count 0
+expect looprec 0
+expect latchmode 1
+said LOOP CANCELLED
+wait 2500
+expect looprec 0
+tap REC
+wait 60
+expect count 1
+wait 1500
+expect count 4
+expect looprec 0
+wait 480
+expect count 0
+expect looprec 1
+expect loopnotes 0
+tapkey 3
+wait 400
+tapkey 5
+wait 2000
+expect loopnotes 2
+expect takems >2300
+tap REC
+wait 100
+expect looprec 0
+expect latchmode 1
+expect orbit 1
+said LOOP PLAYING
+tap PLAY
+wait 200
+# a take recorded with REC loops until PLAY stops GEN, whatever DECAY says (the preset's 39 % had it gone after 13
+# passes); DECAY's knob is empty while the take is held
+reboot
+wait 700
+land 2
+wait 6000
+param 39 51
+param 52 50
+tap ARP
+wait 30
+spin K1 5
+wait 50
+tap REC
+wait 2200
+expect looprec 1
+tapkey 3
+wait 400
+tapkey 5
+wait 400
+tapkey 7
+wait 600
+tap REC
+wait 1500
+expect echorun 1
+spin K3 5
+wait 60
+expect p52 50
+wait 40000
+expect echorun 1
+expect orbit 1
+out
+wait 2500
+# (still at the velocity it was played at: nothing has faded)
+expect_out USB 90 38 7F
+tap PLAY
+wait 200
+expect orbit 0
+expect echorun 0

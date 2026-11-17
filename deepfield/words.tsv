@@ -133,6 +133,9 @@ BRONZE	bronze
 OSC	oscillator
 GEN	generate
 GEN 2	generate two
+GEN 3	generate three
+MUTATE	mutate
+DEVIATE	deviate
 GEN ON	generate on
 PLAY GEN	generate
 PLAY SHIFT	generate shift
@@ -144,6 +147,8 @@ SHIFT	shift
 PROG	progression
 LOOP	loop
 REC THEN PLAY	press record, then play a phrase
+COUNT IN	count in
+CANCELLED	cancelled
 STRUM	strum
 REVERB	reverb
 TREMOLO	tremolo

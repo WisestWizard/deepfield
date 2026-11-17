@@ -56,6 +56,13 @@ source code (github.com/WisestWizard/deepfield).
 
 If an install asks for update mode, hold REC while you switch the FM-1 on.
 
+**The update screen.** While an install runs the screen shows a vortex drawing itself: three arms of dots spiral
+in from the rim to the centre, lit one by one as the firmware is written, violet at the rim through blue and cyan
+to white, with the percentage in the middle. Before the install starts the arms are faint and a glimmer runs along
+them. If the cable drops, the arms dim and the lines turn amber: USB LOST, RECONNECT THE CABLE, DO NOT POWER OFF;
+plug it back in and the install carries on from where it was. At the end a white ring closes round the centre:
+DONE, RESTARTING.
+
 Installing is at your own risk. If the FM-1 only shows up as a disk called `WL82 UBOOT1.00`, the rescue tool
 `fm1_rescue` (from felucca-bsp) recovers it.
 
@@ -329,6 +336,7 @@ ARP, WIDTH on LFO and NOISE 2): the page band tells you which one you are turnin
 | FX, SELECT three times | REVERB | DECAY (how long it rings, about 0.6 to 8 s) | DAMPING (how fast the highs die away) | SHIMMER | REVERB (how much, the same value as on the FX mixer) |
 | ARP | GEN | MODE | Depends on the mode (section 7) | Depends on the mode | Depends on the mode |
 | ARP, SELECT once | GEN 2 | RETURN (WALK, SHIFT, RANDOM) | ROAM (PROG, LOOP, MELODY, BASS) or OCTAVES (ARP, STRUM, 1 to 3) | EUCLID (ARP, BASS: its hits and rests) | DIV (ARP, BASS: a step's length) |
+| ARP, SELECT twice | GEN 3 | MUTATE (ARP, BASS: notes of the line swapped for others) | DEVIATE (ARP, BASS: notes of the rhythm turned to rests) | – | – |
 | GLO | MIX | BED (the latched voices' level) | LEAD (the notes you play over them: the LEAD page's LEVEL) | OUT (a trim under the MASTER pot, on the speaker and on what a computer records alike) | – |
 | GLO, SELECT once | FX MIX | ENS MIX | DLY MIX | REVERB | SHIMMER — every effect's level on one screen, the same four values as their own pages |
 | GLO, SELECT twice | GLOBAL | SCALE | ROOT | MORPH (NOW, or 1 to 30 s) | TEMPO (40 to 240 BPM, EXT while MIDI clock comes in) |
@@ -443,7 +451,7 @@ held, REVERB down.
 ## 7. GEN
 
 GEN (generate) moves the latched voices by itself. Press PLAY to start it and again to stop it; when it stops, the voices
-stay where they are. Starting it opens the GEN page, so the knobs are MODE and its values from that moment (GEN 2,
+stay where they are. Starting it opens the GEN page, so the knobs are MODE and its values from that moment (GEN 2 or GEN 3,
 if that is open, stays open); stopping it leaves the page where it was. ARP opens the page any time. When it starts, the screen names the mode (WALK 5.1S, for example). While it runs, the
 PLAY pill fills up toward the next move and flashes when it comes. The pill is named for the mode: PLAY GEN for
 WALK, PLAY SHIFT, PLAY RANDOM and so on.
@@ -459,7 +467,7 @@ mode the knob comes to rest on starts a third of a second later, so the modes pa
 | RANDOM | orange | RATE, VOICES, RANGE | Several voices move at once, each its own way, with looser timing (give or take a half). VOICES sets how many: one at 0, all the latched voices at full; the knob counts them, 2 OF 3 with three latched. |
 | ARP | red | TEMPO, GATE, PATTERN | An arpeggio. The voices keep droning while a lead (section 4) steps through their notes. TEMPO is 40 to 240 BPM and DIV (GEN 2) how long a step is (an eighth note unless you change it). GATE is how long each step is held (smoothly joined at the top). PATTERN is UP (from the lowest), DOWN (from the highest), UP DOWN, RANDOM, or PLAYED (the order you struck them). The first step of each EUCLID bar is struck full and the one halfway a little under, the rest about 5 dB down, so the arpeggio has a downbeat; the accents go out over MIDI too. OCTAVES (GEN 2) spreads it over more octaves, and EUCLID (GEN 2) puts rests between the notes. Add or let go a voice while it runs and it carries on from the note it just played. ARP remembers the notes, in the same PATTERN: stop every voice (SEL and HOME) and it keeps playing until you press PLAY. A locked voice is left out: it drones under the arpeggio. The pill fills over EUCLID's steps. |
 | PROG | orange | RATE, CHANCE, CHORDS | The chord is led through a progression, picked with CHORDS (below), one or two voices at a time while the rest hold. ROAM (GEN 2) sets how far the generator may develop it. |
-| LOOP | orange | RATE, DECAY, OCT JUMP | A phrase you played, coming back at the velocities, the rhythm and the note lengths you played it with: a note you held for a second comes back held for a second. Closing a take sets RATE to the phrase's own length, so it loops at the speed it was played. Record one with REC (below), or just play with LATCH off and your last eight notes are caught on their own. DECAY drops notes and fades the phrase, and at 0 holds it for good; OCT JUMP throws notes an octave; ROAM (GEN 2) carries each pass to another degree of the scale. The pill counts the phrase (LOOP 5) and lights while it plays. |
+| LOOP | orange | RATE, DECAY, OCT JUMP | A phrase you played, coming back at the velocities, the rhythm and the note lengths you played it with: a note you held for a second comes back held for a second. Closing a take sets RATE to the phrase's own length, so it loops at the speed it was played. Record one with REC (below), or just play with LATCH off and your last eight notes are caught on their own. A phrase recorded with REC loops until PLAY stops it; DECAY drops notes from and fades a phrase that was only caught, and at 0 holds that too; OCT JUMP throws notes an octave; ROAM (GEN 2) carries each pass to another degree of the scale. The pill counts the phrase (LOOP 5) and lights while it plays. |
 | MELODY | orange | RATE, CHANCE, RANGE | The highest voice sings a line in the scale while the others hold under it (below). |
 | TURN | orange | RATE, CHANCE, RANGE | The chord climbs and falls through its inversions: a voice fades out, moves an octave and comes back. The notes never change, only where they sit (below). |
 | SWELL | orange | RATE, DEPTH, VOICES | No voice moves. Every RATE a different few voices fade down and the rest come back, so the chord thins and fills, a different mix each time. DEPTH is how far they fade (100 % is silence), VOICES how many are down at once: never all of them, and a chord of one note is left alone. A fade takes about a third of RATE. Stop GEN, or turn MODE, and they all come back. |
@@ -469,18 +477,23 @@ mode the knob comes to rest on starts a third of a second later, so the modes pa
 **Recording a phrase (LOOP).** Selecting LOOP with nothing recorded puts **REC THEN PLAY** on the screen, since an
 empty loop has nothing to play. With the GEN page showing and MODE on LOOP, **REC** takes a phrase:
 
-1. Press **REC**. The screen says LOOP RECORDING and the pill counts the notes as they go in. **LATCH comes off for
-   the take**, so the keys play rather than pile up a drone - it goes back on by itself afterwards.
-2. Play your phrase, up to eight notes. The gaps between them and how long you hold each one are both kept, so it
+1. Press **REC**. A metronome counts four beats in at TEMPO (GLOBAL; the MIDI clock's tempo while one is
+   followed): four clicks, the first higher, while the whole screen counts 4 3 2 1 over the vortex and four bars
+   along the bottom fill. **LATCH comes off for the take**, from the first click, so the keys play rather than
+   pile up a drone - it goes back on by itself afterwards. REC again during the count calls it off.
+2. The take opens on the fifth beat, by itself, and the count gives the screen back. The view shows a timer
+   (minutes, seconds and tenths), the notes caught out of the eight LOOP holds, and a red lamp that blinks on each
+   beat. Nothing clicks during the take: the phrase comes back at the speed you play it, not on a grid.
+3. Play your phrase, up to eight notes. The gaps between them and how long you hold each one are both kept, so it
    comes back in the rhythm you played it and with your long notes long, not as a row of equal blips.
-3. Press **REC** again. The screen says LOOP PLAYING and the phrase starts looping at once.
+4. Press **REC** again. The screen says LOOP PLAYING and the phrase starts looping at once.
 
 Closing the take sets **RATE** to the phrase's own length, so what comes back is what you played rather than the
 same notes squeezed into whatever RATE happened to be set to. Turning RATE afterwards stretches or squeezes the
 gaps and the note lengths together, keeping the phrase's proportions. RATE's steps are about 5 % apart, so the
-length it lands on is within a few percent of what you played. **At DECAY 0 nothing fades**, however the phrase got
-there: DECAY is the only thing that takes a loop away. Turn it up and a phrase you only caught in passing dies
-faster than one you recorded, which is the difference the two are meant to have. **ROAM** (GEN 2) is how far it
+length it lands on is within a few percent of what you played. **A phrase recorded with REC never fades**: it
+loops until PLAY stops GEN, and while it is held the DECAY knob is empty. DECAY is for a phrase only caught in
+passing (played with LATCH off, no REC): at 0 that holds too, and turned up it fades away pass by pass. **ROAM** (GEN 2) is how far it
 travels: at 0 it repeats at the pitches you played, and turned up each pass is carried to another degree of the
 scale, chosen by the same weights PROG uses, so it walks somewhere rather than wandering. REC is the Bluetooth
 button everywhere else - it only takes a phrase while the GEN page is up with LOOP showing.
@@ -562,11 +575,28 @@ RELEASE (LEAD page) toll like bells.
 **GEN 2's knobs are the mode's, like the GEN page's.** A knob whose setting the mode's generator never reads is
 empty rather than sitting there turning to nothing: RETURN only in WALK, SHIFT and RANDOM, which are the modes
 that wander; ROAM in PROG, LOOP, MELODY and BASS; OCTAVES in ARP and STRUM; EUCLID and DIV in ARP and BASS, the
-two modes that step at TEMPO. The
+two modes that step at TEMPO, and GEN 3's MUTATE and DEVIATE in the same two. The
 value is kept either way - set EUCLID in ARP, go to WALK and back, and it is as you left it, and MIDI can set any
 of them at any time (section 11).
 
 ![The GEN 2 page in ARP: OCTAVES, EUCLID 3/8, DIV 1/8](img/screen-rhythm.png "EUCLID and DIV")
+
+**MUTATE and DEVIATE** (GEN 3, in ARP and BASS) vary the line without your touching the chord. Each value of
+either knob is one fixed variation: it repeats every two bars, it is saved with the preset, and turning the knob
+back to a value brings that variation back exactly. The next value along is a different variation, so turn until
+you hear one you like and leave it there. Higher values change more of the line, and 0 is off.
+
+- **MUTATE** swaps notes. In ARP a changed step plays another note of the chord, the same note an octave up or
+  down, or the scale note next to it (in CHROMATIC only chord notes and octaves, since every key is a scale note
+  there). The variation runs over 16 notes: at 1 % one of the 16 is changed, at 50 % eight, at 100 % all of them.
+  PATTERN goes on underneath, so UP is still heard going up between the changed notes. In BASS the changed steps
+  are rewritten as the root, its octave, the fifth, the third or the seventh, the same way each time round, and
+  the first step of each bar stays the root. ROAM still works on top and is random where MUTATE is fixed.
+- **DEVIATE** turns notes into rests, on top of the rests EUCLID already makes. It runs over two bars of the
+  EUCLID pattern (one bar of the 12- and 16-step patterns): at 1 % one note rests, at 100 % three in four do. The
+  first note of the pattern always plays. A rest waits, as EUCLID's do, so the notes move on only at a note.
+
+Both knobs are empty outside ARP and BASS, and both have a MIDI CC (section 11).
 
 **SHIFT moves the chord one voice at a time.** Every voice ends up the same number of scale steps away, but they
 do not leave together. The voice at the leading edge goes when the countdown ends - the top voice on the way up,
@@ -873,6 +903,7 @@ sequencer or a DAW can record everything you do and play it back, and a knob box
 | 30 | AFTERTOUCH |
 | 52, 53 | DECAY and OCT JUMP (LOOP) |
 | 54 | BED (MIX) |
+| 47, 48 | MUTATE, DEVIATE (ARP, BASS) |
 | 55, 56 | EUCLID, DIV |
 | 57 | LATCH (switch) |
 | 58 | GEN on or off, like PLAY (switch) |
@@ -905,10 +936,11 @@ A program change loads a preset's sound, as PRESETS does: 0–15 F1–F16, and 1
 
 **The presets as SysEx.** Over USB, DEEP FIELD sends and takes its presets as SysEx, so a bank can live on a
 computer, go to another FM-1, or be shared as a file. `F0 7D 44 46 01 ss F7` asks for slot ss (0–15 F1–F16, 16–31
-U1–U16; 64 every user slot, 65 every slot), and each comes back as `F0 7D 44 46 02 ss 06 <the preset> F7`, the
-preset's 118 bytes packed seven to eight (the high bits first). Send such a frame and the preset goes into user slot
-ss (a factory slot is refused); a frame marked 05, from a build before the velocity law changed, is taken too and
-its chord brought up to the new law, so it sounds as it did; about a second after the last one the bank is saved (BANK SAVED on the screen),
+U1–U16; 64 every user slot, 65 every slot), and each comes back as `F0 7D 44 46 02 ss 07 <the preset> F7`, the
+preset's 121 bytes packed seven to eight (the high bits first). Send such a frame and the preset goes into user slot
+ss (a factory slot is refused); a frame marked 06, from 1.9 or before, is taken too with MUTATE and DEVIATE off,
+and so is one marked 05, from a build before the velocity law changed, its chord brought up to the new law so it
+sounds as it did (a file saved from this version does not load on 1.9 or before); about a second after the last one the bank is saved (BANK SAVED on the screen),
 which silences the sound for a moment, so load presets between takes. A preset that is sounding is left alone: the
 slot's next recall plays what came in. `deepfield/tools/fm1_bank.py` in the source code does this from a terminal:
 `fm1_bank.py dump bank.syx` saves U1–U16 to a file, `fm1_bank.py load bank.syx` sends a file back, `--slot U5`

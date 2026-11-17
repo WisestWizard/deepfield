@@ -45,6 +45,9 @@ enum {
     P_DLY_TYPE, P_DLY_WOW, P_DLY_CHOP,                            /* the delay's kind, its tape's wander, its input in slices */
     P_ARP_RHYTHM, P_ARP_DIV,                                      /* ARP: the runner's pattern of hits and rests, its step */
     P_BED_LEVEL,                                                  /* MIX: the latched bodies' level under the leads */
+    P_ARP_MUTATE, P_ARP_DEVIATE,                                  /* ARP and BASS: notes of the line swapped for
+                                                                   * others, hits of the rhythm turned to rests;
+                                                                   * each value one fixed variation, 0 none */
     P_COUNT
 };
 enum { DT_PING, DT_TAPE, DT_DUB, DT_REVERSE, DT_RISE, DT_FALL, DT_GRAINS, DT_COUNT };   /* P_DLY_TYPE, the index */
@@ -156,6 +159,10 @@ int32_t dr_arp_note(void);                          /* ARP: the note of the step
 uint32_t dr_loop_notes(void);
 void dr_loop_rec(int on);                /* LOOP: REC opens a take, REC again closes it and leaves it looping */
 int dr_loop_recording(void);
+void dr_count_in(int on);                /* LOOP: four clicks a beat apart (TEMPO, or the clock followed), then the
+                                          * take opens by itself on the fifth beat; 0: called off, nothing opens */
+uint32_t dr_count_beat(float *frac);     /* the count-in's beat sounding, 1..4 (0: none), and how far through it */
+float dr_count_bpm(void);                /* the tempo it counts at */
 int dr_loop_have(void);                       /* LOOP: how many notes its phrase holds, 0 empty */
 int dr_arp_running(void);                           /* ARP runs and has notes (its own, or remembered) */
 int dr_echo_running(void);                          /* ECHO runs and holds a phrase */

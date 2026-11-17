@@ -10,7 +10,7 @@ expect boot 0
 tap GLO
 spin SELECT 9
 wait 30
-expect page 19
+expect page 20
 spin K1 2
 wait 30
 expect chord 2
