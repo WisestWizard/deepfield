@@ -20,14 +20,18 @@ build 060525F6, the same code, not the release's bytes.
 46 % with no voice on DESCENT (U1), not looked into; hints 7 to 9 not built; whether PRESS A KEY is too much
 between pieces.
 
+**To resume:** `git status` first (another session worked in this tree the same day), then the "How to resume"
+commands with `deepfield` in place of `app` (`./build.sh --host`, `deepfield/build/host/deepfield_host
+deepfield/tests/basic.txt deepfield/build/host`, `deepfield/tools/render_scenes.py`).
 
-Two sessions' work in one tree, on top of the released 1.10 (617e7e8). Device build 64A6A096, image 454,168 B,
-`FM-1_4400`. `basic.txt` 1,086 ok, `chords.txt` 89 ok, all 16 renders match golden.
+**How it was built.** Two sessions' work in one tree, on top of the released 1.10 (617e7e8). As released: device
+image 454,216 B, `basic.txt` 1,087 ok, `chords.txt` 89 ok, all 16 renders match golden.
 
 **The migration, proven on the unit first:** the released 1.9 went on, Kyle saved U1 DESCENT and U2 FOLDED SUN
 (seven voices each), the released 1.10 went on over it: all 16 user presets are their 1.9 bytes with two zero
 bytes where MUTATE and DEVIATE sit, chords, velocities, root and scale the same. Dumps and both packages are in
-`deepfield/build/migration/` (not tracked). **The unit runs the released 1.10 bytes** (`FM-1_44011000`).
+`deepfield/build/migration/` (not tracked), with the released 1.11 beside them. The unit ran the released 1.10
+bytes at that point; it has had two dev builds since (below).
 
 **Why the hints:** Kyle could not find how to save to another slot (the dialog's big line said PRESS SAVE AGAIN,
 the slot hint was the last, greyest line), then loaded his saved presets and heard no chord. He asked for hints
@@ -90,8 +94,8 @@ suite and goldens pass), then the tag's run 44010340485: `deepfield-1.10.fwsc`, 
 cheat sheet carry GEN 3, MUTATE, DEVIATE and the count-in. The root `firmware.json` did not change (it holds no
 version).
 **Base:** `loader-screen` (646673b) pushed to WisestWizard/fm1-base before master; not offered upstream.
-**The hub:** `catalog.json` still read 1.9 minutes after the release; it takes a new release within three hours by
-itself. Not checked since.
+**The hub:** `catalog.json` still read 1.9 minutes after the release; it read 1.10 three hours later, at the 1.11
+release.
 **The unit** runs dev build 3C307293 (`FM-1_4400`), the same code as 1.10 but not the release's bytes.
 
 **Left:** the hub card reading 1.10; the unit onto the released bytes if Kyle wants them matched (as on 1.9);
