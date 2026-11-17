@@ -2,7 +2,16 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
-## Start here: the screen hints and PRESETS bringing a chord (flashed 2026-11-16, not heard, NOT committed)
+## Start here: the screen hints and PRESETS bringing a chord (flashed, committed d2746d4, site 1.11 published 2026-11-16)
+
+Kyle, after the large hints went on: "commit everything and publish looking good". Committed as d2746d4 (both
+sessions' work in one commit: the hunks share lines of `ui.c`), the manual's screenshots re-shot first
+(`screen-save`, `screen-browse` and five others). `publish_site.sh 1.11` pushed gh-pages: deepfield.fog.baby reads
+Version 1.11, the live manual and cheat sheet carry the hints, the installer's package is `FM-1_44011100`
+(616,909 B, a local build). **Not done: master is not pushed and 1.11 is not tagged or released**, so GitHub's
+latest release and the hub are still 1.10 (the hub's card not checked since the 1.10 release either). The unit
+runs dev build 060525F6, the same code.
+
 
 Two sessions' work in one tree, on top of the released 1.10 (617e7e8). Device build 64A6A096, image 454,168 B,
 `FM-1_4400`. `basic.txt` 1,086 ok, `chords.txt` 89 ok, all 16 renders match golden.
