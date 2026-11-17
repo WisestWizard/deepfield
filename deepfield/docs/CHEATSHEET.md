@@ -27,9 +27,9 @@ the screen mirrors the panel (the keys strip is your keys, the four knob cells a
 | SEL | LATCH on / off (lit while on) | The chord's button: + key moves the chord, + PRESETS brings the preset's chord, + PLAY GEN's next move now, + HOME every voice let go |
 | PLAY | GEN on / off (as it goes down; on, it opens the GEN page unless GEN 2 or GEN 3 is open; off, the page stays); with SEL held, the next move now; its colour is the MODE: green WALK (one voice moves), orange SHIFT, RANDOM and PROG (the chord moves: along the scale one voice after another, scattered, or through a progression), red ARP (an arpeggio of leads over the held chord, on after the chord is let go; the bar's first step accented), red BASS (a bass line of leads under the chord, at TEMPO), orange MELODY (the top voice sings), TURN (the chord through its inversions), SWELL (voices fade down and back in turn) and STRUM (the chord struck across as leads), and orange LOOP (your last notes replayed at the velocities you played them, fading; it needs nothing latched and ignores CHANCE, and the pill counts the phrase or reads EMPTY); the pill fills toward the next move, a line reaches from a beam toward where it is going; MIDI clock in times both | |
 | SEQ | FREEZE on / off (lit): the hall holds forever | |
-| SAVE | Save dialog: PRESET picks U1..U16, SAVE again saves, HOME cancels | |
+| SAVE | Save dialog: turn PRESETS for U1..U16 (the screen says so and counts the slot), SAVE again saves, HOME cancels | |
 | OCT− / OCT+ | Octave −2..+2; the button half-lights one octave out, lights two out | |
-| REC | On the MIDI page: connect the device ALGO picks, or disconnect it. On the GEN page in LOOP: a four-beat count-in (four clicks at TEMPO, 4 3 2 1 full screen), then the take with its timer; REC again closes it, or calls the count off. Elsewhere: scan, ALGO picks, REC again connects | 1 s: Bluetooth on / off |
+| REC | On the MIDI page: connect the device ALGO picks, or disconnect it. On GEN, GEN 2 or GEN 3 in LOOP: a four-beat count-in (four clicks at TEMPO, 4 3 2 1 full screen), then the take with its timer; REC again closes it, or calls the count off. Elsewhere: scan, ALGO picks, REC again connects | 1 s: Bluetooth on / off |
 
 The page's button lights (mid while FX is held). A page stays until a button or SELECT moves it. SEL and REC held
 blink from a third of a second until their hold fires. PLAY's colour while GEN runs: green WALK, orange SHIFT,
@@ -40,7 +40,7 @@ browsing, LATCH or the octave), and blinks in its dialog. An effect switched off
 | Encoder | Does |
 | --- | --- |
 | SELECT | The page before or after (HOME, OSC, NOISE, NOISE 2, ENVELOPE, LEAD, LFO, VOICES, FX ENSEMBLE, FX DELAY, FX DELAY 2, FX REVERB, GEN, GEN 2, GEN 3, MIX, FX MIX, GLOBAL, MIDI, USB, CHORD; turned right until it stops: CHORD) |
-| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too, and SCALE changes to the chord's own) |
+| PRESET | Scroll the presets (the view lists them: neighbours, the 32 slots as marks, a line filling); 0.7 s after you stop, its sound morphs in over MORPH under your chord, each voice crossing into its model; LATCH, GEN (and its page while it runs), FREEZE stay. With nothing latched its chord comes too (+ CHORD in the list). With SEL held: + CHORD, its chord comes in over yours (LATCH on, its GEN values too, and SCALE changes to the chord's own) |
 | ALGO | Model (the algorithm): ADDITIVE, SUPERSAW, FM, BOWED, FORMANT, BELL, SHEPARD, WAVEFOLD, WAVETABLE, FM 4-OP, SYNC, TAPE, RESONATOR (each voice crosses over in 0.8 s) |
 | KNOB 1–4 | The page's four values (below), shown in a row under the knobs; each sends its CC as it turns. Slow: 3 a click (43 a sweep); fast: 8 (16 a sweep); TEMPO 1 BPM a click; few-value knobs one value a click. A value glides there over 10-20 ms and a choice fades across, so turning never clicks |
 | MASTER | Volume: the speaker, the headphones and the USB recording (USB LEVEL trims the recording under it) |
@@ -106,7 +106,8 @@ Header: the model's glyph, preset slot and name (a small orange square = unsaved
 the right; the three states as pills at fixed places, named for their buttons (SEL LATCH, PLAY GEN with GEN's
 countdown along its foot, SEQ FRZ); E D R S N lit for the effects heard and the noise; a morph line along the bottom.
 View: the voices as beams; every knob or button large over it for a moment; FX held names the switches
-over their keys.
+over their keys. Hints: nothing sounding, PRESS A KEY, OR TURN PRESETS; SEL held, its four partners; HOME held, KEEP
+HOLDING, AS SAVED; PRESETS turned with edits, UNSAVED EDITS WILL GO. LOCAL off and nothing sounding: LOCAL OFF, KEYS SEND MIDI ONLY (and LOCAL OFF in the header).
 Keys strip: the 27 keys as dark glass lit by their voices (a sun cap when latched, white for a lead, framed white
 when open; the scale slightly lighter).
 Footer: the page band (the button's icon and name, the page, the SELECT arrows; model and scale at the right), then
@@ -116,7 +117,7 @@ model (see Models). A voice open: VOICE and its note, its four values.
 
 ## Factory presets
 Every model at least once, every delay type on one; GEN: SHIFT, RANDOM, ARP, PROG and LOOP on two each, WALK on the
-rest, MELODY, TURN, SWELL, STRUM and BASS on none (turn MODE); chords on C, in ROOT; SEL held + PRESETS brings the chord
+rest, MELODY, TURN, SWELL, STRUM and BASS on none (turn MODE); chords on C, in ROOT; PRESETS with nothing latched, or SEL held + PRESETS over a chord, brings the chord
 and its scale (MAJOR, but F4 LYDIAN, F5 MIXOLYDIAN, F9 DORIAN, F10 MINOR, F11 MAJ PENTA).
 F1 FIRST LIGHT (ADDITIVE, WALK) · F2 VOID TIDE (SUPERSAW, WALK, wind) · F3 GLASS ORBIT (FM, WALK, OCT UP; made for GEN) ·
 F4 BOWED SKY (BOWED, SHIFT, REVERSE) · F5 PULSAR (SYNC, ARP 5/8, gated PING PONG) · F6 NEBULA (ADDITIVE cluster, RANDOM,

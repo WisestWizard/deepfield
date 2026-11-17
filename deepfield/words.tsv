@@ -177,6 +177,8 @@ ALL NOTES	all notes
 PRESET	preset
 PRESET + CHORD	preset and its chord
 SAVE PRESET TO	save preset to
+SAVE TO: TURN PRESETS	save to. turn presets to pick a slot
+TURN PRESETS: U1-U16	turn presets to pick user 1 to 16
 PING PONG	ping pong
 MULTI TAP	multi tap
 OCT UP	octave up
@@ -253,3 +255,11 @@ B9	flat nine
 #5	sharp five
 DIM 5	diminished fifth
 AUG 5	augmented fifth
+PRESS A KEY	press a key
+OR TURN PRESETS	or turn presets
+KEYS SEND MIDI ONLY	the keys send midi only
+KEEP HOLDING	keep holding
+YOUR EDITS GO	your edits go
+UNSAVED EDITS WILL GO	unsaved edits will go
+HOLD SEL: + ITS CHORD	hold select for its chord too
+LOCAL OFF	local off

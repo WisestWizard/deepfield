@@ -398,6 +398,8 @@ int app_expect(const char *what, int *got)
         *got = ui.page;
     else if (!strcmp(what, "dialog"))
         *got = ui.dialog;
+    else if (!strcmp(what, "hint"))
+        *got = ui.hint;
     else if (!strcmp(what, "dirty"))
         *got = set_dirty || scene_dirty;
     else if (!strcmp(what, "boot"))          /* the vortex still playing */

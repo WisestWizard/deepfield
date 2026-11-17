@@ -224,6 +224,8 @@ static struct {
     uint8_t cfg_dirty;                   /* a GLOBAL, MIDI or USB setting changed since the last save (SAVE lights) */
     uint8_t boot;                        /* the vortex is playing (boot_frame); boot_t: since when */
     uint8_t counting;                    /* LOOP's count-in has the screen (count_frame) */
+    uint8_t hint;                        /* the hint the view drew last: 1 nothing sounds, 2 SEL held, 3 HOME held,
+                                          * 4 PRESETS turning with edits unsaved, 5 nothing sounds and LOCAL is off */
     uint32_t count_t, take_t;            /* since when; the take: since when (the timer) */
     uint32_t boot_t;
     float mist;                          /* the noise mist's drift, in dither cells */
@@ -698,6 +700,7 @@ static void value_set(uint32_t id, uint32_t v)
     case PID_LOCAL:
         set.local = (uint8_t)v;
         set_dirty = 1;
+        ui.redraw_head = 1;
         if (!set.local)
             dr_all_off();
         break;
@@ -885,6 +888,10 @@ static void boot_end(void);
 static const uint8_t ORB_P[] = {P_ORB_MODE, P_ORB_PERIOD, P_ORB_CHANCE, P_ORB_RANGE, P_GRAVITY, P_ORB_DIST, P_ORB_BODIES,
                                 P_ARP_RATE, P_ARP_GATE, P_ARP_ORDER, P_ARP_OCT, P_ORB_PROG, P_ECHO_DECAY, P_ECHO_JUMP,
                                 P_ARP_RHYTHM, P_ARP_DIV, P_ARP_MUTATE, P_ARP_DEVIATE};
+static int browse_chord(void)           /* PRESETS brings the chord too: SEL held, or nothing latched to keep */
+{
+    return ui.sel_chord || !dr_latched();
+}
 static void scene_go(uint32_t slot, int say, int chord)
 {
     char t[24];
@@ -1437,7 +1444,11 @@ static void button(uint32_t k, uint32_t now, uint32_t btn)
         ui.dialog = 1;
         ui.save_to = (uint8_t)(set.scene >= NFACTORY ? set.scene - NFACTORY : 0u);
         ui.redraw_foot = 1;
-        ui_say("SAVE TO", "PRESS SAVE AGAIN");
+        {
+            char t[24];
+            slot_title(NFACTORY + ui.save_to, t);
+            ui_say("SAVE TO: TURN PRESETS", t);
+        }
         break;
     case B_OCTDN: octave_step(-1); break;
     case B_OCTUP: octave_step(1); break;
@@ -1557,8 +1568,8 @@ static void input(void)
                 ui.rec_t = 0;
                 ble_toggle();
             }
-        } else if (ui.page == PG_ORBIT && dr_orbit_mode() == OM_ECHO) {
-            ui.rec_t = 0;                /* on GEN with LOOP showing, REC takes a phrase instead of reaching for
+        } else if ((ui.page == PG_ORBIT || ui.page == PG_ORBIT2 || ui.page == PG_ORBIT3) && dr_orbit_mode() == OM_ECHO) {
+            ui.rec_t = 0;                /* on GEN's pages with MODE on LOOP, REC takes a phrase instead of reaching for
                                           * Bluetooth: the take plays from the keys, so LATCH is lifted for it and
                                           * put back when the take closes */
             if (dr_loop_recording()) {
@@ -1601,7 +1612,7 @@ static void input(void)
                 char t[24];
                 ui.save_to = (uint8_t)clamp((int32_t)ui.save_to + e, 0, (int32_t)NUSER - 1);
                 slot_title(NFACTORY + ui.save_to, t);
-                ui_say("SAVE TO", t);
+                ui_say("SAVE TO: TURN PRESETS", t);
                 ui.redraw_foot = 1;
             }
             continue;
@@ -1620,7 +1631,7 @@ static void input(void)
             ui.sel_slot = clamp(from + e, 0, (int32_t)NSLOTS - 1);
             ui.sel_t = now;
             slot_title((uint32_t)ui.sel_slot, t);
-            ui_say(ui.sel_chord && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "PRESET + CHORD" : "PRESET", t);
+            ui_say(browse_chord() && slot_scene((uint32_t)ui.sel_slot)->vel[0] ? "PRESET + CHORD" : "PRESET", t);
         } else if (k == EN_ALGO) {
             knob(P_MODEL, e, 0);
         } else if (k == EN_SELECT) {     /* the page before or after */
@@ -1638,7 +1649,8 @@ static void input(void)
     }
     if (ui.sel_slot >= 0 && now - ui.sel_t >= 700u) {
         int32_t slot = ui.sel_slot;
-        int chord = ui.sel_chord;        /* SEL was held: the scene's chord comes in over the chord playing */
+        int chord = browse_chord();      /* SEL was held: the scene's chord comes in over the chord playing; nothing
+                                          * latched: it comes in too, so a saved chord is heard when its preset is */
         ui.sel_slot = -1;
         ui.sel_chord = 0;
         if (slot != (int32_t)set.scene || chord)
@@ -2170,23 +2182,34 @@ static void browse_draw(uint32_t now)    /* PRESET turning: the scene's neighbou
     char t[24], u[28];
     int32_t s = ui.sel_slot, i;
     const felucca_font_t *f;
-    if (s > 0) {
-        slot_title((uint32_t)s - 1u, t);
-        u[0] = 0;
-        text_cat(u, "< ");
-        text_cat(u, t);
-        cv_text(4, 3, &FONT_XS, u, C_LABEL);
+    {
+        int warn = scene_dirty && s != (int32_t)set.scene, chord = slot_scene((uint32_t)s)->vel[0] != 0;
+        int ask = chord && !browse_chord();   /* a chord is held: PRESETS alone brings the sound under it */
+        if (warn) {                      /* landing drops what was changed: said where the neighbours stand */
+            cv_text((SKY_W - text_w(&FONT_B, "UNSAVED EDITS WILL GO")) / 2, 1, &FONT_B, "UNSAVED EDITS WILL GO", C_WARN);
+            ui.hint = 4;
+        } else {
+            if (s > 0) {
+                slot_title((uint32_t)s - 1u, t);
+                u[0] = 0;
+                text_cat(u, "< ");
+                text_cat(u, t);
+                cv_text(4, 3, &FONT_XS, u, C_LABEL);
+            }
+            if (s + 1 < (int32_t)NSLOTS) {
+                slot_title((uint32_t)s + 1u, t);
+                text_cat(t, " >");
+                cv_text(236 - text_w(&FONT_XS, t), 3, &FONT_XS, t, C_LABEL);
+            }
+        }
+        slot_title((uint32_t)s, t);
+        f = !ask && text_w(&FONT_L, t) <= 232 ? &FONT_L : &FONT_M;   /* a hint under it: the name gives it the room */
+        cv_text((SKY_W - text_w(f, t)) / 2, f == &FONT_L ? 20 : ask ? 18 : 24, f, t, C_BRIGHT);
+        if (ask)
+            cv_text((SKY_W - text_w(&FONT_B, "HOLD SEL: + ITS CHORD")) / 2, 43, &FONT_B, "HOLD SEL: + ITS CHORD", C_TEXT);
+        else if (chord)
+            cv_text((SKY_W - text_w(&FONT_XS, "+ CHORD")) / 2, 52, &FONT_XS, "+ CHORD", C_LATCH);
     }
-    if (s + 1 < (int32_t)NSLOTS) {
-        slot_title((uint32_t)s + 1u, t);
-        text_cat(t, " >");
-        cv_text(236 - text_w(&FONT_XS, t), 3, &FONT_XS, t, C_LABEL);
-    }
-    slot_title((uint32_t)s, t);
-    f = text_w(&FONT_L, t) <= 232 ? &FONT_L : &FONT_M;
-    cv_text((SKY_W - text_w(f, t)) / 2, f == &FONT_L ? 20 : 24, f, t, C_BRIGHT);
-    if (ui.sel_chord && slot_scene((uint32_t)s)->vel[0])
-        cv_text((SKY_W - text_w(&FONT_XS, "+ CHORD")) / 2, 52, &FONT_XS, "+ CHORD", C_LATCH);
     for (i = 0; i < (int32_t)NSLOTS; i++) {
         int32_t x = 25 + i * 6 + (i >= (int32_t)NFACTORY ? 4 : 0);
         if (i == s)
@@ -2250,11 +2273,44 @@ static void ble_panel(uint32_t now)
     cv_text(236 - text_w(&FONT_T, t), 69, &FONT_T, t, C_LABEL);
 }
 
+/* what the panel does not say by itself, drawn over the view at the moment it is needed: SEL held (its four
+ * partners, until one is used), HOME held (what its second brings), and nothing sounding (how to start) */
+static void view_hint(uint32_t now)
+{
+    uint32_t i;
+    if (ui.sel_down && (ui.btn >> B_SEL & 1u) && !ui.sel_cleared && !ui.sel_used && now - ui.sel_down >= 300u) {
+        static const char *const ROW[4][2] = {{"A KEY", "MOVE THE CHORD"},
+                                              {"PRESETS", "ADD ITS CHORD"},
+                                              {"PLAY", "NEXT MOVE NOW"},
+                                              {"HOME", "ALL NOTES OFF"}};
+        cv_rect(0, 0, SKY_W, SKY_H, C_SKY);
+        for (i = 0; i < 4u; i++) {
+            cv_text(6, 3 + 20 * (int32_t)i, &FONT_B, ROW[i][0], C_BRIGHT);
+            cv_text(88, 3 + 20 * (int32_t)i, &FONT_B, ROW[i][1], C_TEXT);
+        }
+        ui.hint = 2;
+    } else if (ui.home_t && !ui.home_used && now - ui.home_t >= 300u) {
+        const char *a = "KEEP HOLDING", *c = "YOUR EDITS GO";
+        cv_rect(0, 0, SKY_W, SKY_H, C_SKY);
+        cv_text((SKY_W - text_w(&FONT_B, a)) / 2, 2, &FONT_B, a, C_TEXT);
+        cv_text((SKY_W - text_w(&FONT_L, "AS SAVED")) / 2, 20, &FONT_L, "AS SAVED", C_BRIGHT);
+        if (scene_dirty)
+            cv_text((SKY_W - text_w(&FONT_B, c)) / 2, 60, &FONT_B, c, C_WARN);
+        ui.hint = 3;
+    } else if (!dr_bodies() && !ui.lead_seen && !dr_orbit_on()) {
+        const char *a = set.local ? "PRESS A KEY" : "LOCAL OFF", *c = set.local ? "OR TURN PRESETS" : "KEYS SEND MIDI ONLY";
+        cv_text((SKY_W - text_w(&FONT_M, a)) / 2, 14, &FONT_M, a, set.local ? C_BRIGHT : C_WARN);
+        cv_text((SKY_W - text_w(&FONT_B, c)) / 2, 46, &FONT_B, c, set.local ? C_TEXT : C_BRIGHT);
+        ui.hint = set.local ? 1 : 5;
+    }
+}
+
 static void take_panel(uint32_t now);
 static void sky_draw(void)
 {
     uint32_t now = plat_ms(), hud = now < ui.hud_until, i, fx_layer = ui.btn >> B_FX & 1u;
     ui.frame++;
+    ui.hint = 0;
     sky_beams();
     cv_begin(SKY_W, SKY_H, C_SKY);
     ph_compose(3u, hud);
@@ -2282,6 +2338,8 @@ static void sky_draw(void)
     } else if (ble_panel_up() && !hud) {   /* the MIDI page: the Bluetooth device in place of the view (a knob's value
                                             * or a message still shows over it for a moment) */
         ble_panel(now);
+    } else if (!hud) {
+        view_hint(now);
     }
     CRUMB(12);
     if (hud) {                           /* the HUD: the name small, the value as large as fits, a knob's bar under it */
@@ -2492,7 +2550,11 @@ static void draw_header(void)
         text_cat(t, c);
     }
     x = 237 - text_w(&FONT_T, t);
+    if (!set.local)                      /* the keys play nothing here: said on every page, not only MIDI's */
+        x -= text_w(&FONT_T, "LOCAL OFF") + 6;
     cv_rect(x - 5, 0, 240 - x + 5, 18, C_BLACK);   /* a long name ends under it */
+    if (!set.local)
+        x = cv_text(x, 4, &FONT_T, "LOCAL OFF", C_WARN) + 6;
     cv_text(x, 4, &FONT_T, t, overload_seen || usb_underruns() ? C_WARN : C_LABEL);
     pill(3, 54, transposing() ? "SEL TRANS" : chord_on() ? "SEL CHORD" : "SEL LATCH", set.latch || transposing(), 0.0f, 0);
     {                                    /* PLAY ORBIT; running in another mode than WANDER, that mode's name. LOOP
@@ -2576,10 +2638,13 @@ static void draw_footer(void)
     if (ui.dialog) {
         char n[24];
         slot_title(NFACTORY + ui.save_to, n);
+        int_text((int32_t)ui.save_to + 1, t);
+        text_cat(t, "/16");
         cv_text(4, 0, &FONT_S, "SAVE PRESET TO", C_LABEL);
+        cv_text(236 - text_w(&FONT_S, t), 0, &FONT_S, t, C_LABEL);
         cv_text(4, 16, &FONT_M, n, C_BRIGHT);
-        cv_text(4, 41, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
-        cv_text(4, 57, &FONT_S, "PRESET PICKS THE SLOT", C_LABEL);
+        cv_text(4, 41, &FONT_B, "TURN PRESETS: U1-U16", C_BRIGHT);
+        cv_text(4, 57, &FONT_S, "SAVE SAVES   HOME CANCELS", C_TEXT);
         cv_blit(0, FOOT_Y);
         return;
     }

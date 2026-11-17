@@ -2,6 +2,63 @@
 
 The one page to read before the next session. Status first, then how to resume, then what's next.
 
+## Start here: the screen hints and PRESETS bringing a chord (flashed 2026-11-16, not heard, NOT committed)
+
+Two sessions' work in one tree, on top of the released 1.10 (617e7e8). Device build 64A6A096, image 454,168 B,
+`FM-1_4400`. `basic.txt` 1,086 ok, `chords.txt` 89 ok, all 16 renders match golden.
+
+**The migration, proven on the unit first:** the released 1.9 went on, Kyle saved U1 DESCENT and U2 FOLDED SUN
+(seven voices each), the released 1.10 went on over it: all 16 user presets are their 1.9 bytes with two zero
+bytes where MUTATE and DEVIATE sit, chords, velocities, root and scale the same. Dumps and both packages are in
+`deepfield/build/migration/` (not tracked). **The unit runs the released 1.10 bytes** (`FM-1_44011000`).
+
+**Why the hints:** Kyle could not find how to save to another slot (the dialog's big line said PRESS SAVE AGAIN,
+the slot hint was the last, greyest line), then loaded his saved presets and heard no chord. He asked for hints
+only where there is a clear reason, picked 1 to 6 of nine; 7 to 9 (why a knob is empty, hold a key + knob, CHORD
+on blocks voice values) were not built.
+
+**What changed (`ui.c`):**
+- The save dialog: the view says SAVE TO: TURN PRESETS with the slot; the footer leads with TURN PRESETS: U1-U16
+  and counts the slot (3/16).
+- The other session: PRESETS alone brings a preset's chord when nothing is latched (`browse_chord`); with a chord
+  latched it still changes only the sound, and SEL held brings the chord.
+- `view_hint`: nothing sounding and GEN off, PRESS A KEY / OR TURN PRESETS (LOCAL off: LOCAL OFF / KEYS SEND MIDI
+  ONLY); SEL held 0.3 s with nothing done yet, its four partners; HOME held 0.3 s, KEEP HOLDING / AS SAVED (YOUR
+  EDITS GO when dirty).
+- **The hints are the prominent text** (Kyle on the first flash, 64A6A096: "absolutely unreadable ... they need to
+  be the prominent text when they are presented"): none in FONT_T or FONT_XS grey any more; FONT_M or FONT_B in
+  white, cyan or orange, and the preset list gives its name's size up to the hint under it.
+- The preset list: UNSAVED EDITS WILL GO in place of the neighbours when the preset has changes; HOLD SEL: + ITS
+  CHORD when a chord is latched and the preset has one.
+- The header: LOCAL OFF in orange while LOCAL is off.
+- REC records LOOP from GEN 2 and GEN 3 as well as GEN (it started a Bluetooth scan there).
+- `expect hint` in the simulator (1 empty, 2 SEL, 3 HOME, 4 unsaved, 5 LOCAL off); 21 checks at the end of `basic.txt`.
+
+Manual (a Hints passage in section 3, section 9's chord rules, the LOOP line, troubleshooting), both cheat sheets,
+the words, README and BUDGET updated.
+
+**On the unit:** build 060525F6 (the large hints), flashed 2026-11-16 on Kyle's second "Flash it", image
+454,216 B, booted clean, bank unchanged. Before it, the small hints: flashed 2026-11-16 on Kyle's "Flash it" (over the released 1.10), build 64A6A096, `FM-1_4400`.
+After: DESCENT (U1) on HOME, `no crash recorded`, `late 00000000`, the bank dumped before and after the same.
+CPU reads 46 % with no voice on DESCENT, as it did on the released 1.10 just before (FIRST LIGHT idles at 6 %):
+not looked into, the preset's wind and effects are the likely load.
+
+**Not done:** heard, committed; the manual's screenshots
+(`screen-save.png` shows the old dialog, none of the hints); the site; a version.
+
+**To check on the unit once flashed:**
+1. Switch on: the view reads PRESS A KEY and OR TURN PRESETS, large.
+2. Turn PRESETS to U1: PRESET + CHORD, and its seven voices come in.
+3. Turn knob 1, then turn PRESETS one click: UNSAVED EDITS WILL GO in orange, and HOLD SEL: + ITS CHORD.
+4. Hold SEL: after a moment four lines say what a key, PRESETS, PLAY and HOME do. Let go after a second: nothing changes.
+5. Hold HOME: KEEP HOLDING HOME, AS SAVED; keep holding and the preset comes back as saved.
+6. Press SAVE: SAVE TO: TURN PRESETS; turn PRESETS and the counter moves (2/16); HOME cancels.
+7. GLO, SELECT three clicks, knob 3 to OFF, then HOME: LOCAL OFF and KEYS SEND MIDI ONLY in the view. Turn it back on.
+8. ARP, knob 1 to LOOP, SELECT one click to GEN 2, REC: the count-in starts. REC again cancels.
+
+**Open question for Kyle:** the PRESS A KEY hint shows whenever nothing is latched and GEN is off; if it is too
+much between pieces, limit it to the first minute after switching on.
+
 ## Start here: 1.10 released and the site published (2026-11-16)
 
 Kyle: "push and update version so the firmware hub gets it update all docs etc", then "Publish and tag 1.10" (he

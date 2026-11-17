@@ -110,7 +110,16 @@ dark. Each colour has one meaning:
 | White | Your hand: a lead, the voice you have open |
 | Cyan | Where you are: the page band, the bars, the morph line |
 | Teal | An effect that is on |
-| Orange | Something to look at: unsaved changes, LOAD, a failed save |
+| Orange | Something to look at: unsaved changes, LOAD, a failed save, LOCAL OFF |
+
+**Hints.** The view says what the panel cannot, at the moment you need it, as the largest text on the screen:
+
+- Nothing sounding: PRESS A KEY, OR TURN PRESETS.
+- SEL held for a third of a second: the four things it does with a key, PRESETS, PLAY and HOME. It goes once you use one.
+- HOME held: KEEP HOLDING, AS SAVED, and YOUR EDITS GO if you have changed the preset.
+- PRESETS turned with changes unsaved: UNSAVED EDITS WILL GO, in orange. With a chord held, HOLD SEL: + ITS CHORD.
+- LOCAL off (MIDI page): with nothing sounding the view reads LOCAL OFF, KEYS SEND MIDI ONLY, and LOCAL OFF stays in orange at the top right of every page.
+- The save dialog: TURN PRESETS: U1-U16, and which of the 16 slots you are on.
 
 **Key lights** have three levels, one meaning each:
 
@@ -475,7 +484,7 @@ mode the knob comes to rest on starts a third of a second later, so the modes pa
 | BASS | red | TEMPO, GATE, PATTERN | A bass line under the chord, stepping at TEMPO and DIV as ARP does, that follows the chord when it changes (below). |
 
 **Recording a phrase (LOOP).** Selecting LOOP with nothing recorded puts **REC THEN PLAY** on the screen, since an
-empty loop has nothing to play. With the GEN page showing and MODE on LOOP, **REC** takes a phrase:
+empty loop has nothing to play. With GEN, GEN 2 or GEN 3 showing and MODE on LOOP, **REC** takes a phrase:
 
 1. Press **REC**. A metronome counts four beats in at TEMPO (GLOBAL; the MIDI clock's tempo while one is
    followed): four clicks, the first higher, while the whole screen counts 4 3 2 1 over the vortex and four bars
@@ -784,7 +793,9 @@ full (0.7 s after you stop) the preset lands, and its sound
 blends in over MORPH seconds (GLOBAL page; 4 s by default, or NOW to switch at once). A bar along the bottom of the
 header shows the blend.
 
-- Your chord keeps sounding. If the new preset has another model, each voice crosses into it, the new sound rising as
+- With nothing latched, the preset's chord comes in with it (below), so a preset you saved a chord in plays it
+  when you turn to it.
+- With a chord latched, your chord keeps sounding. If the new preset has another model, each voice crosses into it, the new sound rising as
   the old one fades. With eight voices there is no room to cross, so they switch one at a time, low to high, and
   the chord never drops out at once.
 - LATCH, GEN (PLAY, its colour, and while it runs its page's values too), FREEZE, the octave and the scale stay as
@@ -794,9 +805,10 @@ header shows the blend.
 
 ![Browsing: the candidate preset's name large, its neighbours, the 32 slots as a row of marks, the line filling](img/screen-browse.png "Browsing the presets")
 
-**Bringing in a preset's chord.** PRESETS alone never brings a chord: a chord only ever comes when you ask for it.
-Hold SEL while you turn PRESETS and the preset lands with its chord as well as its sound: the screen says PRESET +
-CHORD (+ CHORD in sun under the name in the list). Its voices come in latched, over the chord you have: the voices
+**Bringing in a preset's chord.** With nothing latched, PRESETS brings the preset's chord with its sound: there is
+no chord of yours to keep. With a chord latched, PRESETS alone changes only the sound under it, and the preset's
+chord comes when you ask for it: hold SEL while you turn PRESETS. Either way the screen says PRESET + CHORD while
+you turn (+ CHORD in sun under the name in the list), so you see it coming. Its voices come in latched, over the chord you have: the voices
 that are not in the new chord release (over RELEASE) while the new ones swell in (over ATTACK), so a change of
 section happens in one take, and nothing drops out between. LATCH turns on, and the preset's GEN values come too.
 To bring in the chord of the preset you are on, hold SEL and turn PRESETS one click forward and back. A preset with
@@ -807,7 +819,7 @@ in ROOT (GLOBAL page); a chord you save plays in the ROOT it was saved in, moved
 saved in, and its CC goes out as if you had turned the knob. GEN moves a voice along the scale, so a chord written
 in another one has its notes pulled onto yours the first time they move: BOWED SKY is a Lydian voicing, and heard
 under MAJOR its raised fourth went flat at the first SHIFT. ROOT stays yours, and the chord moves to it as before.
-The scale only ever changes this way with a chord: PRESETS alone, a program change and HOME held all leave it where
+The scale only ever changes this way with a chord: PRESETS alone under a latched chord, a program change and HOME held all leave it where
 it is, and so does a preset saved before this version, which kept no scale.
 
 **Back to the preset as saved.** What you change on a preset stays until you save or change preset, and LATCH, GEN and
@@ -1023,7 +1035,7 @@ screen words (`words.tsv` in the source code).
 | GEN does nothing | No voice is latched. Every mode but ARP needs at least one. |
 | The reverb won't die away | FREEZE is on (SEQ lit). Press SEQ. |
 | SCALE changed by itself | You brought in a preset's chord (SEL held + PRESETS): the chord's own scale comes with it (section 9). Set SCALE on the GLOBAL page to change it back. |
-| A preset is silent | PRESETS alone changes only the sound: hold SEL while you turn it to bring the preset's chord in (section 9). Switching on is silent too. Or a voice is muted (its LEVEL at MUTE). Or TREMOLO at full fades each voice all the way down on its cycle. Or the preset is still blending in. |
+| A preset is silent | It has no chord saved (U1–U16 as shipped, F16 INIT): press a key. Switching on is silent too: turn PRESETS a click away and back and the chord comes in (section 9). A MIDI program change never brings a chord. Or a voice is muted (its LEVEL at MUTE). Or TREMOLO at full fades each voice all the way down on its cycle. Or the preset is still blending in. |
 | Holding SEL does nothing | By design: SEL held is a modifier. Touch a key (the chord moves), turn PRESETS (its chord comes), press PLAY (GEN moves now) or tap HOME (every voice stops) while you hold it. A tap on SEL switches LATCH. |
 | U and a number in the header | The recording over USB dropped a frame or more: a crackle in it (section 10). Fewer voices or an effect off. |
 | My settings were gone after switching off | Settings are only stored when you save a preset (section 9). |
