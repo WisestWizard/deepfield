@@ -8,9 +8,17 @@ Kyle, after the large hints went on: "commit everything and publish looking good
 sessions' work in one commit: the hunks share lines of `ui.c`), the manual's screenshots re-shot first
 (`screen-save`, `screen-browse` and five others). `publish_site.sh 1.11` pushed gh-pages: deepfield.fog.baby reads
 Version 1.11, the live manual and cheat sheet carry the hints, the installer's package is `FM-1_44011100`
-(616,909 B, a local build). **Not done: master is not pushed and 1.11 is not tagged or released**, so GitHub's
-latest release and the hub are still 1.10 (the hub's card not checked since the 1.10 release either). The unit
-runs dev build 060525F6, the same code.
+(616,909 B, a local build).
+
+**Released on Kyle's "Push and tag 1.11":** master pushed (179e372), `release.yml` dry run green (run
+44030964598), tag `1.11` on 179e372, run 44031232517: `deepfield-1.11.fwsc`, 616,909 B, SHA-256
+`74b1112eaaf22ce9`, published 2026-11-17T06:28:04Z, attestation verified. The hub's `catalog.json` read 1.10
+minutes after (so 1.10 did land there); it takes 1.11 within three hours, not checked since. The unit runs dev
+build 060525F6, the same code, not the release's bytes.
+
+**Left:** the hub card reading 1.11; the unit onto the released bytes if Kyle wants them matched; the CPU at
+46 % with no voice on DESCENT (U1), not looked into; hints 7 to 9 not built; whether PRESS A KEY is too much
+between pieces.
 
 
 Two sessions' work in one tree, on top of the released 1.10 (617e7e8). Device build 64A6A096, image 454,168 B,
